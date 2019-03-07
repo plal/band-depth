@@ -23,19 +23,12 @@ typedef u16      b16;
 typedef u32      b32;
 typedef u64      b64;
 
-#define get_name(var)  #var
 #define S 6
-#define num_curves 3;
-#define curve_size 4;
-
 #define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
 #define Min(a,b) (((a)<(b))?(a):(b))
 #define Max(a,b) (((a)>(b))?(a):(b))
 
 
-//
-//
-//
 f64 get_number_with_prob(f64 prob, f64 val1, f64 val2) {
 	f64 random_number = (f64)rand() / (f64)RAND_MAX;
 	if(random_number < prob) {
@@ -49,7 +42,7 @@ f64 get_number_with_prob(f64 prob, f64 val1, f64 val2) {
 // [ Curve ... values ... ]
 //
 typedef struct {
-	s32    num_points; // num pos32s
+	s32    num_points;
 	s32    num_bytes;
 	f64 depth;
 	f64 values[];
@@ -148,10 +141,10 @@ void original_band_depth(Curve* *curves, s32 n) {
 
 }
 
-static inline u64
-get_cpu_clock() { return __rdtsc(); }
+//static inline u64;
+//get_cpu_clock() { return __rdtsc(); }
 
-s32 main() {
+int main() {
 	srand ( time(NULL) );
 
 	// Curve *line_1 = curve_generate(size);
@@ -177,14 +170,14 @@ s32 main() {
 	// for(s32 i = 0; i < num_curves; i++) {
 	// 	curves[i] = curve_generate(curve_size);
 	// }
-	u64 t = get_cpu_clock();
+	//u64 t = get_cpu_clock();
 	original_band_depth(curves,n);
-	t = get_cpu_clock() - t;
+	//t = get_cpu_clock() - t;
 
 	for (s32 i=0;i<n;++i) {
 		printf("depth of curve %d is %.2f\n", i, curves[i]->depth);
 	}
-	printf("clock cycles %"PRIu64"\n", t);
+	//printf("clock cycles %"PRIu64"\n", t);
 
 	// print_curve(curves[1]);
 	// print_curve(curves[2]);
@@ -196,79 +189,4 @@ s32 main() {
 		curve_free(curves[i]);
 	}
 
-//======================================================
-    // srand(time(NULL));
-    // s32 i;
-    // f64 random_value, random_value1;
-    // for(i=0; i < 5; i++) {
-    //     random_value = get_number_with_prob(0.1, 1, 0);
-    //     random_value1 = get_number_with_prob(0.5, 1, -1);
-    //     printf ( "%f %f\n", random_value, random_value1);
-    // }
-//======================================================
-//
-//
-//
-
-
-//     /*LINE 1*/
-//     struct pos32 pos3211;
-//     pos3211.x = 1;
-//     pos3211.y = 2;
-//     struct pos32 pos3212;
-//     pos3212.x = 2;
-//     pos3212.y = 0;
-//     struct pos32 pos3213;
-//     pos3213.x = 3;
-//     pos3213.y = 2;
-//     pos32 line1[] = {pos3211, pos3212, pos3213};
-//     /*LINE 2*/
-//     struct pos32 pos3221;
-//     pos3221.x = 1;
-//     pos3221.y = 1;
-//     struct pos32 pos3222;
-//     pos3222.x = 2;
-//     pos3222.y = 1;
-//     struct pos32 pos3223;
-//     pos3223.x = 3;
-//     pos3223.y = 1;
-//     pos32 line2[] = {pos3221, pos3222, pos3223};
-//     /*LINE 3*/
-//     struct pos32 pos3231;
-//     pos3231.x = 1;
-//     pos3231.y = 0;
-//     struct pos32 pos3232;
-//     pos3232.x = 2;
-//     pos3232.y = 2;
-//     struct pos32 pos3233;
-//     pos3233.x = 3;
-//     pos3233.y = 0;
-//     pos32 line3[] = {pos3231, pos3232, pos3233};
-//     s32 a = is_line_between(line2, line1, line3);
-//     printf("%d\n", a);
 }
-
-
-
-
-
-
-
-
-#if 0
-
-
-s32 is_line_between(pos32 line[], pos32 line1[], pos32 line2[]) {
-    s32 i, is_between = 1;
-    for(i = 0; i < SIZE; i++) {
-        printf("line[%d]:%f line1[%d]:%f line[%d]:%f\n", i, line[i].y, i, line1[i].y, i, line2[i].y);
-        if (!((line[i].y <= line1[i].y && line[i].y >= line2[i].y) ||
-            (line[i].y <= line2[i].y && line[i].y >= line1[i].y))) {
-                is_between = 0;
-            }
-    }
-    return is_between;
-}
-
-
-#endif
