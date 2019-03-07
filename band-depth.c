@@ -123,7 +123,7 @@ s32 is_curve_between(Curve *curve1, Curve *curve2, Curve *curve3) {
 	return 1;
 }
 
-void prs32_curve(Curve *curve) {
+void print_curve(Curve *curve) {
 	s32 size = curve->num_pos32s;
 	for(s32 i=0; i < size; i++) {
 		printf("curve[%d]:%f\n",i,curve->values[i]);
@@ -186,9 +186,9 @@ s32 main() {
 	}
 	printf("clock cycles %"PRIu64"\n", t);
 
-	// prs32_curve(curves[0]);
-	// prs32_curve(curves[1]);
-	// prs32_curve(curves[2]);
+	// print_curve(curves[1]);
+	// print_curve(curves[2]);
+	// print_curve(curves[0]);
 
 	//is_curve_between(line_1, line_2, line_3);
 
