@@ -1,0 +1,5 @@
+#!/bin/bash
+#clang -g -ggdb -std=c11 -o band-depth band-depth.c
+#clang -S -ggdb -std=c11 band-depth.c
+gcc band-depth.c -o band-depth
+./band-depth
