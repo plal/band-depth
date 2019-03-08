@@ -29,6 +29,13 @@ typedef u64      b64;
 #define Max(a,b) (((a)>(b))?(a):(b))
 
 
+//TODO
+//Adjust curve structure to contain different types of band-original_band_depth
+//Implement exact fast method
+//	- Sort columns of M
+//	- Build rank matrix R
+
+
 f64 get_number_with_prob(f64 prob, f64 val1, f64 val2) {
 	f64 random_number = (f64)rand() / (f64)RAND_MAX;
 	if(random_number < prob) {
@@ -87,6 +94,14 @@ Curve* curve_new_constant(s32 num_points, f64 value) {
 	return curve;
 }
 
+Curve* curve_new_curve_from_array(s32 num_points, f64 *values) {
+	Curve *curve = curve_new(num_points);
+	for (s32 i=0;i<num_points;++i) {
+		curve->values[i] = values[i];
+	}
+	return curve;
+}
+
 Curve* curve_generate(s32 num_points) {
 	Curve *curve = curve_new(num_points);
 	f64 c     = get_number_with_prob(0.4, 0,  1);
@@ -114,6 +129,17 @@ s32 is_curve_between(Curve *curve1, Curve *curve2, Curve *curve3) {
 		}
 	}
 	return 1;
+}
+
+void test_curve(Curve *curve, Curve* *curves, s32 num_curves) {
+	for(s32 i=0; i<num_curves-1; ++i) {
+		for(s32 j=i+1; j<num_curves; ++j) {
+			s32 aux = is_curve_between(curve, curves[i], curves[j]);
+			if(aux == 1) {
+				printf("curve is between curve[%d] and curve[%d]\n", i, j);
+			}
+		}
+	}
 }
 
 void print_curve(Curve *curve) {
@@ -158,24 +184,81 @@ int main() {
 	//     printf( "line2[%d] : %f\n", i, line_2->values[i]);
 	//     printf( "line3[%d] : %f\n", i, line_3->values[i]);
 	// }
-	Curve *curves[] = {
-		curve_new_constant(4,1),
-		curve_new_constant(4,2),
-		curve_new_constant(4,5),
-		curve_new_constant(4,7),
-		curve_new_constant(4,9)
-	};
+	s32 test = 2;
+/*TESTING CONSTANT CURVES*/
+	if(test == 1) {
+		Curve *curves[] = {
+			curve_new_constant(4,1),
+			curve_new_constant(4,2),
+			curve_new_constant(4,5),
+			curve_new_constant(4,7),
+			curve_new_constant(4,9)
+		};
 
-	s32 n = ArrayCount(curves);
-	// for(s32 i = 0; i < num_curves; i++) {
-	// 	curves[i] = curve_generate(curve_size);
-	// }
-	//u64 t = get_cpu_clock();
-	original_band_depth(curves,n);
-	//t = get_cpu_clock() - t;
+		s32 n = ArrayCount(curves);
+		// for(s32 i = 0; i < num_curves; i++) {
+		// 	curves[i] = curve_generate(curve_size);
+		// }
+		//u64 t = get_cpu_clock();
+		original_band_depth(curves,n);
+		//t = get_cpu_clock() - t;
 
-	for (s32 i=0;i<n;++i) {
-		printf("depth of curve %d is %.2f\n", i, curves[i]->depth);
+		for (s32 i=0;i<n;++i) {
+			printf("depth of curve %d is %.2f\n", i, curves[i]->depth);
+		}
+
+		for(s32 i = 0; i < n; i++) {
+			curve_free(curves[i]);
+		}
+
+	} else if (test == 0) {
+/*TESTING RANDOM CURVES*/
+		Curve *curves_random[] = {
+			curve_generate(4),
+			curve_generate(4),
+			curve_generate(4),
+			curve_generate(4),
+			curve_generate(4),
+		};
+
+		s32 n_random = ArrayCount(curves_random);
+
+		original_band_depth(curves_random,n_random);
+
+		for (s32 i=0;i<n_random;++i) {
+			print_curve(curves_random[i]);
+			printf("depth of curve %d is %.2f\n", i, curves_random[i]->depth);
+		}
+
+		for(s32 i = 0; i < n_random; i++) {
+			curve_free(curves_random[i]);
+		}
+
+	} else {
+		s32 n_p = 4;
+		f64 y0[] = {0,-5,-4,-3};
+		f64 y1[] = {6, 1, 8, 9};
+		f64 y2[] = {6, 7, 8, 9};
+		f64 y3[] = {0, 1, 2, 3};
+		f64 y4[] = {6, 7, 2, 9};
+
+		Curve *curve0 = curve_new_curve_from_array(n_p, y0);
+		Curve *curve1 = curve_new_curve_from_array(n_p, y1);
+		Curve *curve2 = curve_new_curve_from_array(n_p, y2);
+		Curve *curve3 = curve_new_curve_from_array(n_p, y3);
+		Curve *curve4 = curve_new_curve_from_array(n_p, y4);
+
+		Curve *curves[] = {
+			curve0,
+			curve1,
+			curve2,
+			curve3,
+			curve4
+		};
+
+		s32 n = ArrayCount(curves);
+
+		test_curve(curves[2], curves, n);
 	}
 	//printf("clock cycles %"PRIu64"\n", t);
 
@@ -184,9 +267,5 @@ int main() {
 	// print_curve(curves[0]);
 
 	//is_curve_between(line_1, line_2, line_3);
-
-	for(s32 i = 0; i < n; i++) {
-		curve_free(curves[i]);
-	}
 
 }
