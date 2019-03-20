@@ -167,6 +167,50 @@ void original_band_depth(Curve* *curves, s32 n) {
 
 }
 
+
+void rank_matrix_build(Curve* *curves, s32 n) {
+	s32 size = curves[0]->num_points;
+	f64 values_matrix[size][n][2];
+	for (s32 i=0; i<size; ++i) {
+		for (s32 j=0; j<n; ++j) {
+			values_matrix[i][j][0] = curves[j]->values[i];
+			values_matrix[i][j][1] = j;
+		}
+	}
+	/**/
+	for (s32 i=0; i<size; ++i) {
+		for (s32 j=0; j<n; ++j) {
+			printf("[%f, %d] ", values_matrix[i][j][0], (int)values_matrix[i][j][1]);
+		}
+		printf("\n");
+	}
+	printf("\n");
+	/**/
+	f64 a[] = {0,0};
+	for (s32 i=0; i<size; ++i) {
+		for (s32 j=0; j<n; ++j) {
+			for (s32 k=(j+1); k<n; ++k) {
+				if (values_matrix[i][j][0] > values_matrix[i][k][0]) {
+					a[0] = values_matrix[i][j][0];
+					a[1] = values_matrix[i][j][1];
+
+					values_matrix[i][j][0] = values_matrix[i][k][0];
+					values_matrix[i][j][1] = values_matrix[i][k][1];
+
+					values_matrix[i][k][0] = a[0];
+					values_matrix[i][k][1] = a[1];
+				}
+			}
+		}
+	}
+	for (s32 i=0; i<size; ++i) {
+		for (s32 j=0; j<n; ++j) {
+			printf("[%f, %d] ", values_matrix[i][j][0], (int)values_matrix[i][j][1]);
+		}
+		printf("\n");
+	}
+}
+
 //static inline u64;
 //get_cpu_clock() { return __rdtsc(); }
 
@@ -258,7 +302,8 @@ int main() {
 
 		s32 n = ArrayCount(curves);
 
-		test_curve(curves[2], curves, n);
+		//test_curve(curves[2], curves, n);
+		rank_matrix_build(curves, n);
 	}
 	//printf("clock cycles %"PRIu64"\n", t);
 
