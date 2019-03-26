@@ -3,6 +3,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include <limits.h>
 #include <inttypes.h>
 
 typedef uint8_t  u8;
@@ -53,7 +54,8 @@ typedef struct {
 	s32    num_bytes;
 	s32	   max_rank;
 	s32	   min_rank;
-	f64 depth;
+	f64 original_depth;
+	f64 fast_depth;
 	f64 values[];
 } Curve;
 
@@ -155,19 +157,32 @@ void print_curve(Curve *curve) {
 
 void original_band_depth(Curve* *curves, s32 n) {
 	for (s32 i=0; i<n; ++i) {
-		curves[i]->depth = 0;
+		curves[i]->original_depth = 0;
 	}
 	for(s32 i=0; i<n-1; ++i) {
 		for(s32 j=i+1; j<n; ++j) {
 			for(s32 k=0; k<n; ++k) {
-				curves[k]->depth += is_curve_between(curves[k], curves[i], curves[j]);
+				curves[k]->original_depth += is_curve_between(curves[k], curves[i], curves[j]);
 			}
 		}
 	}
 	f64 n_choose_2 = n*(n-1.0)/2.0;
 	for (s32 i=0; i<n; ++i) {
-		curves[i]->depth /= n_choose_2;
+		curves[i]->original_depth /= n_choose_2;
 	};
+
+}
+
+void fast_band_depth(Curve* *curves, s32 n) {
+	for (s32 i=0; i<n; ++i) {
+		curves[i]->fast_depth = 0;
+	}
+	f64 n_choose_2 = n*(n-1.0)/2.0;
+	for(s32 i=0; i<n; ++i) {
+		s32 n_a = n-curves[i]->max_rank;
+		s32 n_b = curves[i]->min_rank-1;
+		curves[i]->fast_depth = (n_a*n_b+n-1)/n_choose_2;
+	}
 
 }
 
@@ -207,6 +222,7 @@ void rank_matrix_build(Curve* *curves, s32 n) {
 			}
 		}
 	}
+	/**/
 	for (s32 i=0; i<size; ++i) {
 		for (s32 j=0; j<n; ++j) {
 			printf("[%f, %d] ", values_matrix[i][j][0], (int)values_matrix[i][j][1]);
@@ -214,6 +230,7 @@ void rank_matrix_build(Curve* *curves, s32 n) {
 		printf("\n");
 	}
 	printf("\n");
+	/**/
 	s32 rank_matrix[size][n];
 	for(s32 i=0; i<n; ++i) {
 		for(s32 j=0; j<size; ++j) {
@@ -225,11 +242,31 @@ void rank_matrix_build(Curve* *curves, s32 n) {
 		}
 	}
 	printf("\n");
+	/**/
 	for (s32 i=0; i<size; ++i) {
 		for (s32 j=0; j<n; ++j) {
 			printf("%d  ", rank_matrix[i][j]);
 		}
 		printf("\n");
+	}
+	/**/
+	for (s32 i=0; i<n; ++i) {
+		s32 max = 0;
+		s32 min = INT_MAX;
+		for(s32 j=0; j<size; ++j) {
+			if(rank_matrix[j][i] > max) {
+				max = rank_matrix[j][i];
+			}
+			if(rank_matrix[j][i] < min) {
+				min = rank_matrix[j][i];
+			}
+		}
+		curves[i]->max_rank = max;
+		curves[i]->min_rank = min;
+		/**/
+		printf("curve[%d] max: %d\n", i, curves[i]->max_rank);
+		printf("curve[%d] min: %d\n", i, curves[i]->min_rank);
+		/**/
 	}
 /*
 	for(s32 i=0; i<n; ++i) {
@@ -257,7 +294,7 @@ int main() {
 	//     printf( "line2[%d] : %f\n", i, line_2->values[i]);
 	//     printf( "line3[%d] : %f\n", i, line_3->values[i]);
 	// }
-	s32 test = 1;
+	s32 test = 0;
 /*TESTING CONSTANT CURVES*/
 	if(test == 1) {
 		Curve *curves[] = {
@@ -275,12 +312,16 @@ int main() {
 		//u64 t = get_cpu_clock();
 		original_band_depth(curves,n);
 		//t = get_cpu_clock() - t;
-
+		rank_matrix_build(curves, n);
+		fast_band_depth(curves, n);
 		for (s32 i=0;i<n;++i) {
-			printf("depth of curve %d is %.2f\n", i, curves[i]->depth);
+			printf("original depth of curve %d is %.2f\n", i, curves[i]->original_depth);
 		}
 
-		rank_matrix_build(curves, n);
+		for (s32 i=0;i<n;++i) {
+			printf("fast depth of curve %d is %.2f\n", i, curves[i]->fast_depth);
+		}
+
 /*
 		for(s32 i=0; i<curves[0]->num_points; ++i) {
 			printf("%d ", curves[0]->rankings[i]);
@@ -303,13 +344,17 @@ int main() {
 		s32 n_random = ArrayCount(curves_random);
 
 		original_band_depth(curves_random,n_random);
+		rank_matrix_build(curves_random, n_random);
+		fast_band_depth(curves_random, n_random);
 
 		for (s32 i=0;i<n_random;++i) {
-			//print_curve(curves_random[i]);
-			printf("depth of curve %d is %.2f\n", i, curves_random[i]->depth);
+			printf("original depth of curve %d is %.2f\n", i, curves_random[i]->original_depth);
 		}
 
-		rank_matrix_build(curves_random, n_random);
+		for (s32 i=0;i<n_random;++i) {
+			printf("fast depth of curve %d is %.2f\n", i, curves_random[i]->fast_depth);
+		}
+
 
 		for(s32 i = 0; i < n_random; i++) {
 			curve_free(curves_random[i]);
@@ -340,14 +385,18 @@ int main() {
 		s32 n = ArrayCount(curves);
 
 		original_band_depth(curves,n);
-		//t = get_cpu_clock() - t;
+		rank_matrix_build(curves, n);
+		fast_band_depth(curves, n);
 
 		for (s32 i=0;i<n;++i) {
-			printf("depth of curve %d is %.2f\n", i, curves[i]->depth);
+			printf("original depth of curve %d is %.2f\n", i, curves[i]->original_depth);
+		}
+
+		for (s32 i=0;i<n;++i) {
+			printf("fast depth of curve %d is %.2f\n", i, curves[i]->fast_depth);
 		}
 
 		//test_curve(curves[2], curves, n);
-		rank_matrix_build(curves, n);
 	}
 	//printf("clock cycles %"PRIu64"\n", t);
 
