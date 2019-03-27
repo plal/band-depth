@@ -56,6 +56,7 @@ typedef struct {
 	s32	   min_rank;
 	f64 original_depth;
 	f64 fast_depth;
+	f64 modified_depth;
 	f64 values[];
 } Curve;
 
@@ -124,7 +125,15 @@ Curve* curve_generate(s32 num_points) {
 	return curve;
 }
 
-s32 is_curve_between(Curve *curve1, Curve *curve2, Curve *curve3) {
+
+void curve_print(Curve *curve) {
+	s32 size = curve->num_points;
+	for(s32 i=0; i < size; i++) {
+		printf("curve[%d]:%f\n",i,curve->values[i]);
+	}
+}
+
+s32 curve_is_between(Curve *curve1, Curve *curve2, Curve *curve3) {
 	s32 size = curve1->num_points;
 	for(s32 i=0;i<size;++i) {
 		f64 a = curve1->values[i];
@@ -137,21 +146,14 @@ s32 is_curve_between(Curve *curve1, Curve *curve2, Curve *curve3) {
 	return 1;
 }
 
-void test_curve(Curve *curve, Curve* *curves, s32 num_curves) {
+void curve_test(Curve *curve, Curve* *curves, s32 num_curves) {
 	for(s32 i=0; i<num_curves-1; ++i) {
 		for(s32 j=i+1; j<num_curves; ++j) {
-			s32 aux = is_curve_between(curve, curves[i], curves[j]);
+			s32 aux = curve_is_between(curve, curves[i], curves[j]);
 			if(aux == 1) {
 				printf("curve is between curve[%d] and curve[%d]\n", i, j);
 			}
 		}
-	}
-}
-
-void print_curve(Curve *curve) {
-	s32 size = curve->num_points;
-	for(s32 i=0; i < size; i++) {
-		printf("curve[%d]:%f\n",i,curve->values[i]);
 	}
 }
 
@@ -162,7 +164,7 @@ void original_band_depth(Curve* *curves, s32 n) {
 	for(s32 i=0; i<n-1; ++i) {
 		for(s32 j=i+1; j<n; ++j) {
 			for(s32 k=0; k<n; ++k) {
-				curves[k]->original_depth += is_curve_between(curves[k], curves[i], curves[j]);
+				curves[k]->original_depth += curve_is_between(curves[k], curves[i], curves[j]);
 			}
 		}
 	}
@@ -263,18 +265,45 @@ void rank_matrix_build(Curve* *curves, s32 n) {
 		}
 		curves[i]->max_rank = max;
 		curves[i]->min_rank = min;
-		/**/
+		/**
 		printf("curve[%d] max: %d\n", i, curves[i]->max_rank);
 		printf("curve[%d] min: %d\n", i, curves[i]->min_rank);
 		/**/
 	}
-/*
-	for(s32 i=0; i<n; ++i) {
-		for(s32 j=0; j<size; ++j) {
-			curves[i]->rankings[j] = rank_matrix[j][i];
+
+}
+
+s32 curve_count_points_between(Curve *curve1, Curve *curve2, Curve *curve3) {
+	s32 size = curve1->num_points;
+	s32 count = 0;
+	for(s32 i=0;i<size;++i) {
+		f64 a = curve1->values[i];
+		f64 b = Min(curve2->values[i],curve3->values[i]);
+		f64 c = Max(curve2->values[i],curve3->values[i]);
+		if (b <= a && a <= c) {
+			count += 1;
 		}
 	}
-*/
+	return count;
+}
+
+void modified_band_depth(Curve* *curves, s32 n) {
+	for (s32 i=0; i<n; ++i) {
+		curves[i]->modified_depth = 0;
+	}
+	for(s32 i=0; i<n-1; ++i) {
+		for(s32 j=i+1; j<n; ++j) {
+			for(s32 k=0; k<n; ++k) {
+				//curves[k]->modified_depth += curve_count_points_between(curves[k], curves[i], curves[j]);
+				printf("number of points of curve[%d] between curve[%d] and curve[%d]: %d\n", k, i, j, curve_count_points_between(curves[k], curves[i], curves[j]));
+			}
+		}
+	}
+	f64 n_choose_2 = n*(n-1.0)/2.0;
+	for (s32 i=0; i<n; ++i) {
+		curves[i]->modified_depth /= n_choose_2;
+	};
+
 }
 
 //static inline u64;
@@ -294,7 +323,7 @@ int main() {
 	//     printf( "line2[%d] : %f\n", i, line_2->values[i]);
 	//     printf( "line3[%d] : %f\n", i, line_3->values[i]);
 	// }
-	s32 test = 0;
+	s32 test = 2;
 /*TESTING CONSTANT CURVES*/
 	if(test == 1) {
 		Curve *curves[] = {
@@ -321,6 +350,7 @@ int main() {
 		for (s32 i=0;i<n;++i) {
 			printf("fast depth of curve %d is %.2f\n", i, curves[i]->fast_depth);
 		}
+		modified_band_depth(curves,n);
 
 /*
 		for(s32 i=0; i<curves[0]->num_points; ++i) {
@@ -395,6 +425,8 @@ int main() {
 		for (s32 i=0;i<n;++i) {
 			printf("fast depth of curve %d is %.2f\n", i, curves[i]->fast_depth);
 		}
+
+		//modified_band_depth(curves,n);
 
 		//test_curve(curves[2], curves, n);
 	}
