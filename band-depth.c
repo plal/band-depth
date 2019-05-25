@@ -417,9 +417,9 @@ void get_band_depths(Curve* *curves, s32 n, s32 size, s32 rank_matrix[size][n]) 
 int main() {
 	srand ( time(NULL) );
 
-	s32 test = 2;
+	s32 test = 3;
 /*TESTING CONSTANT CURVES*/
-	if(test == 1) {
+	if(test == 0) {
 		s32 n_p = 4;
 
 		Curve *curves[] = {
@@ -438,7 +438,7 @@ int main() {
 			curve_free(curves[i]);
 		}
 
-	} else if (test == 0) {
+	} else if (test == 1) {
 /*TESTING RANDOM CURVES*/
 		s32 n_p = 4;
 		Curve *curves_random[] = {
@@ -469,7 +469,7 @@ int main() {
 			curve_free(curves_random[i]);
 		}
 
-	} else {
+	} else if (test == 2) {
 		s32 n_p = 4;
 		/*
 		f64 y0[] = {0, -5, -4, -3};
@@ -503,17 +503,73 @@ int main() {
 
 		s32 rank_matrix[n_p][n];
 		get_band_depths(curves,n, n_p, rank_matrix);
+	} else if (test == 3) {
 
-		//modified_band_depth(curves,n);
+		s32 n_points = 4;
+		/*
+		f64 y0[] = {0.1, -5.0, -4.0, -3.0};
+		f64 y1[] = {0.0,  1.0,  2.1,  3.0};
+		f64 y2[] = {6.1,  1.1,  8.0,  9.2};
+		f64 y3[] = {6.2,  7.0,  2.0,  9.4};
+		f64 y4[] = {6.0,  7.1,  8.1,  9.3};
 
-		//test_curve(curves[2], curves, n);
+		Curve *curve0 = curve_new_curve_from_array(n_points, y0);
+		Curve *curve1 = curve_new_curve_from_array(n_points, y1);
+		Curve *curve2 = curve_new_curve_from_array(n_points, y2);
+		Curve *curve3 = curve_new_curve_from_array(n_points, y3);
+		Curve *curve4 = curve_new_curve_from_array(n_points, y4);
+
+		Curve *curves[] = {
+			curve0,
+			curve1,
+			curve2,
+			curve3,
+			curve4
+		};
+		*/
+
+		s32 n = 500;
+
+		Curve *curves[n];
+		for(s32 i=0; i<n; ++i) {
+			curves[i] = curve_generate(n_points);
+		}
+
+		s32 rank_matrix[n_points][n];
+
+		clock_t t_original_depth, t_fast_depth,
+		 		t_original_modified_depth, t_fast_modified_depth;
+
+		t_original_depth = clock();
+		original_band_depth(curves, n);
+		t_original_depth = clock() - t_original_depth;
+		double time_taken_od = ((double)t_original_depth)/CLOCKS_PER_SEC; // in seconds
+
+    	printf("Original depth took %f seconds to execute \n", time_taken_od);
+
+		t_fast_depth = clock();
+		rank_matrix_build(curves, n, n_points, rank_matrix);
+		fast_band_depth(curves, n, n_points, rank_matrix);
+		t_fast_depth = clock() - t_fast_depth;
+		double time_taken_fd = ((double)t_fast_depth)/CLOCKS_PER_SEC; // in seconds
+
+    	printf("Fast depth took %f seconds to execute \n", time_taken_fd);
+
+		t_original_modified_depth = clock();
+		original_modified_band_depth(curves, n);
+		t_original_modified_depth = clock() - t_original_modified_depth;
+		double time_taken_omd = ((double)t_original_modified_depth)/CLOCKS_PER_SEC; // in seconds
+
+    	printf("Original modified depth took %f seconds to execute \n", time_taken_omd);
+
+		t_fast_modified_depth = clock();
+		rank_matrix_build(curves, n, n_points, rank_matrix);
+		fast_modified_band_depth(curves, n, n_points, rank_matrix);
+		t_fast_modified_depth = clock() - t_fast_modified_depth;
+		double time_taken_fmd = ((double)t_fast_modified_depth)/CLOCKS_PER_SEC; // in seconds
+
+    	printf("Fast depth took %f seconds to execute \n", time_taken_fmd);
+
 	}
-	//printf("clock cycles %"PRIu64"\n", t);
-
-	// print_curve(curves[1]);
-	// print_curve(curves[2]);
-	// print_curve(curves[0]);
-
-	//is_curve_between(line_1, line_2, line_3);
 
 }
