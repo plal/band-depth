@@ -177,7 +177,30 @@ void original_band_depth(Curve* *curves, s32 n) {
 }
 
 void rank_matrix_build(Curve* *curves, s32 n, s32 size, s32 rank_matrix[size][n]) {
-	f64 values_matrix[size][n][2];
+	//printf("entered build rank matrix function\n");
+	//printf("allocating space for values matrix\n");
+	//f64 values_matrix[size][n][2];
+	s32 tuple_size = 2;
+	f64*** values_matrix = (f64***)malloc(size * sizeof(f64**));
+	if (values_matrix == NULL) {
+		fprintf(stderr, "Out of memory\n");
+		exit(0);
+	}
+	for (int i=0; i<size; ++i) {
+		values_matrix[i] = (f64**)malloc(n * sizeof(f64*));
+		if (values_matrix[i] == NULL) {
+			fprintf(stderr, "Out of memory\n");
+			exit(0);
+		}
+		for (int j=0; j<n; ++j) {
+			values_matrix[i][j] = (f64*)malloc(tuple_size * sizeof(f64*));
+			if (values_matrix[i][j] == NULL) {
+				fprintf(stderr, "Out of memory\n");
+				exit(0);
+			}
+		}
+	}
+	//printf("building values matrix\n");
 	for (s32 i=0; i<size; ++i) {
 		for (s32 j=0; j<n; ++j) {
 			values_matrix[i][j][0] = curves[j]->values[i];
@@ -194,6 +217,7 @@ void rank_matrix_build(Curve* *curves, s32 n, s32 size, s32 rank_matrix[size][n]
 	printf("\n");
 	/**/
 	/*SORTING ROWS OF VALUE MATRIX*/
+	//printf("sorting rows of value matrix\n");
 	f64 a[] = {0,0};
 	for (s32 i=0; i<size; ++i) {
 		for (s32 j=0; j<n; ++j) {
@@ -222,6 +246,7 @@ void rank_matrix_build(Curve* *curves, s32 n, s32 size, s32 rank_matrix[size][n]
 	/**/
 	/*BUILDING RANK MATRIX*/
 	//s32 rank_matrix[size][n];
+	//printf("building rank matrix\n");
 	for(s32 i=0; i<n; ++i) {
 		for(s32 j=0; j<size; ++j) {
 			for(s32 k=0; k<n; ++k) {
@@ -240,6 +265,7 @@ void rank_matrix_build(Curve* *curves, s32 n, s32 size, s32 rank_matrix[size][n]
 	}
 	printf("\n");
 	/**/
+	//printf("rank matrix built\n");
 }
 
 void rank_matrix_find_min_max(Curve* *curves, s32 n, s32 size, s32 rank_matrix[size][n]) {
@@ -504,49 +530,30 @@ int main() {
 		s32 rank_matrix[n_p][n];
 		get_band_depths(curves,n, n_p, rank_matrix);
 	} else if (test == 3) {
-
-		s32 n_points = 4;
 		/*
-		f64 y0[] = {0.1, -5.0, -4.0, -3.0};
-		f64 y1[] = {0.0,  1.0,  2.1,  3.0};
-		f64 y2[] = {6.1,  1.1,  8.0,  9.2};
-		f64 y3[] = {6.2,  7.0,  2.0,  9.4};
-		f64 y4[] = {6.0,  7.1,  8.1,  9.3};
-
-		Curve *curve0 = curve_new_curve_from_array(n_points, y0);
-		Curve *curve1 = curve_new_curve_from_array(n_points, y1);
-		Curve *curve2 = curve_new_curve_from_array(n_points, y2);
-		Curve *curve3 = curve_new_curve_from_array(n_points, y3);
-		Curve *curve4 = curve_new_curve_from_array(n_points, y4);
-
-		Curve *curves[] = {
-			curve0,
-			curve1,
-			curve2,
-			curve3,
-			curve4
-		};
+		s32 num_curves[] = {10, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000};
+		s32 num_points[] = {10, 1000, 250, 500, 750, 1000, 2500, 5000, 7500, 10000};
 		*/
+		s32 n_points = 1000;
 
-		s32 n = 500;
-
+		s32 n = 1000;
+		printf("Curves: %d // Points: %d\n", n, n_points);
 		Curve *curves[n];
 		for(s32 i=0; i<n; ++i) {
 			curves[i] = curve_generate(n_points);
 		}
-
 		s32 rank_matrix[n_points][n];
 
 		clock_t t_original_depth, t_fast_depth,
 		 		t_original_modified_depth, t_fast_modified_depth;
-
+/**/
 		t_original_depth = clock();
 		original_band_depth(curves, n);
 		t_original_depth = clock() - t_original_depth;
 		double time_taken_od = ((double)t_original_depth)/CLOCKS_PER_SEC; // in seconds
 
     	printf("Original depth took %f seconds to execute \n", time_taken_od);
-
+/**/
 		t_fast_depth = clock();
 		rank_matrix_build(curves, n, n_points, rank_matrix);
 		fast_band_depth(curves, n, n_points, rank_matrix);
@@ -554,7 +561,7 @@ int main() {
 		double time_taken_fd = ((double)t_fast_depth)/CLOCKS_PER_SEC; // in seconds
 
     	printf("Fast depth took %f seconds to execute \n", time_taken_fd);
-
+/**/
 		t_original_modified_depth = clock();
 		original_modified_band_depth(curves, n);
 		t_original_modified_depth = clock() - t_original_modified_depth;
@@ -569,7 +576,7 @@ int main() {
 		double time_taken_fmd = ((double)t_fast_modified_depth)/CLOCKS_PER_SEC; // in seconds
 
     	printf("Fast depth took %f seconds to execute \n", time_taken_fmd);
-
+/**/
 	}
 
 }
