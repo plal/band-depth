@@ -176,7 +176,7 @@ void original_band_depth(Curve* *curves, s32 n) {
 
 }
 
-void rank_matrix_build(Curve* *curves, s32 n, s32 size, s32 rank_matrix[size][n]) {
+void rank_matrix_build(Curve* *curves, s32 n, s32 size, s32 **rank_matrix) {
 	//printf("entered build rank matrix function\n");
 	//printf("allocating space for values matrix\n");
 	//f64 values_matrix[size][n][2];
@@ -268,7 +268,7 @@ void rank_matrix_build(Curve* *curves, s32 n, s32 size, s32 rank_matrix[size][n]
 	//printf("rank matrix built\n");
 }
 
-void rank_matrix_find_min_max(Curve* *curves, s32 n, s32 size, s32 rank_matrix[size][n]) {
+void rank_matrix_find_min_max(Curve* *curves, s32 n, s32 size, s32 **rank_matrix) {
 	/*OBTAIN MIN AND MAX OF EACH CURVE (COLUMN) --> for fast original depth*/
 	for (s32 i=0; i<n; ++i) {
 		s32 max = 0;
@@ -290,7 +290,7 @@ void rank_matrix_find_min_max(Curve* *curves, s32 n, s32 size, s32 rank_matrix[s
 	}
 }
 
-void fast_band_depth(Curve* *curves, s32 n, s32 size, s32 rank_matrix[size][n]) {
+void fast_band_depth(Curve* *curves, s32 n, s32 size, s32 **rank_matrix) {
 	for (s32 i=0; i<n; ++i) {
 		curves[i]->fast_depth = 0;
 	}
@@ -342,9 +342,13 @@ void original_modified_band_depth(Curve* *curves, s32 n) {
 
 }
 
-void rank_matrix_find_proportion(s32 n, s32 size, s32 rank_matrix[size][n], f64 proportion[n]) {
+void rank_matrix_find_proportion(s32 n, s32 size, s32 **rank_matrix, f64 proportion[n]) {
+	//printf("finding proportions...\n");
 	/*OBTAIN HELPER MATRIXES NEEDED --> for fast modified depth*/
-	s32 n_a[size][n];
+	s32 **n_a = (s32**)malloc(size * sizeof(s32*));
+	for (int i=0; i<size; ++i) {
+		n_a[i] = (s32*)malloc(n * sizeof(s32));
+	}
 	for (s32 i=0; i<size; ++i) {
 		for (s32 j=0; j<n; ++j) {
 			n_a[i][j] = n-rank_matrix[i][j];
@@ -359,7 +363,10 @@ void rank_matrix_find_proportion(s32 n, s32 size, s32 rank_matrix[size][n], f64 
 	}
 	printf("\n");
 	/**/
-	s32 n_b[size][n];
+	s32 **n_b = (s32**)malloc(size * sizeof(s32*));
+	for (int i=0; i<size; ++i) {
+		n_b[i] = (s32*)malloc(n * sizeof(s32));
+	}
 	for (s32 i=0; i<size; ++i) {
 		for (s32 j=0; j<n; ++j) {
 			n_b[i][j] = rank_matrix[i][j]-1;
@@ -374,7 +381,10 @@ void rank_matrix_find_proportion(s32 n, s32 size, s32 rank_matrix[size][n], f64 
 	}
 	printf("\n");
 	/**/
-	s32 match[size][n];
+	s32 **match = (s32**)malloc(size * sizeof(s32*));
+	for (int i=0; i<size; ++i) {
+		match[i] = (s32*)malloc(n * sizeof(s32));
+	}
 	for (s32 i=0; i<size; ++i) {
 		for (s32 j=0; j<n; ++j) {
 			match[i][j] = n_a[i][j]*n_b[i][j];
@@ -396,9 +406,10 @@ void rank_matrix_find_proportion(s32 n, s32 size, s32 rank_matrix[size][n], f64 
 		}
 		proportion[i] = sum/size;
 	}
+	//printf("found proportions\n");
 }
 
-void fast_modified_band_depth(Curve* *curves, s32 n, s32 size, s32 rank_matrix[size][n]) {
+void fast_modified_band_depth(Curve* *curves, s32 n, s32 size, s32 **rank_matrix) {
 	f64 proportion[n];
 	for(s32 i=0; i<n; ++i) { proportion[i] = 0.0; }
 	rank_matrix_find_proportion(n, size, rank_matrix, proportion);
@@ -415,7 +426,7 @@ void fast_modified_band_depth(Curve* *curves, s32 n, s32 size, s32 rank_matrix[s
 }
 
 
-void get_band_depths(Curve* *curves, s32 n, s32 size, s32 rank_matrix[size][n]) {
+void get_band_depths(Curve* *curves, s32 n, s32 size, s32 **rank_matrix) {
 	original_band_depth(curves,n);
 	original_modified_band_depth(curves,n);
 	rank_matrix_build(curves, n, size, rank_matrix);
@@ -527,7 +538,11 @@ int main() {
 
 		s32 n = ArrayCount(curves);
 
-		s32 rank_matrix[n_p][n];
+		s32 **rank_matrix = (s32**)malloc(n_p * sizeof(s32*));
+		for (int i=0; i<n_p; ++i) {
+			rank_matrix[i] = (s32*)malloc(n * sizeof(s32));
+		}
+
 		get_band_depths(curves,n, n_p, rank_matrix);
 	} else if (test == 3) {
 		/*
@@ -542,7 +557,11 @@ int main() {
 		for(s32 i=0; i<n; ++i) {
 			curves[i] = curve_generate(n_points);
 		}
-		s32 rank_matrix[n_points][n];
+		//s32 rank_matrix[n_points][n];
+		s32 **rank_matrix = (s32**)malloc(n_points * sizeof(s32*));
+		for (int i=0; i<n_points; ++i) {
+			rank_matrix[i] = (s32*)malloc(n * sizeof(s32));
+		}
 
 		clock_t t_original_depth, t_fast_depth,
 		 		t_original_modified_depth, t_fast_modified_depth;
@@ -568,6 +587,7 @@ int main() {
 		double time_taken_omd = ((double)t_original_modified_depth)/CLOCKS_PER_SEC; // in seconds
 
     	printf("Original modified depth took %f seconds to execute \n", time_taken_omd);
+/**/
 
 		t_fast_modified_depth = clock();
 		rank_matrix_build(curves, n, n_points, rank_matrix);
@@ -575,7 +595,7 @@ int main() {
 		t_fast_modified_depth = clock() - t_fast_modified_depth;
 		double time_taken_fmd = ((double)t_fast_modified_depth)/CLOCKS_PER_SEC; // in seconds
 
-    	printf("Fast depth took %f seconds to execute \n", time_taken_fmd);
+    	printf("Fast modified depth took %f seconds to execute \n", time_taken_fmd);
 /**/
 	}
 
