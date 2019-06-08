@@ -61,6 +61,48 @@ typedef struct {
 	f64 values[];
 } Curve;
 
+//------------------------------------------------------------------------------
+//
+// [ [ Matrix ] ... values ... ]
+//
+//------------------------------------------------------------------------------
+
+typedef struct {
+	s32 rows;
+	s32 cols;
+	s32 entries[];
+} Matrix;
+
+static s32
+matrix_storage_size(s32 rows, s32 cols)
+{
+	return sizeof(Matrix) + rows * cols * sizeof(s32);
+}
+
+static Matrix*
+matrix_new(s32 rows, s32 cols)
+{
+	Matrix *result = malloc(matrix_storage_size(rows, cols));
+	*result = (Matrix) {
+		.rows = rows,
+		.cols = cols
+	};
+}
+
+static s32
+matrix_get(Matrix *self, s32 row, s32 col)
+{
+	return self->entries[row * self->cols + col];
+}
+
+static s32*
+matrix_row(Matrix *self, s32 row)
+{
+	return self->entries + row * self->cols;
+}
+
+//------------------------------------------------------------------------------
+
 s32 curve_num_bytes(s32 num_points)
 {
 	return sizeof(Curve) + num_points * sizeof(f64);
@@ -176,10 +218,32 @@ void original_band_depth(Curve* *curves, s32 n) {
 
 }
 
-void rank_matrix_build(Curve* *curves, s32 n, s32 size, s32 **rank_matrix) {
+void rank_matrix_build(Curve* *curves, s32 n, Matrix *rank_matrix) { // s32 size, s32 **rank_matrix) {
+
 	//printf("entered build rank matrix function\n");
 	//printf("allocating space for values matrix\n");
 	//f64 values_matrix[size][n][2];
+
+	// c1 -> e1 e2 e3 e4 e5 e6 ... en_p
+	// c2 -> e1 e2 e3 e4 e5 e6 ... en_p
+	// c3 -> e1 e2 e3 e4 e5 e6 ... en_p
+	// c4 -> e1 e2 e3 e4 e5 e6 ... en_p
+
+	s32 n_p = rank_matrix->rows;
+	for (s32 i=0;i<n_p;++i) {
+		s32 *ranks = matrix_row(matrix, i);
+		for (s32 j=0;j<n;++j) {
+			ranks[j] = j; // <--- 
+		}
+		sort(ranks, n, sizeof(s32), cmp, curves);
+	}
+
+
+
+
+
+
+
 	s32 tuple_size = 2;
 	f64*** values_matrix = (f64***)malloc(size * sizeof(f64**));
 	if (values_matrix == NULL) {
@@ -426,7 +490,21 @@ void fast_modified_band_depth(Curve* *curves, s32 n, s32 size, s32 **rank_matrix
 }
 
 
-void get_band_depths(Curve* *curves, s32 n, s32 size, s32 **rank_matrix) {
+void get_band_depths(Curve* *curves, s32 n, Matrix *rank_matrix) { // s32 n, s32 size, s32 **rank_matrix) {
+
+	if (rank_matrix->cols != n) {
+		fprintf(stderr, "mismatch on number of curves and storage space on rank_matrix");
+		exit(-1);
+	}
+	for (s32 i=0;i<n;++i) {
+		if (curves[i]->num_points != rank_matrix->rows) {
+			fprintf(stderr, "mismatch on number of points and number space on rank_matrix");
+			exit(-1);
+		}
+	}
+
+
+
 	original_band_depth(curves,n);
 	original_modified_band_depth(curves,n);
 	rank_matrix_build(curves, n, size, rank_matrix);
@@ -468,7 +546,10 @@ int main() {
 		};
 
 		s32 n = ArrayCount(curves);
-		s32 rank_matrix[n_p][n];
+
+		Matrix *rank_matrix = matrix_new(n_p, n);
+
+		// s32 rank_matrix[n_p][n];
 		get_band_depths(curves, n, n_p, rank_matrix);
 
 		for(s32 i = 0; i < n; i++) {
@@ -537,6 +618,22 @@ int main() {
 		};
 
 		s32 n = ArrayCount(curves);
+
+		//
+		// n_p x n
+		// 1 2 3 4 5
+		// 2 4 5 1 3
+		// 1 2 3 4 5
+		//
+
+		//
+		//   8b     8b 8b 8b 8b
+		// [ 0x0001 p2 p3 p4 p5 ]
+		//
+		//             4b 4b 4b
+		// 0x0001 -> [ i1 i2 i3 i4 i5 i6 i7 ]
+		//
+
 
 		s32 **rank_matrix = (s32**)malloc(n_p * sizeof(s32*));
 		for (int i=0; i<n_p; ++i) {
