@@ -266,6 +266,7 @@ void rank_matrix_build(Curve* *curves, s32 n, s32 size, s32 *rank_matrix[n]) {
 	printf("\n");
 	/**/
 	//printf("rank matrix built\n");
+	free(values_matrix);
 }
 
 void rank_matrix_find_min_max(Curve* *curves, s32 n, s32 size, s32 *rank_matrix[n]) {
@@ -454,7 +455,7 @@ void get_band_depths(Curve* *curves, s32 n, s32 size, s32 *rank_matrix[n]) {
 int main() {
 	srand ( time(NULL) );
 
-	s32 test = 3;
+	s32 test = 2;
 /*TESTING CONSTANT CURVES*/
 	if(test == 0) {
 		s32 n_p = 4;
@@ -544,6 +545,7 @@ int main() {
 		}
 
 		get_band_depths(curves,n, n_p, rank_matrix);
+		free(rank_matrix);
 	} else if (test == 3) {
 		/*
 		s32 num_curves[] = {10, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000};
