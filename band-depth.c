@@ -452,10 +452,10 @@ void get_band_depths(Curve* *curves, s32 n, s32 size, s32 *rank_matrix[n]) {
 	printf("\n");
 }
 
-int main() {
+int main(int argc, char *argv[]) {
 	srand ( time(NULL) );
 
-	s32 test = 2;
+	s32 test = 4;
 /*TESTING CONSTANT CURVES*/
 	if(test == 0) {
 		s32 n_p = 4;
@@ -603,6 +603,29 @@ int main() {
 		for(s32 i = 0; i < n; i++) {
 			curve_free(curves[i]);
 		}
+	} else if (test == 4) {
+		FILE *fp;
+		char *filename;
+		char ch;
+
+		if (argc < 2) {
+			printf("Missing filename\n");
+			return(-1);
+		} else {
+			filename = argv[1];
+			printf("Filename: %s\n", filename);
+
+			fp = fopen(filename,"r");
+			if(fp) {
+				printf("File contents:\n");
+				while ((ch = fgetc(fp)) != EOF) {
+					printf("%c", ch);
+				}
+			} else {
+				printf("Failed to open the file\n");
+			}
+		}
+		return(0);
 	}
 
 }
