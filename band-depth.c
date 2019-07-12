@@ -134,6 +134,18 @@ void curve_print(Curve *curve) {
 	}
 }
 
+void curve_print_all_curves(Curve* *curves, s32 num_curves) {
+	s32 num_points = curves[0]->num_points;
+	for(s32 i=0; i<num_curves; ++i) {
+		printf("Curve %d -> ", i);
+		for(s32 j=0; j<num_points; ++j) {
+			printf("[%d]:%.1f ", j,curves[i]->values[j]);
+		}
+		printf("\n");
+	}
+	printf("\n");
+}
+
 s32 curve_is_between(Curve *curve1, Curve *curve2, Curve *curve3) {
 	s32 size = curve1->num_points;
 	for(s32 i=0;i<size;++i) {
@@ -606,7 +618,6 @@ int main(int argc, char *argv[]) {
 	} else if (test == 4) {
 		FILE *fp;
 		char *filename;
-		char ch;
 
 		if (argc < 2) {
 			printf("Missing filename\n");
@@ -617,10 +628,29 @@ int main(int argc, char *argv[]) {
 
 			fp = fopen(filename,"r");
 			if(fp) {
-				printf("File contents:\n");
-				while ((ch = fgetc(fp)) != EOF) {
-					printf("%c", ch);
+				s32 n_rows, n_points;
+				fscanf(fp,"%d %d", &n_rows,&n_points);
+				printf("%d %d\n", n_rows,n_points);
+				Curve *curves[n_rows];
+				for (s32 i=0; i<n_rows; ++i) {
+					f64 aux[n_points];
+					for (s32 j=0; j<n_points; ++j) {
+						fscanf(fp,"%lf",&aux[j]);
+					}
+
+					curves[i] = curve_new_curve_from_array(n_points, aux);
 				}
+
+				curve_print_all_curves(curves, n_rows);
+
+				s32 **rank_matrix = (s32**)malloc(n_points * sizeof(s32*));
+				for (int i=0; i<n_points; ++i) {
+					rank_matrix[i] = (s32*)malloc(n_rows * sizeof(s32));
+				}
+
+				get_band_depths(curves, n_rows, n_points, rank_matrix);
+				free(rank_matrix);
+
 			} else {
 				printf("Failed to open the file\n");
 			}
