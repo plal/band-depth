@@ -126,26 +126,6 @@ Curve* curve_generate(s32 num_points) {
 	return curve;
 }
 
-
-void curve_print(Curve *curve) {
-	s32 size = curve->num_points;
-	for(s32 i=0; i < size; i++) {
-		printf("curve[%d]:%f\n",i,curve->values[i]);
-	}
-}
-
-void curve_print_all_curves(Curve* *curves, s32 num_curves) {
-	s32 num_points = curves[0]->num_points;
-	for(s32 i=0; i<num_curves; ++i) {
-		printf("Curve %d -> ", i);
-		for(s32 j=0; j<num_points; ++j) {
-			printf("[%d]:%.1f ", j,curves[i]->values[j]);
-		}
-		printf("\n");
-	}
-	printf("\n");
-}
-
 s32 curve_is_between(Curve *curve1, Curve *curve2, Curve *curve3) {
 	s32 size = curve1->num_points;
 	for(s32 i=0;i<size;++i) {
@@ -168,6 +148,36 @@ void curve_test(Curve *curve, Curve* *curves, s32 num_curves) {
 			}
 		}
 	}
+}
+
+void curve_print(Curve *curve) {
+	s32 size = curve->num_points;
+	for(s32 i=0; i < size; i++) {
+		printf("curve[%d]:%f\n",i,curve->values[i]);
+	}
+}
+
+void curve_print_all_curves(Curve* *curves, s32 num_curves) {
+	s32 num_points = curves[0]->num_points;
+	for(s32 i=0; i<num_curves; ++i) {
+		printf("Curve %d -> ", i);
+		for(s32 j=0; j<num_points; ++j) {
+			printf("[%d]:%.1f ", j,curves[i]->values[j]);
+		}
+		printf("\n");
+	}
+	printf("\n");
+}
+
+void curve_write_to_file(FILE *f, Curve *curve) {
+	s32 num_points = curve->num_points;
+	for(s32 i=0; i<num_points; ++i) {
+		fprintf(f,"%f,",curve->values[i]);
+	}
+	fprintf(f,"%f,",curve->original_depth);
+	fprintf(f,"%f,",curve->fast_depth);
+	fprintf(f,"%f,",curve->original_modified_depth);
+	fprintf(f,"%f\n",curve->fast_modified_depth);
 }
 
 void original_band_depth(Curve* *curves, s32 n) {
@@ -649,6 +659,21 @@ int main(int argc, char *argv[]) {
 				}
 
 				get_band_depths(curves, n_rows, n_points, rank_matrix);
+
+				char *name = strtok(filename,".");
+				char *ending = "_out.txt";
+				char *output_name = strcat(name,ending);
+				FILE *out = fopen(output_name,"w");
+				if (out == NULL) {
+				    printf("Error opening file %s!\n", output_name);
+				    exit(-1);
+				}
+				for(s32 i = 0; i < n_rows; i++) {
+					curve_write_to_file(out,curves[i]);
+					curve_free(curves[i]);
+				}
+
+				//printf("%s\n", output_name);
 				free(rank_matrix);
 
 			} else {
