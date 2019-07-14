@@ -170,10 +170,6 @@ void curve_print_all_curves(Curve* *curves, s32 num_curves) {
 }
 
 void curve_write_to_file(FILE *f, Curve *curve) {
-	s32 num_points = curve->num_points;
-	for(s32 i=0; i<num_points; ++i) {
-		fprintf(f,"%f,",curve->values[i]);
-	}
 	fprintf(f,"%f,",curve->original_depth);
 	fprintf(f,"%f,",curve->fast_depth);
 	fprintf(f,"%f,",curve->original_modified_depth);
