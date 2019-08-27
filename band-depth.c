@@ -69,7 +69,7 @@ s32 curve_num_bytes(s32 num_points)
 Curve* curve_new(s32 num_points)
 {
 	s32 num_bytes = curve_num_bytes(num_points);
-	Curve *result = malloc(num_bytes);
+	Curve *result = (Curve*)malloc(num_bytes);
 	result[0] = (Curve) {
 		.num_points = num_points,
 		.num_bytes  = num_bytes,
@@ -84,7 +84,7 @@ Curve* curve_new(s32 num_points)
 
 Curve* curve_copy(Curve *original)
 {
-	char *raw_block = malloc(original->num_bytes);
+  char *raw_block = (char*)malloc(original->num_bytes);
 	memcpy(raw_block, original, original->num_bytes);
 	return (Curve*) raw_block;
 }
@@ -194,7 +194,7 @@ void original_band_depth(Curve* *curves, s32 n) {
 
 }
 
-void rank_matrix_build(Curve* *curves, s32 n, s32 size, s32 *rank_matrix[n]) {
+void rank_matrix_build(Curve* *curves, s32 n, s32 size, s32 **rank_matrix) {
 	//printf("entered build rank matrix function\n");
 	//printf("allocating space for values matrix\n");
 	//f64 values_matrix[size][n][2];
@@ -287,7 +287,7 @@ void rank_matrix_build(Curve* *curves, s32 n, s32 size, s32 *rank_matrix[n]) {
 	free(values_matrix);
 }
 
-void rank_matrix_find_min_max(Curve* *curves, s32 n, s32 size, s32 *rank_matrix[n]) {
+void rank_matrix_find_min_max(Curve* *curves, s32 n, s32 size, s32 **rank_matrix) {
 	/*OBTAIN MIN AND MAX OF EACH CURVE (COLUMN) --> for fast original depth*/
 	for (s32 i=0; i<n; ++i) {
 		s32 max = 0;
@@ -309,7 +309,7 @@ void rank_matrix_find_min_max(Curve* *curves, s32 n, s32 size, s32 *rank_matrix[
 	}
 }
 
-void fast_band_depth(Curve* *curves, s32 n, s32 size, s32 *rank_matrix[n]) {
+void fast_band_depth(Curve* *curves, s32 n, s32 size, s32 **rank_matrix) {
 	for (s32 i=0; i<n; ++i) {
 		curves[i]->fast_depth = 0;
 	}
@@ -361,7 +361,7 @@ void original_modified_band_depth(Curve* *curves, s32 n) {
 
 }
 
-void rank_matrix_find_proportion(s32 n, s32 size, s32 *rank_matrix[n], f64 proportion[n]) {
+void rank_matrix_find_proportion(s32 n, s32 size, s32 **rank_matrix, f64* proportion) {
 	//printf("finding proportions...\n");
 	/*OBTAIN HELPER MATRIXES NEEDED --> for fast modified depth*/
 	s32 **n_a = (s32**)malloc(size * sizeof(s32*));
@@ -428,7 +428,7 @@ void rank_matrix_find_proportion(s32 n, s32 size, s32 *rank_matrix[n], f64 propo
 	//printf("found proportions\n");
 }
 
-void fast_modified_band_depth(Curve* *curves, s32 n, s32 size, s32 *rank_matrix[n]) {
+void fast_modified_band_depth(Curve* *curves, s32 n, s32 size, s32 **rank_matrix) {
 	f64 proportion[n];
 	for(s32 i=0; i<n; ++i) { proportion[i] = 0.0; }
 	rank_matrix_find_proportion(n, size, rank_matrix, proportion);
@@ -445,7 +445,7 @@ void fast_modified_band_depth(Curve* *curves, s32 n, s32 size, s32 *rank_matrix[
 }
 
 
-void get_band_depths(Curve* *curves, s32 n, s32 size, s32 *rank_matrix[n]) {
+void get_band_depths(Curve* *curves, s32 n, s32 size, s32 **rank_matrix) {
 	original_band_depth(curves,n);
 	original_modified_band_depth(curves,n);
 	rank_matrix_build(curves, n, size, rank_matrix);
@@ -473,7 +473,7 @@ void get_band_depths(Curve* *curves, s32 n, s32 size, s32 *rank_matrix[n]) {
 int main(int argc, char *argv[]) {
 	srand ( time(NULL) );
 
-	s32 test = 4;
+	s32 test = 2;
 /*TESTING CONSTANT CURVES*/
 	if(test == 0) {
 		s32 n_p = 4;
@@ -488,7 +488,7 @@ int main(int argc, char *argv[]) {
 
 		s32 n = ArrayCount(curves);
 		s32 rank_matrix[n_p][n];
-		get_band_depths(curves, n, n_p, rank_matrix);
+		get_band_depths(curves, n, n_p, (s32**)rank_matrix);
 
 		for(s32 i = 0; i < n; i++) {
 			curve_free(curves[i]);
