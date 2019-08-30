@@ -55,9 +55,13 @@ typedef struct {
 	s32	   max_rank;
 	s32	   min_rank;
 	f64 original_depth;
+	f64 original_depth_time;
 	f64 fast_depth;
+	f64 fast_depth_time;
 	f64 original_modified_depth;
+	f64 original_modified_depth_time;
 	f64 fast_modified_depth;
+	f64 fast_modified_depth_time;
 	f64 values[];
 } Curve;
 
@@ -179,18 +183,34 @@ void curve_write_to_file(FILE *f, Curve *curve) {
 void original_band_depth(Curve* *curves, s32 n) {
 	for (s32 i=0; i<n; ++i) {
 		curves[i]->original_depth = 0;
+		curves[i]->original_depth_time = 0;
 	}
-	for(s32 i=0; i<n-1; ++i) {
-		for(s32 j=i+1; j<n; ++j) {
-			for(s32 k=0; k<n; ++k) {
-				curves[k]->original_depth += curve_is_between(curves[k], curves[i], curves[j]);
-			}
+
+	for (s32 k=0; k<n; ++k) {
+		clock_t t = clock();
+		for(s32 i=0; i<n-1; ++i) {
+			for(s32 j=i+1; j<n; ++j) {
+					curves[k]->original_depth += curve_is_between(curves[k], curves[i], curves[j]);
+				}
 		}
-	}
-	f64 n_choose_2 = n*(n-1.0)/2.0;
-	for (s32 i=0; i<n; ++i) {
-		curves[i]->original_depth /= n_choose_2;
+		t = clock() - t;
+		curves[k]->original_depth_time += ((double)t)/CLOCKS_PER_SEC;
 	};
+
+	f64 n_choose_2 = n*(n-1.0)/2.0;
+	f64 full_time = 0;
+	for (s32 i=0; i<n; ++i) {
+		clock_t t = clock();
+		curves[i]->original_depth /= n_choose_2;
+		t = clock() -t;
+		curves[i]->original_depth_time += ((double)t)/CLOCKS_PER_SEC;
+
+		printf("curve [%d]: %f\n", i, curves[i]->original_depth_time);
+		full_time += curves[i]->original_depth_time;
+
+	};
+
+	printf("total time calculating band depths: %f\n", full_time);
 
 }
 
@@ -340,24 +360,38 @@ s32 curve_count_points_between(Curve *curve1, Curve *curve2, Curve *curve3) {
 void original_modified_band_depth(Curve* *curves, s32 n) {
 	for (s32 i=0; i<n; ++i) {
 		curves[i]->original_modified_depth = 0;
+		curves[i]->original_modified_depth_time = 0;
 	}
-	f64 proportion = 0.0;
+
 	f64 size = curves[0]->num_points;
-	//printf("size: %f\n", size);
-	for(s32 i=0; i<n-1; ++i) {
-		for(s32 j=i+1; j<n; ++j) {
-			for(s32 k=0; k<n; ++k) {
+	for(s32 k=0; k<n; ++k) {
+		clock_t t = clock();
+		for(s32 i=0; i<n-1; ++i) {
+			for(s32 j=i+1; j<n; ++j) {
 				//printf("number of points of curve[%d] between curve[%d] and curve[%d]: %d\n", k, i, j, curve_count_points_between(curves[k], curves[i], curves[j]));
-				proportion = curve_count_points_between(curves[k], curves[i], curves[j])/size;
+				f64 proportion = curve_count_points_between(curves[k], curves[i], curves[j])/size;
 				//printf("proportion of curve[%d] between curve[%d] and curve[%d]: %f\n", k, i, j, proportion);
 				curves[k]->original_modified_depth += proportion;
 			}
 		}
+		t = clock() - t;
+		curves[k]->original_modified_depth_time += ((double)t)/CLOCKS_PER_SEC;
 	}
+
 	f64 n_choose_2 = n*(n-1.0)/2.0;
+	f64 full_time = 0;
 	for (s32 i=0; i<n; ++i) {
+		clock_t t = clock();
 		curves[i]->original_modified_depth /= n_choose_2;
+		t = clock() -t;
+		curves[i]->original_modified_depth_time += ((double)t)/CLOCKS_PER_SEC;
+
+		printf("curve [%d]: %f\n", i, curves[i]->original_modified_depth_time);
+		full_time += curves[i]->original_modified_depth_time;
+
 	};
+
+	printf("total time calculating band depths: %f\n", full_time);
 
 }
 
@@ -446,10 +480,15 @@ void fast_modified_band_depth(Curve* *curves, s32 n, s32 size, s32 **rank_matrix
 
 
 void get_band_depths(Curve* *curves, s32 n, s32 size, s32 **rank_matrix) {
+	printf("calculating original band depth...\n");
 	original_band_depth(curves,n);
+	printf("calculating original modified band depth...\n");
 	original_modified_band_depth(curves,n);
+	printf("building rank matrix...\n");
 	rank_matrix_build(curves, n, size, rank_matrix);
+	printf("calculating fast band depth...\n");
 	fast_band_depth(curves, n, size, rank_matrix);
+	printf("calculating fast modified band depth...\n");
 	fast_modified_band_depth(curves, n, size, rank_matrix);
 
 	for (s32 i=0;i<n;++i) {
@@ -473,22 +512,43 @@ void get_band_depths(Curve* *curves, s32 n, s32 size, s32 **rank_matrix) {
 int main(int argc, char *argv[]) {
 	srand ( time(NULL) );
 
-	s32 test = 2;
+	s32 test = 0;
 /*TESTING CONSTANT CURVES*/
 	if(test == 0) {
-		s32 n_p = 4;
+		s32 n_points = 4;
 
 		Curve *curves[] = {
-			curve_new_constant(n_p,6),
-			curve_new_constant(n_p,5),
-			curve_new_constant(n_p,3),
-			curve_new_constant(n_p,1),
-			curve_new_constant(n_p,9)
+			curve_new_constant(n_points,6),
+			curve_new_constant(n_points,5),
+			curve_new_constant(n_points,3),
+			curve_new_constant(n_points,1),
+			curve_new_constant(n_points,9)
 		};
 
 		s32 n = ArrayCount(curves);
-		s32 rank_matrix[n_p][n];
-		get_band_depths(curves, n, n_p, (s32**)rank_matrix);
+
+		s32 **rank_matrix = (s32**)malloc(n_points * sizeof(s32*));
+		for (int i=0; i<n_points; ++i) {
+			rank_matrix[i] = (s32*)malloc(n * sizeof(s32));
+		}
+
+/**/
+		clock_t t_original_depth = clock();
+		original_band_depth(curves, n);
+		t_original_depth = clock() - t_original_depth;
+		double time_taken_od = ((double)t_original_depth)/CLOCKS_PER_SEC; // in seconds
+
+    	printf("Original depth took %f seconds to execute \n", time_taken_od);
+/**/
+
+		clock_t t_original_modified_depth = clock();
+		original_modified_band_depth(curves, n);
+		t_original_modified_depth = clock() - t_original_modified_depth;
+		double time_taken_omd = ((double)t_original_modified_depth)/CLOCKS_PER_SEC; // in seconds
+
+		printf("Original modified depth took %f seconds to execute \n", time_taken_omd);
+
+		//get_band_depths(curves, n, n_points, (s32**)rank_matrix);
 
 		for(s32 i = 0; i < n; i++) {
 			curve_free(curves[i]);
@@ -569,9 +629,9 @@ int main(int argc, char *argv[]) {
 		s32 num_curves[] = {10, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000};
 		s32 num_points[] = {10, 1000, 250, 500, 750, 1000, 2500, 5000, 7500, 10000};
 		*/
-		s32 n_points = 1000;
+		s32 n_points = 4;
 
-		s32 n = 1000;
+		s32 n = 5;
 		printf("Curves: %d // Points: %d\n", n, n_points);
 		Curve *curves[n];
 		for(s32 i=0; i<n; ++i) {
