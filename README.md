@@ -4,7 +4,5 @@
 - https://es.kaust.edu.sa/Documents/2012.SGN.Stat.pdf
 
 # todo
-- Write time taken by each method to file (to plot charts comparing performance)
-- Read curves from file
-
-
+- Use TDigest to get band depth of curves and add time taken to output;
+- Organize folders;
