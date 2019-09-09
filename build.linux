@@ -1,5 +1,5 @@
 #!/bin/bash
 #clang -g -ggdb -std=c11 -o band-depth band-depth.c
 #clang -S -ggdb -std=c11 band-depth.c
-g++ band-depth.c -o band-depth
-./band-depth
+g++ c-files/band-depth.c c-files/libs/TDigest.cpp -o band-depth
+./band-depth test.txt
