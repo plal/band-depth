@@ -6,6 +6,11 @@
 #include <limits.h>
 #include <inttypes.h>
 
+#include <iostream>
+#include <cstdlib>
+#include <algorithm>
+#include "TDigest.h"
+
 typedef uint8_t  u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
@@ -727,6 +732,36 @@ int main(int argc, char *argv[]) {
 					curves[i] = curve_new_curve_from_array(n_points, aux);
 				}
 
+
+				for(s32 j=0; j<n_points; ++j) {
+
+					PDigest* t = new PDigest();
+				    std::vector<float> values;
+				    std::vector<float> weights;
+
+					for (s32 i=0; i<n_rows; ++i) {
+						values.push_back(curves[i]->values[j]);
+						weights.push_back(1);
+					}
+
+					sort(values.begin(), values.end());
+
+					t->add(values, weights);
+
+					for (s32 i=0; i<n_rows; ++i) {
+						std::cout << values[i] << ": " << int(t->inverse_quantile(values[i])*n_rows) << std::endl;
+					}
+					std::cout << std::endl;
+				}
+
+
+				/*
+			    for(int i = 0 ; i < 100 ; ++i){
+			      float v = (1.0*rand())/RAND_MAX;
+			      values.push_back(v);
+			      weights.push_back(1);
+			    }
+				*/
 
 				s32 **rank_matrix = (s32**)malloc(n_points * sizeof(s32*));
 				for (int i=0; i<n_points; ++i) {
