@@ -29,6 +29,7 @@ typedef u16      b16;
 typedef u32      b32;
 typedef u64      b64;
 
+#define accepted_diff  0.000001
 #define S 6
 #define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
 #define Min(a,b) (((a)<(b))?(a):(b))
@@ -55,10 +56,10 @@ f64 get_number_with_prob(f64 prob, f64 val1, f64 val2) {
 // [ Curve ... values ... ]
 //
 typedef struct {
-	s32    num_points;
-	s32    num_bytes;
-	s32	   max_rank;
-	s32	   min_rank;
+	s32 num_points;
+	s32 num_bytes;
+	s32	max_rank;
+	s32	min_rank;
 	f64 original_depth;
 	f64 original_depth_time;
 	f64 fast_depth;
@@ -83,7 +84,7 @@ Curve* curve_new(s32 num_points)
 		.num_points = num_points,
 		.num_bytes  = num_bytes,
 		.max_rank 	= 0,
-		.min_rank	= 0
+		.min_rank	= INT_MAX
 	};
 	for (s32 i=0;i<num_points;++i) {
 		result->values[i] = 0.0;
@@ -749,9 +750,27 @@ int main(int argc, char *argv[]) {
 					t->add(values, weights);
 
 					for (s32 i=0; i<n_rows; ++i) {
-						std::cout << values[i] << ": " << int(t->inverse_quantile(values[i])*n_rows) << std::endl;
+						//std::cout << curves[i]->values[j];
+						for (s32 k=0; k<n_rows; ++k) {
+							//std::cout << " " << values[k] << std::endl;
+							/**/
+							if ((abs(curves[i]->values[j] - values[k])) < accepted_diff) {
+								s32 rank = int(t->inverse_quantile(values[k])*n_rows)+1;
+								//std::cout << curves[i]->values[j] << ": " << rank << std::endl;
+								if (rank > curves[i]->max_rank) { curves[i]->max_rank = rank; }
+								if (rank < curves[i]->min_rank) { curves[i]->min_rank = rank; }
+								break;
+								//std::cout << "found equal!" << std::endl;
+							}
+							/**/
+						}
+						std::cout << "CURVE " << i << std::endl;
+						std::cout << "MIN: " << curves[i]->min_rank << std::endl;
+						std::cout << "MAX: " << curves[i]->max_rank << std::endl;
+
 					}
 					std::cout << std::endl;
+
 				}
 
 
