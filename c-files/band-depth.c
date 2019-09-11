@@ -428,51 +428,16 @@ void original_modified_band_depth(Curve* *curves, s32 n) {
 }
 
 void rank_matrix_find_proportion(s32 n, s32 size, s32 **rank_matrix, f64* proportion) {
-	//printf("finding proportions...\n");
-	/*OBTAIN HELPER MATRIXES NEEDED --> for fast modified depth*/
-	s32 **n_a = (s32**)malloc(size * sizeof(s32*));
-	for (int i=0; i<size; ++i) {
-		n_a[i] = (s32*)malloc(n * sizeof(s32));
-	}
-	for (s32 i=0; i<size; ++i) {
-		for (s32 j=0; j<n; ++j) {
-			n_a[i][j] = n-rank_matrix[i][j];
-		}
-	}
-	/**
-	for (s32 i=0; i<size; ++i) {
-		for (s32 j=0; j<n; ++j) {
-			printf("%d  ", n_a[i][j]);
-		}
-		printf("\n");
-	}
-	printf("\n");
-	/**/
-	s32 **n_b = (s32**)malloc(size * sizeof(s32*));
-	for (int i=0; i<size; ++i) {
-		n_b[i] = (s32*)malloc(n * sizeof(s32));
-	}
-	for (s32 i=0; i<size; ++i) {
-		for (s32 j=0; j<n; ++j) {
-			n_b[i][j] = rank_matrix[i][j]-1;
-		}
-	}
-	/**
-	for (s32 i=0; i<size; ++i) {
-		for (s32 j=0; j<n; ++j) {
-			printf("%d  ", n_b[i][j]);
-		}
-		printf("\n");
-	}
-	printf("\n");
-	/**/
+
 	s32 **match = (s32**)malloc(size * sizeof(s32*));
 	for (int i=0; i<size; ++i) {
 		match[i] = (s32*)malloc(n * sizeof(s32));
 	}
 	for (s32 i=0; i<size; ++i) {
 		for (s32 j=0; j<n; ++j) {
-			match[i][j] = n_a[i][j]*n_b[i][j];
+			s32 n_a = n-rank_matrix[i][j];
+			s32 n_b = rank_matrix[i][j]-1;
+			match[i][j] = n_a*n_b;
 		}
 	}
 	/**
@@ -491,7 +456,6 @@ void rank_matrix_find_proportion(s32 n, s32 size, s32 **rank_matrix, f64* propor
 		}
 		proportion[i] = sum/size;
 	}
-	//printf("found proportions\n");
 }
 
 void fast_modified_band_depth(Curve* *curves, s32 n, s32 size, s32 **rank_matrix) {
@@ -620,10 +584,14 @@ void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_m
 	clock_t t_fast_modified_depth = clock();
 	fast_modified_band_depth(curves, n, size, rank_matrix);
 	t_fast_modified_depth = clock() - t_fast_modified_depth;
+
 	double time_taken_fmd = ((double)t_fast_modified_depth)/CLOCKS_PER_SEC; // in seconds
 	printf("Fast modified band depth done in: %fs\n\n", time_taken_fmd);
-
+	clock_t t_tdigest_depth = clock();
 	t_digest_band_depth(curves, n, size);
+	t_tdigest_depth = clock() - t_tdigest_depth;
+	double time_taken_td = ((double)t_tdigest_depth)/CLOCKS_PER_SEC; // in seconds
+	printf("TDigest band depth done in: %fs\n\n", time_taken_td);
 
 	for(s32 i = 0; i < n; i++) {
 		curve_write_to_file(output,curves[i]);
