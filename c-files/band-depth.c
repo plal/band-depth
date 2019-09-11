@@ -750,26 +750,22 @@ int main(int argc, char *argv[]) {
 					t->add(values, weights);
 
 					for (s32 i=0; i<n_rows; ++i) {
-						//std::cout << curves[i]->values[j];
 						for (s32 k=0; k<n_rows; ++k) {
-							//std::cout << " " << values[k] << std::endl;
-							/**/
 							if ((abs(curves[i]->values[j] - values[k])) < accepted_diff) {
 								s32 rank = int(t->inverse_quantile(values[k])*n_rows)+1;
-								//std::cout << curves[i]->values[j] << ": " << rank << std::endl;
 								if (rank > curves[i]->max_rank) { curves[i]->max_rank = rank; }
 								if (rank < curves[i]->min_rank) { curves[i]->min_rank = rank; }
 								break;
-								//std::cout << "found equal!" << std::endl;
 							}
-							/**/
 						}
+						/*
 						std::cout << "CURVE " << i << std::endl;
 						std::cout << "MIN: " << curves[i]->min_rank << std::endl;
 						std::cout << "MAX: " << curves[i]->max_rank << std::endl;
+						*/
 
 					}
-					std::cout << std::endl;
+					//std::cout << std::endl;
 
 				}
 
