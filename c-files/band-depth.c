@@ -68,6 +68,8 @@ typedef struct {
 	f64 original_modified_depth_time;
 	f64 fast_modified_depth;
 	f64 fast_modified_depth_time;
+	f64 t_digest_depth;
+	f64 t_digest_modified_depth;
 	f64 values[];
 } Curve;
 
@@ -190,7 +192,11 @@ void curve_write_to_file(FILE *f, Curve *curve) {
 	fprintf(f,"%f,",curve->original_modified_depth_time);
 
 	fprintf(f,"%f,",curve->fast_modified_depth);
-	fprintf(f,"%f\n",curve->fast_modified_depth_time);
+	fprintf(f,"%f,",curve->fast_modified_depth_time);
+
+	fprintf(f,"%f\n",curve->t_digest_depth);
+	//fprintf(f,"%f,",curve->original_depth_time);
+
 }
 
 void original_band_depth(Curve* *curves, s32 n) {
@@ -518,6 +524,63 @@ void fast_modified_band_depth(Curve* *curves, s32 n, s32 size, s32 **rank_matrix
 	//printf("total time calculating band depths: %f\n", full_time);
 }
 
+void t_digest_find_min_max(Curve* *curves, s32 n, s32 size) {
+	for(s32 j=0; j<size; ++j) {
+
+		PDigest* t = new PDigest();
+		std::vector<float> values;
+		std::vector<float> weights;
+
+		for (s32 i=0; i<n; ++i) {
+			values.push_back(curves[i]->values[j]);
+			weights.push_back(1);
+		}
+
+		sort(values.begin(), values.end());
+
+		t->add(values, weights);
+
+		for (s32 i=0; i<n; ++i) {
+			for (s32 k=0; k<n; ++k) {
+				if ((abs(curves[i]->values[j] - values[k])) < accepted_diff) {
+					s32 rank = int(t->inverse_quantile(values[k])*n)+1;
+					if (rank > curves[i]->max_rank) { curves[i]->max_rank = rank; }
+					if (rank < curves[i]->min_rank) { curves[i]->min_rank = rank; }
+					break;
+				}
+			}
+			/*
+			std::cout << "CURVE " << i << std::endl;
+			std::cout << "MIN: " << curves[i]->min_rank << std::endl;
+			std::cout << "MAX: " << curves[i]->max_rank << std::endl;
+			*/
+
+		}
+		//std::cout << std::endl;
+
+	}
+}
+
+void t_digest_band_depth(Curve* *curves, s32 n, s32 size) {
+	for (s32 i=0; i<n; ++i) {
+		curves[i]->t_digest_depth = 0;
+	}
+	t_digest_find_min_max(curves, n, size);
+	f64 n_choose_2 = n*(n-1.0)/2.0;
+	//f64 full_time = 0;
+	for(s32 i=0; i<n; ++i) {
+		//clock_t t = clock();
+		s32 n_a = n-curves[i]->max_rank;
+		s32 n_b = curves[i]->min_rank-1;
+		curves[i]->t_digest_depth = (n_a*n_b+n-1)/n_choose_2;
+		//t = clock() - t;
+		//curves[i]->fast_depth_time += ((double)t)/CLOCKS_PER_SEC;
+
+		//printf("curve [%d]: %f\n", i, curves[i]->fast_depth_time);
+		//full_time += curves[i]->fast_depth_time;
+	}
+
+}
 
 void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_matrix, FILE *output) {
 	printf("***SUMMARY***\n\n");
@@ -559,6 +622,8 @@ void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_m
 	t_fast_modified_depth = clock() - t_fast_modified_depth;
 	double time_taken_fmd = ((double)t_fast_modified_depth)/CLOCKS_PER_SEC; // in seconds
 	printf("Fast modified band depth done in: %fs\n\n", time_taken_fmd);
+
+	t_digest_band_depth(curves, n, size);
 
 	for(s32 i = 0; i < n; i++) {
 		curve_write_to_file(output,curves[i]);
