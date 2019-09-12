@@ -4,5 +4,5 @@
 - https://es.kaust.edu.sa/Documents/2012.SGN.Stat.pdf
 
 # todo
-- Use TDigest to get band depth of curves and add time taken to output;
+- Add time taken by t-digest based methods for each curve to file;
 - Organize folders;
