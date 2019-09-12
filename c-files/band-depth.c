@@ -194,8 +194,8 @@ void curve_write_to_file(FILE *f, Curve *curve) {
 	fprintf(f,"%f,",curve->fast_modified_depth);
 	fprintf(f,"%f,",curve->fast_modified_depth_time);
 
-	fprintf(f,"%f\n",curve->t_digest_depth);
-	//fprintf(f,"%f,",curve->original_depth_time);
+	fprintf(f,"%f,",curve->t_digest_depth);
+	fprintf(f,"%f\n",curve->t_digest_modified_depth);
 
 }
 
@@ -468,6 +468,7 @@ void fast_modified_band_depth(Curve* *curves, s32 n, s32 size, s32 **rank_matrix
 	for(s32 i=0; i<n; ++i) { proportion[i] = 0.0; }
 	rank_matrix_find_proportion(n, size, rank_matrix, proportion);
 	/**
+	printf("proportion rank matrix\n");
 	for(s32 i=0; i<n; ++i) {
 		printf("%f ", proportion[i]);
 	}
@@ -546,6 +547,87 @@ void t_digest_band_depth(Curve* *curves, s32 n, s32 size) {
 
 }
 
+void t_digest_find_proportion(Curve* *curves, s32 n, s32 size, f64* proportion) {
+	s32 **match = (s32**)malloc(size * sizeof(s32*));
+	for (int i=0; i<size; ++i) {
+		match[i] = (s32*)malloc(n * sizeof(s32));
+	}
+
+	for (s32 j=0; j<size; ++j) {
+
+		PDigest* t = new PDigest();
+		std::vector<float> values;
+		std::vector<float> weights;
+
+		for (s32 i=0; i<n; ++i) {
+			values.push_back(curves[i]->values[j]);
+			weights.push_back(1);
+		}
+
+		sort(values.begin(), values.end());
+
+		t->add(values, weights);
+
+		for (s32 i=0; i<n; ++i) {
+			for (s32 k=0; k<n; ++k) {
+				if ((abs(curves[i]->values[j] - values[k])) < accepted_diff) {
+					s32 rank = int(t->inverse_quantile(values[k])*n)+1;
+					s32 n_a = n-rank;
+					s32 n_b = rank-1;
+					match[j][i] = n_a*n_b;
+				}
+			}
+		}
+	}
+	/**
+	printf("match tdigest\n");
+	for (s32 i=0; i<size; ++i) {
+		for (s32 j=0; j<n; ++j) {
+			printf("%d  ", match[i][j]);
+		}
+		printf("\n");
+	}
+	printf("\n");
+	/**/
+	for(s32 i=0; i<n; ++i) {
+		f64 sum = 0.0;
+		for(s32 j=0; j<size; ++j) {
+			sum += match[j][i];
+		}
+		proportion[i] = sum/size;
+	}
+}
+
+void t_digest_modified_band_depth(Curve* *curves, s32 n, s32 size) {
+	for (s32 i=0; i<n; ++i) {
+		curves[i]->t_digest_modified_depth = 0;
+		//curves[i]->t_digest_modified_depth_time = 0;
+	}
+
+	f64 proportion[n];
+	for(s32 i=0; i<n; ++i) { proportion[i] = 0.0; }
+	t_digest_find_proportion(curves, n, size, proportion);
+	/**
+	for(s32 i=0; i<n; ++i) {
+		printf("%f ", proportion[i]);
+	}
+	printf("\n");
+	/**/
+	f64 n_choose_2 = n*(n-1.0)/2.0;
+	//f64 full_time = 0;
+	for (s32 i=0; i<n; ++i) {
+		//clock_t t = clock();
+		curves[i]->t_digest_modified_depth = (proportion[i]+n-1)/n_choose_2;
+		//t = clock() - t;
+		//curves[i]->fast_modified_depth_time += ((double)t)/CLOCKS_PER_SEC;
+
+		//printf("curve [%d]: %f\n", i, curves[i]->fast_modified_depth_time);
+		//full_time += curves[i]->fast_modified_depth_time;
+	};
+
+	//printf("total time calculating band depths: %f\n", full_time);
+}
+
 void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_matrix, FILE *output) {
 	printf("***SUMMARY***\n\n");
 	printf("Number of curves: %d\n",n);
@@ -584,38 +666,24 @@ void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_m
 	clock_t t_fast_modified_depth = clock();
 	fast_modified_band_depth(curves, n, size, rank_matrix);
 	t_fast_modified_depth = clock() - t_fast_modified_depth;
-
 	double time_taken_fmd = ((double)t_fast_modified_depth)/CLOCKS_PER_SEC; // in seconds
 	printf("Fast modified band depth done in: %fs\n\n", time_taken_fmd);
+
 	clock_t t_tdigest_depth = clock();
 	t_digest_band_depth(curves, n, size);
 	t_tdigest_depth = clock() - t_tdigest_depth;
 	double time_taken_td = ((double)t_tdigest_depth)/CLOCKS_PER_SEC; // in seconds
 	printf("TDigest band depth done in: %fs\n\n", time_taken_td);
 
+	clock_t t_tdigest_modified_depth = clock();
+	t_digest_modified_band_depth(curves, n, size);
+	t_tdigest_modified_depth = clock() - t_tdigest_modified_depth;
+	double time_taken_tmd = ((double)t_tdigest_modified_depth)/CLOCKS_PER_SEC;
+	printf("TDigest modified band depth done in: %f\n\n", time_taken_tmd);
+
 	for(s32 i = 0; i < n; i++) {
 		curve_write_to_file(output,curves[i]);
 	}
-
-	/*
-	for (s32 i=0;i<n;++i) {
-		printf("original depth of curve %d is %.3f\n", i, curves[i]->original_depth);
-	}
-	printf("\n");
-	for (s32 i=0;i<n;++i) {
-		printf("original modified depth of curve %d is %.3f\n", i, curves[i]->original_modified_depth);
-	}
-	printf("\n");
-	for (s32 i=0;i<n;++i) {
-		printf("fast depth of curve %d is %.3f\n", i, curves[i]->fast_depth);
-	}
-	printf("\n");
-	for (s32 i=0;i<n;++i) {
-		printf("fast modified depth of curve %d is %.3f\n", i, curves[i]->fast_modified_depth);
-	}
-	printf("\n");
-	*/
-
 
 }
 
@@ -765,51 +833,6 @@ int main(int argc, char *argv[]) {
 
 					curves[i] = curve_new_curve_from_array(n_points, aux);
 				}
-
-
-				for(s32 j=0; j<n_points; ++j) {
-
-					PDigest* t = new PDigest();
-				    std::vector<float> values;
-				    std::vector<float> weights;
-
-					for (s32 i=0; i<n_rows; ++i) {
-						values.push_back(curves[i]->values[j]);
-						weights.push_back(1);
-					}
-
-					sort(values.begin(), values.end());
-
-					t->add(values, weights);
-
-					for (s32 i=0; i<n_rows; ++i) {
-						for (s32 k=0; k<n_rows; ++k) {
-							if ((abs(curves[i]->values[j] - values[k])) < accepted_diff) {
-								s32 rank = int(t->inverse_quantile(values[k])*n_rows)+1;
-								if (rank > curves[i]->max_rank) { curves[i]->max_rank = rank; }
-								if (rank < curves[i]->min_rank) { curves[i]->min_rank = rank; }
-								break;
-							}
-						}
-						/*
-						std::cout << "CURVE " << i << std::endl;
-						std::cout << "MIN: " << curves[i]->min_rank << std::endl;
-						std::cout << "MAX: " << curves[i]->max_rank << std::endl;
-						*/
-
-					}
-					//std::cout << std::endl;
-
-				}
-
-
-				/*
-			    for(int i = 0 ; i < 100 ; ++i){
-			      float v = (1.0*rand())/RAND_MAX;
-			      values.push_back(v);
-			      weights.push_back(1);
-			    }
-				*/
 
 				s32 **rank_matrix = (s32**)malloc(n_points * sizeof(s32*));
 				for (int i=0; i<n_points; ++i) {
