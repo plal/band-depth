@@ -4,5 +4,5 @@
 - https://es.kaust.edu.sa/Documents/2012.SGN.Stat.pdf
 
 # todo
-- Add time taken by t-digest based methods for each curve to file;
+- Test with real datasets;
 - Organize folders;
