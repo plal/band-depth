@@ -69,7 +69,9 @@ typedef struct {
 	f64 fast_modified_depth;
 	f64 fast_modified_depth_time;
 	f64 t_digest_depth;
+	f64 t_digest_depth_time;
 	f64 t_digest_modified_depth;
+	f64 t_digest_modified_depth_time;
 	f64 values[];
 } Curve;
 
@@ -182,11 +184,16 @@ void curve_print_all_curves(Curve* *curves, s32 num_curves) {
 }
 
 void curve_write_to_file(FILE *f, Curve *curve) {
+	fprintf(f,"od,od_time,fd,fd_time,td,td_time,omd,omd_time,fmd,fmd_time,tmd,tmd_time\n");
+
 	fprintf(f,"%f,",curve->original_depth);
 	fprintf(f,"%f,",curve->original_depth_time);
 
 	fprintf(f,"%f,",curve->fast_depth);
 	fprintf(f,"%f,",curve->fast_depth_time);
+
+	fprintf(f,"%f,",curve->t_digest_depth);
+	fprintf(f,"%f,",curve->t_digest_depth_time);
 
 	fprintf(f,"%f,",curve->original_modified_depth);
 	fprintf(f,"%f,",curve->original_modified_depth_time);
@@ -194,8 +201,8 @@ void curve_write_to_file(FILE *f, Curve *curve) {
 	fprintf(f,"%f,",curve->fast_modified_depth);
 	fprintf(f,"%f,",curve->fast_modified_depth_time);
 
-	fprintf(f,"%f,",curve->t_digest_depth);
-	fprintf(f,"%f\n",curve->t_digest_modified_depth);
+	fprintf(f,"%f,",curve->t_digest_modified_depth);
+	fprintf(f,"%f\n",curve->t_digest_modified_depth_time);
 
 }
 
@@ -427,18 +434,22 @@ void original_modified_band_depth(Curve* *curves, s32 n) {
 
 }
 
-void rank_matrix_find_proportion(s32 n, s32 size, s32 **rank_matrix, f64* proportion) {
+void rank_matrix_find_proportion( Curve* *curves, s32 n, s32 size, s32 **rank_matrix, f64* proportion) {
 
 	s32 **match = (s32**)malloc(size * sizeof(s32*));
 	for (int i=0; i<size; ++i) {
 		match[i] = (s32*)malloc(n * sizeof(s32));
 	}
-	for (s32 i=0; i<size; ++i) {
-		for (s32 j=0; j<n; ++j) {
-			s32 n_a = n-rank_matrix[i][j];
-			s32 n_b = rank_matrix[i][j]-1;
-			match[i][j] = n_a*n_b;
+
+	for (s32 i=0; i<n; ++i) {
+		clock_t t = clock();
+		for (s32 j=0; j<size; ++j) {
+			s32 n_a = n-rank_matrix[j][i];
+			s32 n_b = rank_matrix[j][i]-1;
+			match[j][i] = n_a*n_b;
 		}
+		t = clock() - t;
+		curves[i]->fast_modified_depth_time += ((double)t)/CLOCKS_PER_SEC;
 	}
 	/**
 	for (s32 i=0; i<size; ++i) {
@@ -450,11 +461,14 @@ void rank_matrix_find_proportion(s32 n, s32 size, s32 **rank_matrix, f64* propor
 	printf("\n");
 	/**/
 	for(s32 i=0; i<n; ++i) {
+		clock_t t = clock();
 		f64 sum = 0.0;
 		for(s32 j=0; j<size; ++j) {
 			sum += match[j][i];
 		}
 		proportion[i] = sum/size;
+		t = clock() - t;
+		curves[i]->fast_modified_depth_time += ((double)t)/CLOCKS_PER_SEC;
 	}
 }
 
@@ -466,7 +480,7 @@ void fast_modified_band_depth(Curve* *curves, s32 n, s32 size, s32 **rank_matrix
 
 	f64 proportion[n];
 	for(s32 i=0; i<n; ++i) { proportion[i] = 0.0; }
-	rank_matrix_find_proportion(n, size, rank_matrix, proportion);
+	rank_matrix_find_proportion(curves, n, size, rank_matrix, proportion);
 	/**
 	printf("proportion rank matrix\n");
 	for(s32 i=0; i<n; ++i) {
@@ -506,6 +520,7 @@ void t_digest_find_min_max(Curve* *curves, s32 n, s32 size) {
 		t->add(values, weights);
 
 		for (s32 i=0; i<n; ++i) {
+			clock_t t_ = clock();
 			for (s32 k=0; k<n; ++k) {
 				if ((abs(curves[i]->values[j] - values[k])) < accepted_diff) {
 					s32 rank = int(t->inverse_quantile(values[k])*n)+1;
@@ -514,6 +529,8 @@ void t_digest_find_min_max(Curve* *curves, s32 n, s32 size) {
 					break;
 				}
 			}
+			t_ = clock() - t_;
+			curves[i]->t_digest_depth_time += ((double)t_)/CLOCKS_PER_SEC;
 			/*
 			std::cout << "CURVE " << i << std::endl;
 			std::cout << "MIN: " << curves[i]->min_rank << std::endl;
@@ -534,12 +551,12 @@ void t_digest_band_depth(Curve* *curves, s32 n, s32 size) {
 	f64 n_choose_2 = n*(n-1.0)/2.0;
 	//f64 full_time = 0;
 	for(s32 i=0; i<n; ++i) {
-		//clock_t t = clock();
+		clock_t t = clock();
 		s32 n_a = n-curves[i]->max_rank;
 		s32 n_b = curves[i]->min_rank-1;
 		curves[i]->t_digest_depth = (n_a*n_b+n-1)/n_choose_2;
-		//t = clock() - t;
-		//curves[i]->fast_depth_time += ((double)t)/CLOCKS_PER_SEC;
+		t = clock() - t;
+		curves[i]->t_digest_depth_time += ((double)t)/CLOCKS_PER_SEC;
 
 		//printf("curve [%d]: %f\n", i, curves[i]->fast_depth_time);
 		//full_time += curves[i]->fast_depth_time;
@@ -569,6 +586,7 @@ void t_digest_find_proportion(Curve* *curves, s32 n, s32 size, f64* proportion) 
 		t->add(values, weights);
 
 		for (s32 i=0; i<n; ++i) {
+			clock_t t_ = clock();
 			for (s32 k=0; k<n; ++k) {
 				if ((abs(curves[i]->values[j] - values[k])) < accepted_diff) {
 					s32 rank = int(t->inverse_quantile(values[k])*n)+1;
@@ -577,6 +595,8 @@ void t_digest_find_proportion(Curve* *curves, s32 n, s32 size, f64* proportion) 
 					match[j][i] = n_a*n_b;
 				}
 			}
+			t_ = clock() - t_;
+			curves[i]->t_digest_modified_depth_time += ((double)t_)/CLOCKS_PER_SEC;
 		}
 	}
 	/**
@@ -590,11 +610,14 @@ void t_digest_find_proportion(Curve* *curves, s32 n, s32 size, f64* proportion) 
 	printf("\n");
 	/**/
 	for(s32 i=0; i<n; ++i) {
+		clock_t t = clock();
 		f64 sum = 0.0;
 		for(s32 j=0; j<size; ++j) {
 			sum += match[j][i];
 		}
 		proportion[i] = sum/size;
+		t = clock() - t;
+		curves[i]->t_digest_modified_depth_time += ((double)t)/CLOCKS_PER_SEC;
 	}
 }
 
@@ -616,10 +639,10 @@ void t_digest_modified_band_depth(Curve* *curves, s32 n, s32 size) {
 	f64 n_choose_2 = n*(n-1.0)/2.0;
 	//f64 full_time = 0;
 	for (s32 i=0; i<n; ++i) {
-		//clock_t t = clock();
+		clock_t t = clock();
 		curves[i]->t_digest_modified_depth = (proportion[i]+n-1)/n_choose_2;
-		//t = clock() - t;
-		//curves[i]->fast_modified_depth_time += ((double)t)/CLOCKS_PER_SEC;
+		t = clock() - t;
+		curves[i]->t_digest_modified_depth_time += ((double)t)/CLOCKS_PER_SEC;
 
 		//printf("curve [%d]: %f\n", i, curves[i]->fast_modified_depth_time);
 		//full_time += curves[i]->fast_modified_depth_time;
