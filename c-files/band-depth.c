@@ -184,7 +184,6 @@ void curve_print_all_curves(Curve* *curves, s32 num_curves) {
 }
 
 void curve_write_to_file(FILE *f, Curve *curve) {
-	fprintf(f,"od,od_time,fd,fd_time,td,td_time,omd,omd_time,fmd,fmd_time,tmd,tmd_time\n");
 
 	fprintf(f,"%f,",curve->original_depth);
 	fprintf(f,"%f,",curve->original_depth_time);
@@ -704,6 +703,7 @@ void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_m
 	double time_taken_tmd = ((double)t_tdigest_modified_depth)/CLOCKS_PER_SEC;
 	printf("TDigest modified band depth done in: %f\n\n", time_taken_tmd);
 
+	fprintf(output,"od,od_time,fd,fd_time,td,td_time,omd,omd_time,fmd,fmd_time,tmd,tmd_time\n");
 	for(s32 i = 0; i < n; i++) {
 		curve_write_to_file(output,curves[i]);
 	}
