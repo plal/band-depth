@@ -514,8 +514,6 @@ void t_digest_find_min_max(Curve* *curves, s32 n, s32 size) {
 			weights.push_back(1);
 		}
 
-		sort(values.begin(), values.end());
-
 		t->add(values, weights);
 
 		for (s32 i=0; i<n; ++i) {
@@ -580,9 +578,9 @@ void t_digest_find_proportion(Curve* *curves, s32 n, s32 size, f64* proportion) 
 			weights.push_back(1);
 		}
 
-		sort(values.begin(), values.end());
-
 		t->add(values, weights);
+
+		//size_tdigest = sizeof(*t);
 
 		for (s32 i=0; i<n; ++i) {
 			clock_t t_ = clock();
@@ -650,12 +648,35 @@ void t_digest_modified_band_depth(Curve* *curves, s32 n, s32 size) {
 	//printf("total time calculating band depths: %f\n", full_time);
 }
 
+s64 t_digest_get_size(Curve* *curves, s32 n, s32 size) {
+	size_t size_tdigest = 0;
+
+	for (s32 j=0; j<size; ++j) {
+
+		PDigest* t = new PDigest();
+		std::vector<float> values;
+		std::vector<float> weights;
+
+		for (s32 i=0; i<n; ++i) {
+			values.push_back(curves[i]->values[j]);
+			weights.push_back(1);
+		}
+
+		t->add(values, weights);
+
+		size_tdigest += sizeof(*t);
+	}
+
+	return size_tdigest;
+
+}
+
 void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_matrix, FILE *output) {
 	printf("***SUMMARY***\n\n");
 	printf("Number of curves: %d\n",n);
 	printf("Number of points: %d\n\n",size);
-	printf("Curves:\n");
-	curve_print_all_curves(curves, n);
+	//printf("Curves:\n");
+	//curve_print_all_curves(curves, n);
 	//printf("calculating original band depth...\n");
 	clock_t t_original_depth = clock();
 	original_band_depth(curves, n);
@@ -675,7 +696,10 @@ void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_m
 	rank_matrix_build(curves, n, size, rank_matrix);
 	t_rank_matrix_build = clock() - t_rank_matrix_build;
 	double time_taken_rmb = ((double)t_rank_matrix_build)/CLOCKS_PER_SEC; // in seconds
-	printf("Rank matrix built in: %fs\n\n", time_taken_rmb);
+	printf("Rank matrix built in: %fs\n", time_taken_rmb);
+
+	s64 size_matrix = n * size * sizeof(s32);
+	printf("Rank matrix size: %ld\n\n", size_matrix);
 
 	//printf("calculating fast band depth...\n");
 	clock_t t_fast_depth = clock();
@@ -702,6 +726,10 @@ void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_m
 	t_tdigest_modified_depth = clock() - t_tdigest_modified_depth;
 	double time_taken_tmd = ((double)t_tdigest_modified_depth)/CLOCKS_PER_SEC;
 	printf("TDigest modified band depth done in: %f\n\n", time_taken_tmd);
+
+	s64 size_tdigest = t_digest_get_size(curves, n, size);
+	printf("Full T-Digests size: %ld\n", size_tdigest);
+
 
 	fprintf(output,"od,od_time,fd,fd_time,td,td_time,omd,omd_time,fmd,fmd_time,tmd,tmd_time\n");
 	for(s32 i = 0; i < n; i++) {
