@@ -2,4 +2,4 @@
 #clang -g -ggdb -std=c11 -o band-depth band-depth.c
 #clang -S -ggdb -std=c11 band-depth.c
 g++ c-files/band-depth.c c-files/libs/TDigest.cpp -o band-depth
-./band-depth inputs/taxis_v1.txt
+./band-depth inputs/taxis_v1.txt outputs/taxis
