@@ -3,3 +3,4 @@ csvs/*
 data/*
 *_out.txt
 *_summary.txt
+*.ipynb
