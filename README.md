@@ -4,5 +4,5 @@
 - https://es.kaust.edu.sa/Documents/2012.SGN.Stat.pdf
 
 # todo
-- Test with real datasets;
+- Organize datasets' processing notebook;
 - Organize folders;
