@@ -569,6 +569,7 @@ void t_digest_find_proportion(Curve* *curves, s32 n, s32 size, f64* proportion) 
 
 	for (s32 j=0; j<size; ++j) {
 
+
 		PDigest* t = new PDigest();
 		std::vector<float> values;
 		std::vector<float> weights;
@@ -648,10 +649,18 @@ void t_digest_modified_band_depth(Curve* *curves, s32 n, s32 size) {
 	//printf("total time calculating band depths: %f\n", full_time);
 }
 
-s64 t_digest_get_size(Curve* *curves, s32 n, s32 size) {
-	size_t size_tdigest = 0;
+struct tdigest_info {
+	size_t  size;
+	clock_t time;
+};
+
+tdigest_info t_digest_get_size_and_time(Curve* *curves, s32 n, s32 size) {
+	size_t  size_tdigest = 0;
+	clock_t time_tdigest = 0;
 
 	for (s32 j=0; j<size; ++j) {
+
+		clock_t t_build = clock();
 
 		PDigest* t = new PDigest();
 		std::vector<float> values;
@@ -664,10 +673,15 @@ s64 t_digest_get_size(Curve* *curves, s32 n, s32 size) {
 
 		t->add(values, weights);
 
+		t_build = clock() - t_build;
+		time_tdigest += t_build;
+
 		size_tdigest += sizeof(*t);
 	}
+	//printf("Time taken to build T-Digests: %f\n", (f64)time_tdigest/CLOCKS_PER_SEC);
 
-	return size_tdigest;
+	tdigest_info info = {size_tdigest, time_tdigest};
+	return info;
 
 }
 
@@ -699,7 +713,7 @@ void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_m
 	fprintf(summary,"Rank matrix built in: %fs\n", time_taken_rmb);
 
 	s64 size_matrix = n * size * sizeof(s32);
-	fprintf(summary,"Rank matrix size: %ld\n\n", size_matrix);
+	fprintf(summary,"Rank matrix size: %ld bytes\n\n", size_matrix);
 
 	//printf("calculating fast band depth...\n");
 	clock_t t_fast_depth = clock();
@@ -725,10 +739,11 @@ void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_m
 	t_digest_modified_band_depth(curves, n, size);
 	t_tdigest_modified_depth = clock() - t_tdigest_modified_depth;
 	double time_taken_tmd = ((double)t_tdigest_modified_depth)/CLOCKS_PER_SEC;
-	fprintf(summary,"TDigest modified band depth done in: %f\n\n", time_taken_tmd);
+	fprintf(summary,"TDigest modified band depth done in: %fs\n\n", time_taken_tmd);
 
-	s64 size_tdigest = t_digest_get_size(curves, n, size);
-	fprintf(summary,"Full T-Digests size: %ld\n", size_tdigest);
+	tdigest_info info = t_digest_get_size_and_time(curves, n, size);
+	fprintf(summary,"T-Digests built in: %fs\n", ((f64)info.time)/CLOCKS_PER_SEC);
+	fprintf(summary,"Full T-Digests size: %ld bytes\n", info.size);
 
 
 	fprintf(output,"od,od_time,fd,fd_time,td,td_time,omd,omd_time,fmd,fmd_time,tmd,tmd_time\n");
