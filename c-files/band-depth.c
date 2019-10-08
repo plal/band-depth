@@ -686,9 +686,15 @@ tdigest_info t_digest_get_size_and_time(Curve* *curves, s32 n, s32 size) {
 }
 
 void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_matrix, FILE *output, FILE *summary) {
-	fprintf(summary,"***SUMMARY***\n\n");
-	fprintf(summary,"Number of curves: %d\n",n);
-	fprintf(summary,"Number of points: %d\n\n",size);
+	fprintf(summary,"num_curves,num_points,");
+	fprintf(summary,"od_time,omd_time,");
+	fprintf(summary,"rm_build_time,rm_size,");
+	fprintf(summary,"fd_time,fmd_time,");
+	fprintf(summary,"td_build_time,td_size,");
+	fprintf(summary,"td_time,tmd_time\n");
+
+	fprintf(summary,"%d,",n);
+	fprintf(summary,"%d,",size);
 	//printf("Curves:\n");
 	//curve_print_all_curves(curves, n);
 	//printf("calculating original band depth...\n");
@@ -696,54 +702,54 @@ void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_m
 	original_band_depth(curves, n);
 	t_original_depth = clock() - t_original_depth;
 	double time_taken_od = ((double)t_original_depth)/CLOCKS_PER_SEC; // in seconds
-	fprintf(summary,"Original band depth done in: %fs\n\n", time_taken_od);
+	fprintf(summary,"%f,", time_taken_od);
 
 	//printf("calculating original modified band depth...\n");
 	clock_t t_original_modified_depth = clock();
 	original_modified_band_depth(curves,n);
 	t_original_modified_depth = clock() - t_original_modified_depth;
 	double time_taken_omd = ((double)t_original_modified_depth)/CLOCKS_PER_SEC; // in seconds
-	fprintf(summary,"Original modified band depth done in: %fs\n\n", time_taken_omd);
+	fprintf(summary,"%f,", time_taken_omd);
 
 	//printf("building rank matrix...\n");
 	clock_t t_rank_matrix_build = clock();
 	rank_matrix_build(curves, n, size, rank_matrix);
 	t_rank_matrix_build = clock() - t_rank_matrix_build;
 	double time_taken_rmb = ((double)t_rank_matrix_build)/CLOCKS_PER_SEC; // in seconds
-	fprintf(summary,"Rank matrix built in: %fs\n", time_taken_rmb);
+	fprintf(summary,"%f,", time_taken_rmb);
 
 	s64 size_matrix = n * size * sizeof(s32);
-	fprintf(summary,"Rank matrix size: %ld bytes\n\n", size_matrix);
+	fprintf(summary,"%ld,", size_matrix);
 
 	//printf("calculating fast band depth...\n");
 	clock_t t_fast_depth = clock();
 	fast_band_depth(curves, n, size, rank_matrix);
 	t_fast_depth = clock() - t_fast_depth;
 	double time_taken_fd = ((double)t_fast_depth)/CLOCKS_PER_SEC; // in seconds
-	fprintf(summary,"Fast band depth done in: %fs\n\n", time_taken_fd);
+	fprintf(summary,"%f,", time_taken_fd);
 
 	//printf("calculating fast modified band depth...\n");
 	clock_t t_fast_modified_depth = clock();
 	fast_modified_band_depth(curves, n, size, rank_matrix);
 	t_fast_modified_depth = clock() - t_fast_modified_depth;
 	double time_taken_fmd = ((double)t_fast_modified_depth)/CLOCKS_PER_SEC; // in seconds
-	fprintf(summary,"Fast modified band depth done in: %fs\n\n", time_taken_fmd);
+	fprintf(summary,"%f,", time_taken_fmd);
+
+	tdigest_info info = t_digest_get_size_and_time(curves, n, size);
+	fprintf(summary,"%f,", ((f64)info.time)/CLOCKS_PER_SEC);
+	fprintf(summary,"%ld,", info.size);
 
 	clock_t t_tdigest_depth = clock();
 	t_digest_band_depth(curves, n, size);
 	t_tdigest_depth = clock() - t_tdigest_depth;
 	double time_taken_td = ((double)t_tdigest_depth)/CLOCKS_PER_SEC; // in seconds
-	fprintf(summary,"TDigest band depth done in: %fs\n\n", time_taken_td);
+	fprintf(summary,"%f,", time_taken_td);
 
 	clock_t t_tdigest_modified_depth = clock();
 	t_digest_modified_band_depth(curves, n, size);
 	t_tdigest_modified_depth = clock() - t_tdigest_modified_depth;
 	double time_taken_tmd = ((double)t_tdigest_modified_depth)/CLOCKS_PER_SEC;
-	fprintf(summary,"TDigest modified band depth done in: %fs\n\n", time_taken_tmd);
-
-	tdigest_info info = t_digest_get_size_and_time(curves, n, size);
-	fprintf(summary,"T-Digests built in: %fs\n", ((f64)info.time)/CLOCKS_PER_SEC);
-	fprintf(summary,"Full T-Digests size: %ld bytes\n", info.size);
+	fprintf(summary,"%f", time_taken_tmd);
 
 
 	fprintf(output,"od,od_time,fd,fd_time,td,td_time,omd,omd_time,fmd,fmd_time,tmd,tmd_time\n");
@@ -752,6 +758,7 @@ void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_m
 	}
 
 }
+
 
 int main(int argc, char *argv[]) {
 	srand ( time(NULL) );
