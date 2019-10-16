@@ -518,24 +518,12 @@ void t_digest_find_min_max(Curve* *curves, s32 n, s32 size) {
 
 		for (s32 i=0; i<n; ++i) {
 			clock_t t_ = clock();
-			for (s32 k=0; k<n; ++k) {
-				if ((abs(curves[i]->values[j] - values[k])) < accepted_diff) {
-					s32 rank = int(t->inverse_quantile(values[k])*n)+1;
-					if (rank > curves[i]->max_rank) { curves[i]->max_rank = rank; }
-					if (rank < curves[i]->min_rank) { curves[i]->min_rank = rank; }
-					break;
-				}
-			}
+			s32 rank = int(t->inverse_quantile(curves[i]->values[j])*n)+1;
+			if (rank > curves[i]->max_rank) { curves[i]->max_rank = rank; }
+			if (rank < curves[i]->min_rank) { curves[i]->min_rank = rank; }
 			t_ = clock() - t_;
 			curves[i]->t_digest_depth_time += ((double)t_)/CLOCKS_PER_SEC;
-			/*
-			std::cout << "CURVE " << i << std::endl;
-			std::cout << "MIN: " << curves[i]->min_rank << std::endl;
-			std::cout << "MAX: " << curves[i]->max_rank << std::endl;
-			*/
-
 		}
-		//std::cout << std::endl;
 
 	}
 }
@@ -568,8 +556,6 @@ void t_digest_find_proportion(Curve* *curves, s32 n, s32 size, f64* proportion) 
 	}
 
 	for (s32 j=0; j<size; ++j) {
-
-
 		PDigest* t = new PDigest();
 		std::vector<float> values;
 		std::vector<float> weights;
@@ -585,14 +571,10 @@ void t_digest_find_proportion(Curve* *curves, s32 n, s32 size, f64* proportion) 
 
 		for (s32 i=0; i<n; ++i) {
 			clock_t t_ = clock();
-			for (s32 k=0; k<n; ++k) {
-				if ((abs(curves[i]->values[j] - values[k])) < accepted_diff) {
-					s32 rank = int(t->inverse_quantile(values[k])*n)+1;
-					s32 n_a = n-rank;
-					s32 n_b = rank-1;
-					match[j][i] = n_a*n_b;
-				}
-			}
+			s32 rank = int(t->inverse_quantile(curves[i]->values[j])*n)+1;
+			s32 n_a = n-rank;
+			s32 n_b = rank-1;
+			match[j][i] = n_a*n_b;
 			t_ = clock() - t_;
 			curves[i]->t_digest_modified_depth_time += ((double)t_)/CLOCKS_PER_SEC;
 		}
@@ -911,6 +893,7 @@ int main(int argc, char *argv[]) {
 					curves[i] = curve_new_curve_from_array(n_points, aux);
 				}
 
+				/**/
 				s32 **rank_matrix = (s32**)malloc(n_points * sizeof(s32*));
 				for (int i=0; i<n_points; ++i) {
 					rank_matrix[i] = (s32*)malloc(n_rows * sizeof(s32));
@@ -934,27 +917,20 @@ int main(int argc, char *argv[]) {
 				    printf("Error opening output file %s!\n", output_name);
 				    exit(-1);
 				}
-				/**/
+
 				if (summary == NULL) {
 					printf("Error opening summary file %s!\n", summary_name);
 					exit(-1);
 				}
-				/**/
 
 				band_depths_run_and_summarize(curves, n_rows, n_points, rank_matrix, out, summary);
 
-				/*
-				curve_write_curves_to_file(summary, curves);
-				for(s32 i = 0; i < n_rows; i++) {
-					curve_write_to_file(out,curves[i]);
-					curve_free(curves[i]);
-				}
-				*/
-				//printf("%s\n", output_name);
+				/**/
 				for(s32 i = 0; i < n_rows; i++) {
 					curve_free(curves[i]);
 				}
-				free(rank_matrix);
+				//free(rank_matrix);
+
 
 			} else {
 				printf("Failed to open the file\n");
