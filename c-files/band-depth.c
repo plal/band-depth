@@ -502,8 +502,16 @@ void fast_modified_band_depth(Curve* *curves, s32 n, s32 size, s32 **rank_matrix
 	//printf("total time calculating band depths: %f\n", full_time);
 }
 
-void t_digest_find_min_max(Curve* *curves, s32 n, s32 size) {
-	for(s32 j=0; j<size; ++j) {
+struct tdigest_info {
+	size_t  size;
+	clock_t time;
+};
+
+std::vector<PDigest*> t_digest_build(Curve* *curves, s32 n, s32 size) {
+
+	std::vector<PDigest*> tdigests;
+
+	for (s32 j=0; j<size; ++j) {
 
 		PDigest* t = new PDigest();
 		std::vector<float> values;
@@ -516,9 +524,19 @@ void t_digest_find_min_max(Curve* *curves, s32 n, s32 size) {
 
 		t->add(values, weights);
 
+		tdigests.push_back(t);
+
+	}
+
+	return tdigests;
+
+}
+
+void t_digest_find_min_max(Curve* *curves, s32 n, s32 size, std::vector<PDigest*> tdigests) {
+	for(s32 j=0; j<size; ++j) {
 		for (s32 i=0; i<n; ++i) {
 			clock_t t_ = clock();
-			s32 rank = int(t->inverse_quantile(curves[i]->values[j])*n)+1;
+			s32 rank = int(tdigests[j]->inverse_quantile(curves[i]->values[j])*n)+1;
 			if (rank > curves[i]->max_rank) { curves[i]->max_rank = rank; }
 			if (rank < curves[i]->min_rank) { curves[i]->min_rank = rank; }
 			t_ = clock() - t_;
@@ -528,11 +546,11 @@ void t_digest_find_min_max(Curve* *curves, s32 n, s32 size) {
 	}
 }
 
-void t_digest_band_depth(Curve* *curves, s32 n, s32 size) {
+void t_digest_band_depth(Curve* *curves, s32 n, s32 size, std::vector<PDigest*> tdigests) {
 	for (s32 i=0; i<n; ++i) {
 		curves[i]->t_digest_depth = 0;
 	}
-	t_digest_find_min_max(curves, n, size);
+	t_digest_find_min_max(curves, n, size, tdigests);
 	f64 n_choose_2 = n*(n-1.0)/2.0;
 	//f64 full_time = 0;
 	for(s32 i=0; i<n; ++i) {
@@ -549,29 +567,18 @@ void t_digest_band_depth(Curve* *curves, s32 n, s32 size) {
 
 }
 
-void t_digest_find_proportion(Curve* *curves, s32 n, s32 size, f64* proportion) {
+void t_digest_find_proportion(Curve* *curves, s32 n, s32 size, std::vector<PDigest*> tdigests, f64* proportion) {
 	s32 **match = (s32**)malloc(size * sizeof(s32*));
 	for (int i=0; i<size; ++i) {
 		match[i] = (s32*)malloc(n * sizeof(s32));
 	}
 
 	for (s32 j=0; j<size; ++j) {
-		PDigest* t = new PDigest();
-		std::vector<float> values;
-		std::vector<float> weights;
-
-		for (s32 i=0; i<n; ++i) {
-			values.push_back(curves[i]->values[j]);
-			weights.push_back(1);
-		}
-
-		t->add(values, weights);
-
 		//size_tdigest = sizeof(*t);
 
 		for (s32 i=0; i<n; ++i) {
 			clock_t t_ = clock();
-			s32 rank = int(t->inverse_quantile(curves[i]->values[j])*n)+1;
+			s32 rank = int(tdigests[j]->inverse_quantile(curves[i]->values[j])*n)+1;
 			s32 n_a = n-rank;
 			s32 n_b = rank-1;
 			match[j][i] = n_a*n_b;
@@ -601,7 +608,7 @@ void t_digest_find_proportion(Curve* *curves, s32 n, s32 size, f64* proportion) 
 	}
 }
 
-void t_digest_modified_band_depth(Curve* *curves, s32 n, s32 size) {
+void t_digest_modified_band_depth(Curve* *curves, s32 n, s32 size, std::vector<PDigest*> tdigests) {
 	for (s32 i=0; i<n; ++i) {
 		curves[i]->t_digest_modified_depth = 0;
 		//curves[i]->t_digest_modified_depth_time = 0;
@@ -609,7 +616,7 @@ void t_digest_modified_band_depth(Curve* *curves, s32 n, s32 size) {
 
 	f64 proportion[n];
 	for(s32 i=0; i<n; ++i) { proportion[i] = 0.0; }
-	t_digest_find_proportion(curves, n, size, proportion);
+	t_digest_find_proportion(curves, n, size, tdigests, proportion);
 	/**
 	for(s32 i=0; i<n; ++i) {
 		printf("%f ", proportion[i]);
@@ -629,42 +636,6 @@ void t_digest_modified_band_depth(Curve* *curves, s32 n, s32 size) {
 	};
 
 	//printf("total time calculating band depths: %f\n", full_time);
-}
-
-struct tdigest_info {
-	size_t  size;
-	clock_t time;
-};
-
-tdigest_info t_digest_get_size_and_time(Curve* *curves, s32 n, s32 size) {
-	size_t  size_tdigest = 0;
-	clock_t time_tdigest = 0;
-
-	for (s32 j=0; j<size; ++j) {
-
-		clock_t t_build = clock();
-
-		PDigest* t = new PDigest();
-		std::vector<float> values;
-		std::vector<float> weights;
-
-		for (s32 i=0; i<n; ++i) {
-			values.push_back(curves[i]->values[j]);
-			weights.push_back(1);
-		}
-
-		t->add(values, weights);
-
-		t_build = clock() - t_build;
-		time_tdigest += t_build;
-
-		size_tdigest += sizeof(*t);
-	}
-	//printf("Time taken to build T-Digests: %f\n", (f64)time_tdigest/CLOCKS_PER_SEC);
-
-	tdigest_info info = {size_tdigest, time_tdigest};
-	return info;
-
 }
 
 void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_matrix, FILE *output, FILE *summary) {
@@ -717,18 +688,28 @@ void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_m
 	double time_taken_fmd = ((double)t_fast_modified_depth)/CLOCKS_PER_SEC; // in seconds
 	fprintf(summary,"%f,", time_taken_fmd);
 
+	/*
 	tdigest_info info = t_digest_get_size_and_time(curves, n, size);
 	fprintf(summary,"%f,", ((f64)info.time)/CLOCKS_PER_SEC);
 	fprintf(summary,"%ld,", info.size);
+	*/
+	clock_t t_tdigests_build = clock();
+	std::vector<PDigest*> tdigests = t_digest_build(curves, n, size);
+	t_tdigests_build = clock() - t_tdigests_build;
+	double time_taken_tdb = ((double)t_tdigests_build)/CLOCKS_PER_SEC; // in seconds
+	fprintf(summary,"%f,", time_taken_tdb);
+
+	s64 size_tdigests = sizeof(*tdigests[0]) * tdigests.size();
+	fprintf(summary,"%ld,", size_tdigests);
 
 	clock_t t_tdigest_depth = clock();
-	t_digest_band_depth(curves, n, size);
+	t_digest_band_depth(curves, n, size, tdigests);
 	t_tdigest_depth = clock() - t_tdigest_depth;
 	double time_taken_td = ((double)t_tdigest_depth)/CLOCKS_PER_SEC; // in seconds
 	fprintf(summary,"%f,", time_taken_td);
 
 	clock_t t_tdigest_modified_depth = clock();
-	t_digest_modified_band_depth(curves, n, size);
+	t_digest_modified_band_depth(curves, n, size, tdigests);
 	t_tdigest_modified_depth = clock() - t_tdigest_modified_depth;
 	double time_taken_tmd = ((double)t_tdigest_modified_depth)/CLOCKS_PER_SEC;
 	fprintf(summary,"%f", time_taken_tmd);
