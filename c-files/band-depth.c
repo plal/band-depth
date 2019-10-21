@@ -717,11 +717,10 @@ int main(int argc, char *argv[]) {
 
 			band_depths_run_and_summarize(curves, n_rows, n_points, rank_matrix, out, summary);
 
-			/**/
 			for(s32 i = 0; i < n_rows; i++) {
 				curve_free(curves[i]);
 			}
-			//free(rank_matrix);
+			free(rank_matrix);
 
 
 		} else {
