@@ -8,5 +8,4 @@
 - [UCI air quality dataset](https://archive.ics.uci.edu/ml/datasets/Air+quality)
 
 # todo
-- Organize datasets' processing notebook (local);
 - Organize folders
