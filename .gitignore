@@ -1,6 +1,4 @@
 band-depth
-csvs/*
-data/*
 *_out.txt
 *_summary.txt
 *.html
