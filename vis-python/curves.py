@@ -85,25 +85,40 @@ def get_outliers(raw_outliers, data_envelopes):
     return data_outliers
 
 def functional_boxplot(data_file, output_file, start_date, end_date, depth_type):
-
     data_final   = prepare_data(data_file, output_file, start_date, end_date)
     data_final   = data_final.sort_values(by=depth_type,axis=1)
 
     data_median    = data_final.iloc[:,data_final.shape[1]-1]
     data_top50     = data_final.iloc[:,(data_final.shape[1]//2):data_final.shape[1]-1]
     data_envelopes = get_envelopes(data_top50)
-    '''
+    data_inner_envelopes = data_envelopes[['bot','top']]
+    data_outer_envelopes = data_envelopes[['out_bot','out_top']]
     raw_outliers   = data_final.iloc[:,:(data_final.shape[1]//2)]
     data_outliers  = get_outliers(raw_outliers,data_envelopes)
-    print(raw_outliers.shape)
+    data_top_outliers = data_outliers.iloc[:,:5]
+    data_outliers.drop(data_outliers.iloc[:,:5], inplace=True, axis=1)
+
     print(data_outliers.shape)
-    '''
-    data_ordered   = pd.concat([data_envelopes,data_median],axis=1)
+    print(data_top_outliers.shape)
 
-    color_list = ["#f768a1","black","black","#f768a1"]+["blue"]
-    alpha_list = [1.0]*4 + [1.0]
+    data_ordered   = pd.concat([data_inner_envelopes,data_outliers,data_median],axis=1)
+    #print(data_ordered.shape)
 
-    numlines = len(data_ordered.columns)
+    color_inner_envelopes = ["#cccccc","#cccccc"]
+    color_outliers = ["#fcbba1"]*(data_outliers.shape[1])
+    color_median = ["black"]
+    colors_general = color_inner_envelopes + color_outliers + color_median
+
+    numlines_general = len(data_ordered.columns)
+
+
+    colors_outer_envelopes = ["#969696","#969696"]
+    numlines_outer_envelopes = len(data_outer_envelopes.columns)
+
+
+    colors_top_outliers = ['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00']
+    numlines_top_outliers = len(data_top_outliers.columns)
+    print(pd.to_datetime(data_top_outliers.columns))
 
     p = figure(width=1000, height=800, x_axis_type="datetime")
 
@@ -114,17 +129,67 @@ def functional_boxplot(data_file, output_file, start_date, end_date, depth_type)
     xs = np.concatenate([x, x[::-1]])
     ys = np.concatenate([lower_band, upper_band[::-1]])
 
-    p.patch(x=xs, y=ys, fill_color="#f768a1", fill_alpha=0.8, line_alpha=0, legend="IQR")
+    p.patch(x=xs, y=ys, fill_color="#cccccc", fill_alpha=0.8, line_alpha=0, legend="IQR")
 
-    p.multi_line(xs=[data_ordered.index.values]*numlines,
-                 ys=[data_ordered[name].values for name in data_ordered.iloc[0:24]],
-                 line_color=color_list,
+    src_outer_envelopes = ColumnDataSource(data={
+        'xs_outer_envelopes': [data_outer_envelopes.index.values]*numlines_outer_envelopes,
+        'ys_outer_envelopes': [data_outer_envelopes[name].values for name in data_outer_envelopes.iloc[0:24]],
+        'colors_outer_envelopes':colors_outer_envelopes,
+        'dates':data_outer_envelopes.columns.astype(str)
+    })
+
+    p.multi_line('xs_outer_envelopes',
+                 'ys_outer_envelopes',
+                 source=src_outer_envelopes,
+                 line_color='colors_outer_envelopes',
                  line_width=5,
-                 alpha=alpha_list)
+                 line_dash='dashed')
+
+    src_general = ColumnDataSource(data={
+        'xs_general': [data_ordered.index.values]*numlines_general,
+        'ys_general': [data_ordered[name].values for name in data_ordered.iloc[0:24]],
+        'colors_general': colors_general,
+        'dates':data_ordered.columns.astype(str)
+    })
+
+    p.multi_line('xs_general',
+                 'ys_general',
+                 source=src_general,
+                 line_color='colors_general',
+                 line_width=5,
+                 line_alpha=0.6,
+                 hover_line_color='colors_general',
+                 hover_line_alpha=1.0)
+
+    src_top_outliers = ColumnDataSource(data={
+        'xs_top_outliers': [data_top_outliers.index.values]*numlines_top_outliers,
+        'ys_top_outliers': [data_top_outliers[name].values for name in data_top_outliers.iloc[0:24]],
+        'colors_top_outliers': colors_top_outliers,
+        'dates': data_top_outliers.columns.astype(str)
+    })
+
+    p.multi_line('xs_top_outliers',
+                 'ys_top_outliers',
+                 source=src_top_outliers,
+                 line_color='colors_top_outliers',
+                 line_width=5,
+                 line_alpha=0.6,
+                 hover_line_color='colors_top_outliers',
+                 hover_line_alpha=1.0,
+                 legend='dates',)
+
+    p.legend.location = 'bottom_right'
+    p.legend.background_fill_alpha = 0.5
+
+    p.title.text_font_size = '20pt'
 
     p.xaxis.major_label_text_font_size = "18pt"
     p.xaxis.formatter = DatetimeTickFormatter(days="%H:%M",hours="%H:%M")
     p.yaxis.major_label_text_font_size = "18pt"
+
+    p.add_tools(HoverTool(show_arrow=False, line_policy='next', tooltips=[
+        ('Date', '@dates'),
+    ]))
 
     return p
 
