@@ -7,6 +7,18 @@ from bokeh.models.annotations import Title
 import random
 
 def prepare_data(data_file, output_file, start_date, end_date, periods, index_days=None):
+    '''
+        data_file:   csv file containing curves'values
+
+        output_file: txt file containing band depth values of each curve for each of the
+                     possible depth types
+
+        start_date: initial date covered by the data
+
+        end_date:   final date covered by the data
+
+        periods: number of hours covered by the data (number of points in each curve)
+    '''
     data = pd.read_csv(data_file)
     if index_days:
         print(a)
@@ -21,15 +33,42 @@ def prepare_data(data_file, output_file, start_date, end_date, periods, index_da
     data_final   = pd.concat([data,data_outputs])
     return data_final
 
-    
-def get_color_from_depth(depth, quantiles):
 
+def get_color_from_depth(depth, quantiles):
+    '''
+        depth: value of band depth
+
+        quantiles: list of quantile values
+    '''
     if depth <= quantiles[0]: return '#fef0d9'
     if depth <= quantiles[1]: return '#fdcc8a'
     if depth <= quantiles[2]: return '#fc8d59'
     if depth  > quantiles[2]: return '#d7301f'
 
 def plot_lines(data_file, output_file, depth_type, start_date, end_date, periods, depth_color=False):
+    '''
+        data_file:   csv file containing curves'values
+
+        output_file: txt file containing band depth values of each curve for each of the
+                     possible depth types
+
+        depth_type: select which method for calculating band depth to be used
+                    'od': original naïve definition of band depth
+                    'fd': rank matrix method for calculating band depth
+                    'td': t-digest method for band depth approximation
+                    'omd': original naïve definition of modified band depth
+                    'fmd': rank matrix method for calculating modified band depth
+                    'tmd': t-digest method for modified band depth approximation
+
+        start_date: initial date covered by the data
+
+        end_date:   final date covered by the data
+
+        periods: number of hours covered by the data (number of points in each curve)
+
+        depth_color: color curves according to their depth values
+    '''
+
     data_final   = prepare_data(data_file, output_file, start_date, end_date, periods)
     data_final   = data_final.sort_values(by=depth_type,axis=1)
 
@@ -52,7 +91,7 @@ def plot_lines(data_file, output_file, depth_type, start_date, end_date, periods
                  ys=[data_final[name].values for name in data_final.iloc[0:24]],
                  line_color=color_list,
                  line_width=5)
-    
+
     return data_final, p
 
 
@@ -75,6 +114,26 @@ def get_outliers(raw_outliers, data_envelopes):
     return data_outliers
 
 def functional_boxplot(data_file, output_file, start_date, end_date, periods, depth_type):
+    '''
+        data_file:   csv file containing curves'values
+
+        output_file: txt file containing band depth values of each curve for each of the
+                     possible depth types
+
+        depth_type: select which method for calculating band depth to be used
+                    'od': original naïve definition of band depth
+                    'fd': rank matrix method for calculating band depth
+                    'td': t-digest method for band depth approximation
+                    'omd': original naïve definition of modified band depth
+                    'fmd': rank matrix method for calculating modified band depth
+                    'tmd': t-digest method for modified band depth approximation
+
+        start_date: initial date covered by the data
+
+        end_date:   final date covered by the data
+
+        periods: number of hours covered by the data (number of points in each curve)
+    '''
     data_final   = prepare_data(data_file, output_file, start_date, end_date, periods)
     data_final   = data_final.sort_values(by=depth_type,axis=1)
 
@@ -184,7 +243,18 @@ def functional_boxplot(data_file, output_file, start_date, end_date, periods, de
     return p
 
 def split_datasets(data_file, output_file, start_date, end_date, periods):
+    '''
+        data_file:   csv file containing curves'values
 
+        output_file: txt file containing band depth values of each curve for each of the
+                     possible depth types
+
+        start_date: initial date covered by the data
+
+        end_date:   final date covered by the data
+
+        periods: number of hours covered by the data (number of points in each curve)
+    '''
     data_aux = prepare_data(data_file, output_file, start_date, end_date, periods)
 
     aux = []
