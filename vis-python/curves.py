@@ -6,65 +6,62 @@ from bokeh.models.annotations import Title
 
 import random
 
-def plot_lines(data_file, output_file, depth_type, start_date, end_date, num_outliers, use_top50=False):
-    data = pd.read_csv(data_file)
-    data = data.set_index(pd.date_range(start=start_date, end=end_date).date)
-    data = data.transpose()
-    data = data.set_index(pd.date_range(start=start_date, periods=24, freq='H').time)
-
-    data_outputs = pd.read_csv(output_file).set_index(pd.date_range(start=start_date, end=end_date).date)
-
-    data_outputs = data_outputs.transpose()
-
-    data_final = pd.concat([data,data_outputs])
-
-    data_final = data_final.sort_values(by=depth_type,axis=1)
-    #data_final.loc['tmd',:]
-
-    data_outliers = data_final.iloc[:,:num_outliers]
-    data_median   = data_final.iloc[:,data_final.shape[1]-1]
-    if use_top50:
-        data_top50    = data_final.iloc[:,(data_final.shape[1]//2):data_final.shape[1]-1]
-        data_ordered  = pd.concat([data_top50, data_outliers, data_median], axis=1)
-    else:
-        data_middle   = data_final.iloc[:,num_outliers:data_final.shape[1]-1]
-        data_ordered  = pd.concat([data_middle, data_outliers, data_median], axis=1)
-    print(data_ordered.shape)
-
-    #color_list = list(data_final.loc["color",:])
-    color_top50 = ["#fbb4b9"] * (data_ordered.shape[1] - (num_outliers+1))
-    color_median = ["Blue"]
-    color_outliers = ["Red"] * num_outliers
-    color_list = color_top50 + color_outliers + color_median
-    #print(len(color_list))
-
-    alpha_list = [0.5] * data_final.shape[1]
-    alpha_list[0:num_outliers] = [1] * num_outliers
-    alpha_list[len(alpha_list)-1] = 1
-
-    numlines = len(data_ordered.columns)
-
-    p = figure(width=1000, height=800, x_axis_type="datetime")
-    p.multi_line(xs=[data_ordered.index.values]*numlines,
-                 ys=[data_ordered[name].values for name in data_ordered.iloc[0:24]],
-                 line_color=color_list,
-                 line_width=5)
-    return p
-
-def prepare_data(data_file, output_file, start_date, end_date, index_days=None):
+def prepare_data(data_file, output_file, start_date, end_date, periods, index_days=None):
     data = pd.read_csv(data_file)
     if index_days:
         print(a)
     else:
         data = data.set_index(pd.date_range(start=start_date, end=end_date).date)
     data = data.transpose()
-    data = data.set_index(pd.date_range(start=start_date, periods=24, freq='H').time)
+    data = data.set_index(pd.date_range(start=start_date, periods=periods, freq='H').time)
 
     data_outputs = pd.read_csv(output_file).set_index(pd.date_range(start=start_date, end=end_date).date)
     data_outputs = data_outputs.transpose()
 
     data_final   = pd.concat([data,data_outputs])
     return data_final
+
+def get_color_from_depth(depth):
+
+    if depth <= .3: return '#fef0d9'
+    if depth <= .5: return '#fdcc8a'
+    if depth <= .8: return '#fc8d59'
+    if depth  > .8: return '#d7301f'
+    
+def get_color_from_depth2(depth, quantiles):
+
+    if depth <= quantiles[0]: return '#fef0d9'
+    if depth <= quantiles[1]: return '#fdcc8a'
+    if depth <= quantiles[2]: return '#fc8d59'
+    if depth  > quantiles[2]: return '#d7301f'
+
+def plot_lines(data_file, output_file, depth_type, start_date, end_date, periods, depth_color=False):
+    data_final   = prepare_data(data_file, output_file, start_date, end_date, periods)
+    data_final   = data_final.sort_values(by=depth_type,axis=1)
+
+    print(data_final.shape)
+
+    color_list = []
+    if depth_color:
+        depth_list = data_final.loc[depth_type].tolist()
+        quantiles  = data_final.loc[depth_type].quantile([0.25,0.5,0.75]).values
+      
+        color_list = [get_color_from_depth2(depth, quantiles) for depth in depth_list]
+
+    else:
+        for i in range(data_final.shape[1]):
+          color_list.append("#{:06x}".format(random.randint(0, 0xFFFFFF)))
+
+    numlines = len(data_final.columns)
+
+    p = figure(width=500, height=400, x_axis_type="datetime")
+    p.multi_line(xs=[data_final.index.values]*numlines,
+                 ys=[data_final[name].values for name in data_final.iloc[0:24]],
+                 line_color=color_list,
+                 line_width=5)
+    
+    return data_final, p
+
 
 def get_envelopes(data_top50):
     df_max = data_top50.max(axis=1)
@@ -84,8 +81,8 @@ def get_outliers(raw_outliers, data_envelopes):
             data_outliers = pd.concat([data_outliers,raw_outliers[col]],axis=1)
     return data_outliers
 
-def functional_boxplot(data_file, output_file, start_date, end_date, depth_type):
-    data_final   = prepare_data(data_file, output_file, start_date, end_date)
+def functional_boxplot(data_file, output_file, start_date, end_date, periods, depth_type):
+    data_final   = prepare_data(data_file, output_file, start_date, end_date, periods)
     data_final   = data_final.sort_values(by=depth_type,axis=1)
 
     data_median    = data_final.iloc[:,data_final.shape[1]-1]
@@ -193,9 +190,9 @@ def functional_boxplot(data_file, output_file, start_date, end_date, depth_type)
 
     return p
 
-def split_datasets(data_file, output_file, start_date, end_date):
+def split_datasets(data_file, output_file, start_date, end_date, periods):
 
-    data_aux = prepare_data(data_file, output_file, start_date, end_date)
+    data_aux = prepare_data(data_file, output_file, start_date, end_date, periods)
 
     aux = []
     for col in data_aux.columns:
