@@ -21,14 +21,8 @@ def prepare_data(data_file, output_file, start_date, end_date, periods, index_da
     data_final   = pd.concat([data,data_outputs])
     return data_final
 
-def get_color_from_depth(depth):
-
-    if depth <= .3: return '#fef0d9'
-    if depth <= .5: return '#fdcc8a'
-    if depth <= .8: return '#fc8d59'
-    if depth  > .8: return '#d7301f'
     
-def get_color_from_depth2(depth, quantiles):
+def get_color_from_depth(depth, quantiles):
 
     if depth <= quantiles[0]: return '#fef0d9'
     if depth <= quantiles[1]: return '#fdcc8a'
@@ -43,10 +37,8 @@ def plot_lines(data_file, output_file, depth_type, start_date, end_date, periods
 
     color_list = []
     if depth_color:
-        depth_list = data_final.loc[depth_type].tolist()
         quantiles  = data_final.loc[depth_type].quantile([0.25,0.5,0.75]).values
-      
-        color_list = [get_color_from_depth2(depth, quantiles) for depth in depth_list]
+        color_list = [get_color_from_depth(depth, quantiles) for depth in depth_list]
 
     else:
         for i in range(data_final.shape[1]):
