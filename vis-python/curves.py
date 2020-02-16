@@ -37,6 +37,7 @@ def plot_lines(data_file, output_file, depth_type, start_date, end_date, periods
 
     color_list = []
     if depth_color:
+        depth_list = data_final.loc[depth_type].tolist()
         quantiles  = data_final.loc[depth_type].quantile([0.25,0.5,0.75]).values
         color_list = [get_color_from_depth(depth, quantiles) for depth in depth_list]
 
