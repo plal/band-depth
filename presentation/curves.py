@@ -30,7 +30,7 @@ def prepare_data(data_file, output_file, start_date, end_date, periods, index_da
     data_outputs = pd.read_csv(output_file).set_index(pd.date_range(start=start_date, end=end_date).date)
     data_outputs = data_outputs.transpose()
 
-    data_final   = pd.concat([data,data_outputs])
+    data_final   = pd.concat([data,data_outputs],sort=True)
     return data_final
 
 
@@ -86,7 +86,7 @@ def plot_lines(data_file, output_file, depth_type, start_date, end_date, periods
 
     numlines = len(data_final.columns)
 
-    p = figure(width=500, height=400, x_axis_type="datetime")
+    p = figure(width=800, height=600, x_axis_type="datetime")
     p.multi_line(xs=[data_final.index.values]*numlines,
                  ys=[data_final[name].values for name in data_final.iloc[0:24]],
                  line_color=color_list,
@@ -104,13 +104,13 @@ def get_envelopes(data_top50):
     out_top = mid + (0.75*iqr)
     out_bot = mid - (0.75*iqr)
 
-    return pd.concat({'top':df_max,'bot':df_min,'out_top':out_top,'out_bot':out_bot},axis=1)
+    return pd.concat({'top':df_max,'bot':df_min,'out_top':out_top,'out_bot':out_bot},axis=1,sort=True)
 
 def get_outliers(raw_outliers, data_envelopes):
     data_outliers = pd.DataFrame()
     for col in raw_outliers.columns:
         if (raw_outliers[col][:24] > data_envelopes['out_top'][:24]).any() or (raw_outliers[col][:24] < data_envelopes['out_bot'][:24]).any():
-            data_outliers = pd.concat([data_outliers,raw_outliers[col]],axis=1)
+            data_outliers = pd.concat([data_outliers,raw_outliers[col]],axis=1,sort=True)
     return data_outliers
 
 def functional_boxplot(data_file, output_file, start_date, end_date, periods, depth_type):
@@ -147,10 +147,12 @@ def functional_boxplot(data_file, output_file, start_date, end_date, periods, de
     data_top_outliers = data_outliers.iloc[:,:5]
     data_outliers.drop(data_outliers.iloc[:,:5], inplace=True, axis=1)
 
+    '''
     print(data_outliers.shape)
     print(data_top_outliers.shape)
+    '''
 
-    data_ordered   = pd.concat([data_inner_envelopes,data_outliers,data_median],axis=1)
+    data_ordered   = pd.concat([data_inner_envelopes,data_outliers,data_median],axis=1,sort=True)
     #print(data_ordered.shape)
 
     color_inner_envelopes = ["#cccccc","#cccccc"]
@@ -167,9 +169,9 @@ def functional_boxplot(data_file, output_file, start_date, end_date, periods, de
 
     colors_top_outliers = ['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00']
     numlines_top_outliers = len(data_top_outliers.columns)
-    print(pd.to_datetime(data_top_outliers.columns))
+    #print(pd.to_datetime(data_top_outliers.columns))
 
-    p = figure(width=1000, height=800, x_axis_type="datetime")
+    p = figure(width=800, height=600, x_axis_type="datetime")
 
     upper_band = np.array(data_envelopes['top'].iloc[0:24])
     lower_band = np.array(data_envelopes['bot'].iloc[0:24])
@@ -230,11 +232,11 @@ def functional_boxplot(data_file, output_file, start_date, end_date, periods, de
     p.legend.location = 'bottom_right'
     p.legend.background_fill_alpha = 0.5
 
-    p.title.text_font_size = '20pt'
+    p.title.text_font_size = '10pt'
 
-    p.xaxis.major_label_text_font_size = "18pt"
+    p.xaxis.major_label_text_font_size = "10pt"
     p.xaxis.formatter = DatetimeTickFormatter(days="%H:%M",hours="%H:%M")
-    p.yaxis.major_label_text_font_size = "18pt"
+    p.yaxis.major_label_text_font_size = "10pt"
 
     p.add_tools(HoverTool(show_arrow=False, line_policy='next', tooltips=[
         ('Date', '@dates'),
@@ -284,7 +286,7 @@ def functional_boxplot_from_df(data, depth_type, title):
     print(data_outliers.shape)
     print(data_top_outliers.shape)
 
-    data_ordered   = pd.concat([data_inner_envelopes,data_outliers,data_median],axis=1)
+    data_ordered   = pd.concat([data_inner_envelopes,data_outliers,data_median],axis=1,sort=True)
     #print(data_ordered.shape)
 
     color_inner_envelopes = ["#cccccc","#cccccc"]
