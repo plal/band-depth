@@ -72,7 +72,7 @@ def plot_lines(data_file, output_file, depth_type, start_date, end_date, periods
     data_final   = prepare_data(data_file, output_file, start_date, end_date, periods)
     data_final   = data_final.sort_values(by=depth_type,axis=1)
 
-    print(data_final.shape)
+    #print(data_final.shape)
 
     color_list = []
     if depth_color:
