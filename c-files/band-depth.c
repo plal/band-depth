@@ -72,6 +72,8 @@ typedef struct {
 	f64 t_digest_depth_time;
 	f64 t_digest_modified_depth;
 	f64 t_digest_modified_depth_time;
+	f64 sliding_depth;
+	f64 sliding_depth_time;
 	f64 values[];
 } Curve;
 
@@ -201,7 +203,10 @@ void curve_write_to_file(FILE *f, Curve *curve) {
 	fprintf(f,"%f,",curve->fast_modified_depth_time);
 
 	fprintf(f,"%f,",curve->t_digest_modified_depth);
-	fprintf(f,"%f\n",curve->t_digest_modified_depth_time);
+	fprintf(f,"%f,",curve->t_digest_modified_depth_time);
+
+	fprintf(f,"%f,",curve->sliding_depth);
+	fprintf(f,"%f\n",curve->sliding_depth_time);
 
 }
 
@@ -575,13 +580,62 @@ void t_digest_modified_band_depth(Curve* *curves, s32 n, s32 size, std::vector<P
 
 }
 
+void sliding_window_original_depth(Curve* *curves, s32 n, s32 window_size) {
+	for (s32 i=0; i<n; ++i) {
+		curves[i]->sliding_depth = 0;
+		curves[i]->sliding_depth_time = 0;
+	}
+
+	s32 pad = window_size/2;
+
+	for (s32 k=0; k<n; ++k) {
+		if (k < pad){
+			clock_t t = clock();
+			for(s32 i=0; i<window_size-1; ++i) {
+				for(s32 j=i+1; j<window_size; ++j) {
+						curves[k]->sliding_depth += curve_is_between(curves[k], curves[i], curves[j]);
+					}
+			}
+			t = clock() - t;
+			curves[k]->sliding_depth_time += ((double)t)/CLOCKS_PER_SEC;
+		} else if (k >= (n-pad)) {
+			clock_t t = clock();
+			for(s32 i=(n-window_size); i<n-1; ++i) {
+				for(s32 j=i+1; j<n; ++j) {
+						curves[k]->sliding_depth += curve_is_between(curves[k], curves[i], curves[j]);
+					}
+			}
+			t = clock() - t;
+			curves[k]->sliding_depth_time += ((double)t)/CLOCKS_PER_SEC;
+		} else {
+			clock_t t = clock();
+			for(s32 i=(k-pad); i<(k+pad)-1; ++i) {
+				for(s32 j=i+1; j<(k+pad); ++j) {
+						curves[k]->sliding_depth += curve_is_between(curves[k], curves[i], curves[j]);
+					}
+			}
+			t = clock() - t;
+			curves[k]->sliding_depth_time += ((double)t)/CLOCKS_PER_SEC;
+		}
+	};
+
+	f64 n_choose_2 = n*(n-1.0)/2.0;
+	for (s32 i=0; i<n; ++i) {
+		clock_t t = clock();
+		curves[i]->sliding_depth /= n_choose_2;
+		t = clock() -t;
+		curves[i]->sliding_depth_time += ((double)t)/CLOCKS_PER_SEC;
+	};
+}
+
 void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_matrix, FILE *output, FILE *summary) {
 	fprintf(summary,"num_curves,num_points,");
 	fprintf(summary,"od_time,omd_time,");
 	fprintf(summary,"rm_build_time,rm_size,");
 	fprintf(summary,"fd_time,fmd_time,");
 	fprintf(summary,"td_build_time,td_size,");
-	fprintf(summary,"td_time,tmd_time\n");
+	fprintf(summary,"td_time,tmd_time,");
+	fprintf(summary,"sd_time\n");
 
 	fprintf(summary,"%d,",n);
 	fprintf(summary,"%d,",size);
@@ -645,8 +699,13 @@ void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_m
 	double time_taken_tmd = ((double)t_tdigest_modified_depth)/CLOCKS_PER_SEC;
 	fprintf(summary,"%f", time_taken_tmd);
 
+	clock_t t_sliding_depth = clock();
+	sliding_window_original_depth(curves, n, 15);
+	t_sliding_depth = clock() - t_sliding_depth;
+	double time_taken_sd = ((double)t_sliding_depth)/CLOCKS_PER_SEC; // in seconds
+	fprintf(summary,"%f,", time_taken_sd);
 
-	fprintf(output,"od,od_time,fd,fd_time,td,td_time,omd,omd_time,fmd,fmd_time,tmd,tmd_time\n");
+	fprintf(output,"od,od_time,fd,fd_time,td,td_time,omd,omd_time,fmd,fmd_time,tmd,tmd_time,sd,sd_time\n");
 	for(s32 i = 0; i < n; i++) {
 		curve_write_to_file(output,curves[i]);
 	}
