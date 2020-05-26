@@ -586,15 +586,17 @@ void sliding_window_original_depth(Curve* *curves, s32 n, s32 window_size) {
 		curves[i]->sliding_depth_time = 0;
 	}
 
-	s32 pad = window_size/2;
+	s32 pad  = window_size/2;
+	f64 size = curves[0]->num_points;
 
 	for (s32 k=0; k<n; ++k) {
 		if (k < pad){
 			clock_t t = clock();
 			for(s32 i=0; i<window_size-1; ++i) {
 				for(s32 j=i+1; j<window_size; ++j) {
-						curves[k]->sliding_depth += curve_is_between(curves[k], curves[i], curves[j]);
-					}
+					f64 proportion = curve_count_points_between(curves[k], curves[i], curves[j])/size;
+					curves[k]->sliding_depth += proportion;
+				}
 			}
 			t = clock() - t;
 			curves[k]->sliding_depth_time += ((double)t)/CLOCKS_PER_SEC;
@@ -602,8 +604,9 @@ void sliding_window_original_depth(Curve* *curves, s32 n, s32 window_size) {
 			clock_t t = clock();
 			for(s32 i=(n-window_size); i<n-1; ++i) {
 				for(s32 j=i+1; j<n; ++j) {
-						curves[k]->sliding_depth += curve_is_between(curves[k], curves[i], curves[j]);
-					}
+					f64 proportion = curve_count_points_between(curves[k], curves[i], curves[j])/size;
+					curves[k]->sliding_depth += proportion;
+				}
 			}
 			t = clock() - t;
 			curves[k]->sliding_depth_time += ((double)t)/CLOCKS_PER_SEC;
@@ -611,18 +614,19 @@ void sliding_window_original_depth(Curve* *curves, s32 n, s32 window_size) {
 			clock_t t = clock();
 			for(s32 i=(k-pad); i<(k+pad)-1; ++i) {
 				for(s32 j=i+1; j<(k+pad); ++j) {
-						curves[k]->sliding_depth += curve_is_between(curves[k], curves[i], curves[j]);
-					}
+					f64 proportion = curve_count_points_between(curves[k], curves[i], curves[j])/size;
+					curves[k]->sliding_depth += proportion;
+				}
 			}
 			t = clock() - t;
 			curves[k]->sliding_depth_time += ((double)t)/CLOCKS_PER_SEC;
 		}
 	};
 
-	f64 n_choose_2 = n*(n-1.0)/2.0;
+	f64 win_choose_2 = window_size*(window_size-1.0)/2.0;
 	for (s32 i=0; i<n; ++i) {
 		clock_t t = clock();
-		curves[i]->sliding_depth /= n_choose_2;
+		curves[i]->sliding_depth /= win_choose_2;
 		t = clock() -t;
 		curves[i]->sliding_depth_time += ((double)t)/CLOCKS_PER_SEC;
 	};
