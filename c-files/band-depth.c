@@ -70,6 +70,7 @@ typedef struct {
 	f64 t_digest_modified_depth_time;
 	f64 sliding_depth;
 	f64 sliding_depth_time;
+	f64* pointwise_depths;
 	f64 values[];
 } Curve;
 
@@ -95,8 +96,10 @@ Curve* curve_new(s32 num_points)
 		.max_rank 	= 0,
 		.min_rank	= INT_MAX
 	};
+	result->pointwise_depths = (f64*) malloc(num_points * sizeof(f64));
 	for (s32 i=0;i<num_points;++i) {
 		result->values[i] = 0.0;
+		result->pointwise_depths[i] = 0.0;
 	}
 	return result;
 }
@@ -648,6 +651,25 @@ void sliding_window_original_depth(Curve* *curves, s32 n, s32 window_size) {
 	};
 }
 
+/* ************* EXTREMAL DEPTH HELPER FUNCTINOS ************* */
+
+void pointwise_depth(Curve *curve, Curve* *curves, s32 n) {
+	f64 size = curves[0]->num_points;
+
+	for(s32 i=0; i<size; ++i) {
+		s32 count = 0;
+
+		for (s32 j=0; j<n; ++j) {
+			count += ((curves[n]->values[i] < curve->values[i]) - (curves[n]->values[i] > curve->values[i]));
+		}
+
+		curve->pointwise_depths[i] = 1 - (abs(count)/n);
+		printf("%f\n", curve->pointwise_depths[i]);
+	};
+}
+
+//TODO: refactor this \/ method
+
 void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_matrix, FILE *output, FILE *summary) {
 	fprintf(summary,"num_curves,num_points,");
 	fprintf(summary,"od_time,omd_time,");
@@ -739,6 +761,32 @@ int main(int argc, char *argv[]) {
 	FILE *fp;
 	char *filename;
 	char *outputname;
+
+	s32 main = 0;
+	if (main == 0) {
+		f64 c0[] = {1.0, 4.0};
+		f64 c1[] = {2.0, 2.0};
+		f64 c2[] = {3.0, 1.0};
+
+		Curve *curves[3];
+		curves[0] = curve_new_curve_from_array(2,c0);
+		curves[1] = curve_new_curve_from_array(2,c1);
+		curves[2] = curve_new_curve_from_array(2,c2);
+
+		curve_print_all_curves(curves, 3);
+
+		for (s32 i=0; i<curves[0]->num_points; ++i) {
+			printf("%f ", curves[0]->pointwise_depths[i]);
+		};
+
+		pointwise_depth(curves[0], curves, 3);
+
+		for (s32 i=0; i<curves[0]->num_points; ++i) {
+			printf("%f ", curves[0]->pointwise_depths[i]);
+		};
+
+		return 0;
+	}
 
 	if (argc < 2) {
 		printf("Missing filename\n");
