@@ -1,9 +1,13 @@
 #!/bin/bash
-g++ -g -ggdb -c c-files/tdigest_glue.cpp
-g++ -g -ggdb -c c-files/libs/TDigest.cpp
-ar rcs libtdigest_glue.a tdigest_glue.o TDigest.o
+g++-8 -g -ggdb -c c-files/tdigest_glue.cpp
+g++-8 -g -ggdb -c c-files/libs/TDigest.cpp
+gcc-ar-8 rcs libtdigest_glue.a tdigest_glue.o TDigest.o
 
-gcc -g -ggdb -o band-depth c-files/band-depth.c -lc++ libtdigest_glue.a
+gcc-8 -g -ggdb -c c-files/band-depth.c
+gcc-8 -o band-depth -Wl,-Bstatic libtdigest_glue.a band-depth.o -lm -lstdc++ 
+
+ld -o x band-depth.o -lc libtdigest_glue.a -lm -L/usr/lib/gcc/x86_64-linux-gnu/8 -lstdc++ -lpthread
+
 
 # # gcc band-depth.c -o band-depth
 #

@@ -488,7 +488,7 @@ void pointwise_depth(Curve *curve, Curve* *curves, s32 n) {
 		s32 count = 0;
 
 		for (s32 j=0; j<n; ++j) {
-			count += ((curves[n]->values[i] < curve->values[i]) - (curves[n]->values[i] > curve->values[i]));
+			count += ((curves[j]->values[i] < curve->values[i]) - (curves[j]->values[i] > curve->values[i]));
 		}
 
 		curve->pointwise_depths[i] = 1 - (abs(count)/n);
