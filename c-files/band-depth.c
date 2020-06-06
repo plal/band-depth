@@ -599,42 +599,57 @@ void t_digest_modified_band_depth(Curve* *curves, s32 n, s32 size, std::vector<P
 
 /* ************* SLIDING WINDOW DEPTH ALGORITHM ************* */
 
-void sliding_window_original_depth(Curve* *curves, s32 n, s32 window_size) {
+void sliding_window_original_depth(Curve* *curves, s32 n, s32 window_size, s32 idx) {
 	for (s32 i=0; i<n; ++i) {
 		curves[i]->sliding_depth = 0;
 		curves[i]->sliding_depth_time = 0;
 	}
 
+	s32 start, offset;
+	if(idx < 0) {
+		start  = 0;
+		offset = 1;
+	} else {
+		start  = idx;
+		offset = 7;
+	}
 	s32 pad  = window_size/2;
 	f64 size = curves[0]->num_points;
 
-	for (s32 k=0; k<n; ++k) {
-		if (k < pad){
+	for (s32 k=start; k<n; k=k+offset) {
+		if (k < (pad*offset)){
+			//printf("1\n");
 			clock_t t = clock();
-			for(s32 i=0; i<window_size-1; ++i) {
-				for(s32 j=i+1; j<window_size; ++j) {
+			for(s32 i=start; i<(window_size*offset)-offset; i=i+offset) {
+				for(s32 j=i+offset; j<(window_size*offset); j=j+offset) {
 					f64 proportion = curve_count_points_between(curves[k], curves[i], curves[j])/size;
 					curves[k]->sliding_depth += proportion;
+					//printf("%d %d %d\n", k, i, j);
 				}
 			}
 			t = clock() - t;
 			curves[k]->sliding_depth_time += ((double)t)/CLOCKS_PER_SEC;
-		} else if (k >= (n-pad)) {
+		} else if (k >= (n-(pad*offset))) {
+			//printf("3\n");
 			clock_t t = clock();
-			for(s32 i=(n-window_size); i<n-1; ++i) {
-				for(s32 j=i+1; j<n; ++j) {
+			for(s32 i=(n-(window_size*offset)-1); i<(n-offset); i=i+offset) {
+				for(s32 j=i+offset; j<n; j=j+offset) {
+					//if (j==364) {printf("J = 364\n");}
 					f64 proportion = curve_count_points_between(curves[k], curves[i], curves[j])/size;
 					curves[k]->sliding_depth += proportion;
+					//printf("%d %d %d\n", k, i, j);
 				}
 			}
 			t = clock() - t;
 			curves[k]->sliding_depth_time += ((double)t)/CLOCKS_PER_SEC;
 		} else {
+			//printf("2\n");
 			clock_t t = clock();
-			for(s32 i=(k-pad); i<(k+pad)-1; ++i) {
-				for(s32 j=i+1; j<(k+pad); ++j) {
+			for(s32 i=(k-(pad*offset)); i<((k+(pad*offset))-offset); i=i+offset) {
+				for(s32 j=i+offset; j<(k+(pad*offset)); j=j+offset) {
 					f64 proportion = curve_count_points_between(curves[k], curves[i], curves[j])/size;
 					curves[k]->sliding_depth += proportion;
+					//printf("%d %d %d\n", k, i, j);
 				}
 			}
 			t = clock() - t;
@@ -660,17 +675,17 @@ void pointwise_depth(Curve *curve, Curve* *curves, s32 n) {
 		s32 count = 0;
 
 		for (s32 j=0; j<n; ++j) {
-			count += ((curves[n]->values[i] < curve->values[i]) - (curves[n]->values[i] > curve->values[i]));
+			count += ((curves[j]->values[i] < curve->values[i]) - (curves[j]->values[i] > curve->values[i]));
 		}
 
 		curve->pointwise_depths[i] = 1 - (abs(count)/n);
-		printf("%f\n", curve->pointwise_depths[i]);
+		//printf("%f\n", curve->pointwise_depths[i]);
 	};
 }
 
 //TODO: refactor this \/ method
 
-void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_matrix, FILE *output, FILE *summary) {
+void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_matrix, FILE *output, FILE *summary, s32 window_size, s32 wday) {
 	fprintf(summary,"num_curves,num_points,");
 	fprintf(summary,"od_time,omd_time,");
 	fprintf(summary,"rm_build_time,rm_size,");
@@ -742,7 +757,7 @@ void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_m
 	fprintf(summary,"%f", time_taken_tmd);
 
 	clock_t t_sliding_depth = clock();
-	sliding_window_original_depth(curves, n, 61);
+	sliding_window_original_depth(curves, n, window_size, wday);
 	t_sliding_depth = clock() - t_sliding_depth;
 	double time_taken_sd = ((double)t_sliding_depth)/CLOCKS_PER_SEC; // in seconds
 	fprintf(summary,"%f,", time_taken_sd);
@@ -761,8 +776,10 @@ int main(int argc, char *argv[]) {
 	FILE *fp;
 	char *filename;
 	char *outputname;
+	s32 window_size;
+	s32 wday;
 
-	s32 main = 0;
+	s32 main = 1;
 	if (main == 0) {
 		f64 c0[] = {1.0, 4.0};
 		f64 c1[] = {2.0, 2.0};
@@ -778,80 +795,85 @@ int main(int argc, char *argv[]) {
 		for (s32 i=0; i<curves[0]->num_points; ++i) {
 			printf("%f ", curves[0]->pointwise_depths[i]);
 		};
+		printf("\n");
 
 		pointwise_depth(curves[0], curves, 3);
 
 		for (s32 i=0; i<curves[0]->num_points; ++i) {
 			printf("%f ", curves[0]->pointwise_depths[i]);
 		};
+		printf("\n");
 
 		return 0;
-	}
-
-	if (argc < 2) {
-		printf("Missing filename\n");
-		return(-1);
 	} else {
-		filename = argv[1];
-		outputname = argv[2];
 
-		printf("Filename: %s\n", filename);
-		printf("Output base name: %s\n", outputname);
+		if (argc < 2) {
+			printf("Missing filename\n");
+			return(-1);
+		} else {
+			filename    = argv[1];
+			outputname  = argv[2];
+			window_size = atoi(argv[3]);
+			wday 		= atoi(argv[4]);
 
-		fp = fopen(filename,"r");
-		if(fp) {
-			s32 n_rows, n_points;
-			fscanf(fp,"%d %d", &n_rows,&n_points);
-			Curve *curves[n_rows];
-			for (s32 i=0; i<n_rows; ++i) {
-				f64 aux[n_points];
-				for (s32 j=0; j<n_points; ++j) {
-					fscanf(fp,"%lf",&aux[j]);
+			printf("Filename: %s\n", filename);
+			printf("Output base name: %s\n", outputname);
+
+			fp = fopen(filename,"r");
+			if(fp) {
+				s32 n_rows, n_points;
+				fscanf(fp,"%d %d", &n_rows,&n_points);
+				Curve *curves[n_rows];
+				for (s32 i=0; i<n_rows; ++i) {
+					f64 aux[n_points];
+					for (s32 j=0; j<n_points; ++j) {
+						fscanf(fp,"%lf",&aux[j]);
+					}
+
+					curves[i] = curve_new_curve_from_array(n_points, aux);
 				}
 
-				curves[i] = curve_new_curve_from_array(n_points, aux);
+				/**/
+				s32 **rank_matrix = (s32**)malloc(n_points * sizeof(s32*));
+				for (int i=0; i<n_points; ++i) {
+					rank_matrix[i] = (s32*)malloc(n_rows * sizeof(s32));
+				}
+
+				char *output_ending = "_out.txt";
+				char outputname_cp[1000];
+				strcpy(outputname_cp, outputname);
+				char *summary_ending = "_summary.txt";
+
+				char *output_name = strcat(outputname,output_ending);
+				printf("Output file: %s\n", output_name);
+
+				char *summary_name = strcat(outputname_cp,summary_ending);
+				printf("Summary file: %s\n\n", summary_name);
+
+				FILE *out = fopen(output_name,"w");
+				FILE *summary = fopen(summary_name,"w");
+
+				if (out == NULL) {
+				    printf("Error opening output file %s!\n", output_name);
+				    exit(-1);
+				}
+
+				if (summary == NULL) {
+					printf("Error opening summary file %s!\n", summary_name);
+					exit(-1);
+				}
+
+				band_depths_run_and_summarize(curves, n_rows, n_points, rank_matrix, out, summary, window_size, wday);
+
+				for(s32 i = 0; i < n_rows; i++) {
+					curve_free(curves[i]);
+				}
+				free(rank_matrix);
+
+
+			} else {
+				printf("Failed to open the file\n");
 			}
-
-			/**/
-			s32 **rank_matrix = (s32**)malloc(n_points * sizeof(s32*));
-			for (int i=0; i<n_points; ++i) {
-				rank_matrix[i] = (s32*)malloc(n_rows * sizeof(s32));
-			}
-
-			char *output_ending = "_out.txt";
-			char outputname_cp[1000];
-			strcpy(outputname_cp, outputname);
-			char *summary_ending = "_summary.txt";
-
-			char *output_name = strcat(outputname,output_ending);
-			printf("Output file: %s\n", output_name);
-
-			char *summary_name = strcat(outputname_cp,summary_ending);
-			printf("Summary file: %s\n\n", summary_name);
-
-			FILE *out = fopen(output_name,"w");
-			FILE *summary = fopen(summary_name,"w");
-
-			if (out == NULL) {
-			    printf("Error opening output file %s!\n", output_name);
-			    exit(-1);
-			}
-
-			if (summary == NULL) {
-				printf("Error opening summary file %s!\n", summary_name);
-				exit(-1);
-			}
-
-			band_depths_run_and_summarize(curves, n_rows, n_points, rank_matrix, out, summary);
-
-			for(s32 i = 0; i < n_rows; i++) {
-				curve_free(curves[i]);
-			}
-			free(rank_matrix);
-
-
-		} else {
-			printf("Failed to open the file\n");
 		}
 	}
 	return(0);
