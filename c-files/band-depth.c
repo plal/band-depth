@@ -479,7 +479,7 @@ void sliding_window_original_depth(Curve* *curves, s32 n, s32 window_size) {
 	};
 }
 
-/* ************* EXTREMAL DEPTH HELPER FUNCTINOS ************* */
+/* ************* EXTREMAL DEPTH HELPER FUNCTIONS ************* */
 
 void pointwise_depth(Curve *curve, Curve* *curves, s32 n) {
 
@@ -556,8 +556,8 @@ ed_extrmal_depth_run(Curve* *curves, s32 num_curves)
 		.p = p,
 		.rank_matrix = header_storage,
 		.cdf_matrix = header_storage + rank_matrix_storage,
-		.left = (s32) sizeof(Extrmal_depth),
-		.length = memory_required
+		.left = (s32) sizeof(ExtremalDepth),
+		.length = storage
 	};
 
 	// 1
@@ -568,8 +568,8 @@ ed_extrmal_depth_run(Curve* *curves, s32 num_curves)
 
 	// k ~ n/2
 	for (s32 i=0;i<p;++i) {
-		s32 *column = ed_get_rank_matrix_column(self, i);
-		s32 *aux    = ed_get_rank_matrix_column(self, i+1);
+		s32 *column = ed_get_rank_matrix_column(result, i);
+		s32 *aux    = ed_get_rank_matrix_column(result, i+1);
 		for (s32 j=0;j<n;++j) {
 			column[i] = i;
 			aux = 0;
@@ -578,7 +578,7 @@ ed_extrmal_depth_run(Curve* *curves, s32 num_curves)
 		ed_SortColumn sort_column = { .ed = result, .column = i };
 
 		// sort columns based on curve values
-		qsort_r(column, n, size(s32), ed_cmp, &sort_column);
+		qsort_r(column, n, sizeof(s32), ed_cmp, &sort_column);
 
 		//
 		// curve: 3 2 1 4 0
@@ -590,7 +590,7 @@ ed_extrmal_depth_run(Curve* *curves, s32 num_curves)
 		// count +1 for each curve lower than j-th
 		//
 		f64 last_value = curves[column[0]]->values[i];
-		aux[0] = 0
+		aux[0] = 0;
 		for (s32 j=1;j<n;++j) {
 			f64 v = curves[column[j]]->values[i];
 			if (last_value < v) {
@@ -600,8 +600,8 @@ ed_extrmal_depth_run(Curve* *curves, s32 num_curves)
 			}
 		}
 
-		f64 last_value = curves[column[n-1]]->values[i];
-		aux[0] = 0
+		last_value = curves[column[n-1]]->values[i];
+		aux[0] = 0;
 		for (s32 j=1;j<n;++j) {
 			f64 v = curves[column[j]]->values[i];
 			if (last_value > v) {
@@ -618,19 +618,6 @@ ed_extrmal_depth_run(Curve* *curves, s32 num_curves)
 
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 //TODO: refactor this \/ method
 
@@ -755,6 +742,10 @@ int main(int argc, char *argv[]) {
 			printf("%f ", curves[0]->pointwise_depths[i]);
 		};
 		printf("\n");
+
+		printf("starting ed...\n");
+		ExtremalDepth *ed = ed_extrmal_depth_run(curves, 3);
+		printf("ending ed...\n");
 
 		return 0;
 	}
