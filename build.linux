@@ -1,5 +1,9 @@
 #!/bin/bash
 
+find `pwd` | grep -e "[.]c$" > .ctags-files
+find `pwd` | grep -e "[.]h$" >> .ctags-files
+ctags -L .ctags-files
+
 cat <<EOF | grep -v "^#" > .tmp_commands
 g++ -g -ggdb -c c-files/tdigest_glue.cpp
 g++ -g -ggdb -c c-files/libs/TDigest.cpp

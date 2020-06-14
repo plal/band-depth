@@ -482,19 +482,155 @@ void sliding_window_original_depth(Curve* *curves, s32 n, s32 window_size) {
 /* ************* EXTREMAL DEPTH HELPER FUNCTINOS ************* */
 
 void pointwise_depth(Curve *curve, Curve* *curves, s32 n) {
-	f64 size = curves[0]->num_points;
 
+	s32 size = curves[0]->num_points;
 	for(s32 i=0; i<size; ++i) {
 		s32 count = 0;
-
 		for (s32 j=0; j<n; ++j) {
 			count += ((curves[j]->values[i] < curve->values[i]) - (curves[j]->values[i] > curve->values[i]));
 		}
-
-		curve->pointwise_depths[i] = 1 - (abs(count)/n);
+		curve->pointwise_depths[i] = 1 - ((1.0*abs(count))/n);
+		// curve->pointwise_depths[i] = count;
 		// printf("%f\n", curve->pointwise_depths[i]);
 	};
 }
+
+
+
+typedef struct {
+	Curve* *curves;
+	s32 n; // num curves
+	s32 p; // num points
+	s32 k; // num different pointwise-depth values possible (n/2?)
+	s32 rank_matrix; // [ col0 ] [ col1 ] ... [colN] - n x p where each column is a permutation
+	s32 cdf_matrix; // n * n
+	s32 left;
+	s32 length;
+} ExtremalDepth;
+
+typedef struct {
+	ExtremalDepth *ed;
+	s32 column;
+} ed_SortColumn;
+
+static s32 ed_cmp(const void *a, const void *b, void *context_raw)
+{
+	s32 aa = ((s32*)a)[0];
+	s32 bb = ((s32*)b)[0];
+	ed_SortColumn *context = (ed_SortColumn*) context_raw;
+
+	ExtremalDepth *ed = context->ed;
+	s32 column = context->column;
+
+	f64 val_aa = ed->curves[aa]->values[column];
+	f64 val_bb = ed->curves[bb]->values[column];
+
+	if (val_aa < val_bb) return -1;
+	else if (val_aa > val_bb) return 1;
+	else return 0;
+}
+
+static s32*
+ed_get_rank_matrix(ExtremalDepth *self) { return OffsetPointer(self,self->rank_matrix); }
+
+static s32*
+ed_get_cdf_matrix(ExtremalDepth *self) { return OffsetPointer(self,self->cdf_matrix); }
+
+static ExtremalDepth*
+ed_extrmal_depth_run(Curve* *curves, s32 num_curves)
+{
+	s32 n = num_curves;
+	s32 p = curves[0]->num_points;
+	s32 k = n/2;
+
+	s32 header_storage = RAlign(sizeof(ExtremalDepth),8);
+	s32 rank_matrix_storage = RAlign(n * (p + 1) * sizeof(s32),8);
+	s32 cdf_matrix_storage = RAlign(n * k * sizeof(s32),8);
+	s32 storage = header_storage + rank_matrix_storage + cdf_matrix_storage;
+
+	ExtremalDepth *result = malloc(storage);
+
+	*result = (ExtremalDepth) {
+		.curves = curves,
+		.n = n,
+		.p = p,
+		.rank_matrix = header_storage,
+		.cdf_matrix = header_storage + rank_matrix_storage,
+		.left = (s32) sizeof(Extrmal_depth),
+		.length = memory_required
+	};
+
+	// 1
+	// 2
+	// 3
+	// 4
+	// 5
+
+	// k ~ n/2
+	for (s32 i=0;i<p;++i) {
+		s32 *column = ed_get_rank_matrix_column(self, i);
+		s32 *aux    = ed_get_rank_matrix_column(self, i+1);
+		for (s32 j=0;j<n;++j) {
+			column[i] = i;
+			aux = 0;
+		}
+
+		ed_SortColumn sort_column = { .ed = result, .column = i };
+
+		// sort columns based on curve values
+		qsort_r(column, n, size(s32), ed_cmp, &sort_column);
+
+		//
+		// curve: 3 2 1 4 0
+		// value: 1 2 2 3 5
+		//
+		// pass1: 0 1 1 3 4
+		// pass2: 0 1 1 3 4
+		//
+		// count +1 for each curve lower than j-th
+		//
+		f64 last_value = curves[column[0]]->values[i];
+		aux[0] = 0
+		for (s32 j=1;j<n;++j) {
+			f64 v = curves[column[j]]->values[i];
+			if (last_value < v) {
+				aux[j] = j;
+			} else {
+				aux[j] = aux[j-1];
+			}
+		}
+
+		f64 last_value = curves[column[n-1]]->values[i];
+		aux[0] = 0
+		for (s32 j=1;j<n;++j) {
+			f64 v = curves[column[j]]->values[i];
+			if (last_value > v) {
+				aux[j] -= j;
+			} else {
+				aux[j] = aux[j-1];
+			}
+		}
+
+		// for (s32 j=0; j<n; ++j) {
+		// 	count += ((curves[j]->values[i] < curve->values[i]) - (curves[j]->values[i] > curve->values[i]));
+		// }
+		// curve->pointwise_depths[i] = 1 - ((1.0*abs(count))/n);
+
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 //TODO: refactor this \/ method
 

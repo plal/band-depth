@@ -25,6 +25,14 @@ typedef u64      b64;
 #define Min(a,b) (((a)<(b))?(a):(b))
 #define Max(a,b) (((a)>(b))?(a):(b))
 
+#define PointerDifference(b,a) (((char*)(b))-((char*)(a)))
+#define OffsetedPointer(ptr,offset) ((void*) ((char*) ptr + offset))
+#define RightOffsetedPointer(ptr,size,offset) ((void*) ((char*) ptr + size - offset))
+#define Offset(a,b) (s64)((char*)(b) - (char*)(a))
+
+#define RAlign(a,b) (b*((a+b-1)/b))
+#define LAlign(a,b) (b*(a/b))
+
 /* ************* DATA STRUCTURES ************* */
 
 #define accepted_diff  0.000001
