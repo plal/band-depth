@@ -666,7 +666,7 @@ void sliding_window_original_depth(Curve* *curves, s32 n, s32 window_size, s32 i
 	};
 }
 
-/* ************* EXTREMAL DEPTH HELPER FUNCTINOS ************* */
+/* ************* EXTREMAL DEPTH HELPER FUNCTIONS ************* */
 
 void pointwise_depth(Curve *curve, Curve* *curves, s32 n) {
 	f64 size = curves[0]->num_points;
@@ -678,9 +678,22 @@ void pointwise_depth(Curve *curve, Curve* *curves, s32 n) {
 			count += ((curves[j]->values[i] < curve->values[i]) - (curves[j]->values[i] > curve->values[i]));
 		}
 
-		curve->pointwise_depths[i] = 1 - (abs(count)/n);
+		curve->pointwise_depths[i] = 1 - ((1.0*abs(count))/n);
 		//printf("%f\n", curve->pointwise_depths[i]);
 	};
+}
+
+std::vector<f64> ed_build_cdf_steps(Curve* *curves, s32 n) {
+	std::vector<f64> cdf_steps;
+	cdf_steps.push_back(curves[0]->pointwise_depths[0]);
+	for (s32 i=1; i<n; ++i) {
+		f64 key = curves[i]->pointwise_depths[0];
+		if(!(std::find(cdf_steps.begin(), cdf_steps.end(), key) != cdf_steps.end())) {
+			cdf_steps.push_back(key);
+		}
+	}
+	std::stable_sort(cdf_steps.begin(), cdf_steps.end());
+	return cdf_steps;
 }
 
 //TODO: refactor this \/ method
@@ -779,29 +792,45 @@ int main(int argc, char *argv[]) {
 	s32 window_size;
 	s32 wday;
 
-	s32 main = 1;
+	s32 main = 0;
 	if (main == 0) {
-		f64 c0[] = {1.0, 4.0};
-		f64 c1[] = {2.0, 2.0};
-		f64 c2[] = {3.0, 1.0};
 
-		Curve *curves[3];
-		curves[0] = curve_new_curve_from_array(2,c0);
-		curves[1] = curve_new_curve_from_array(2,c1);
-		curves[2] = curve_new_curve_from_array(2,c2);
+		s32 n = 8;
+		s32 p = 6;
 
-		curve_print_all_curves(curves, 3);
+		f64 c1[] = { 2.0,  2.1,  1.9,  1.4,  0.5, -0.5};
+		f64 c2[] = { 1.5,  1.5,  1.5,  1.5,  1.5,  1.5};
+		f64 c3[] = { 1.1,  1.1,  1.2,  1.1,  1.1,  1.2};
+		f64 c4[] = { 1.0,  0.8,  1.0,  1.6,  2.2,  3.1};
+		f64 c5[] = { 0.6,  1.4, -0.1, -0.8, -1.6, -2.5};
+		f64 c6[] = { 0.0,  0.2,  0.0,  0.1, -0.1, -0.3};
+		f64 c7[] = {-0.9, -0.8, -0.4, -0.5, -0.6, -0.7};
+		f64 c8[] = {-1.4, -1.3, -1.2, -1.3, -1.4, -1.5};
 
-		for (s32 i=0; i<curves[0]->num_points; ++i) {
-			printf("%f ", curves[0]->pointwise_depths[i]);
+		Curve *curves[n];
+		curves[0] = curve_new_curve_from_array(p,c1);
+		curves[1] = curve_new_curve_from_array(p,c2);
+		curves[2] = curve_new_curve_from_array(p,c3);
+		curves[3] = curve_new_curve_from_array(p,c4);
+		curves[4] = curve_new_curve_from_array(p,c5);
+		curves[5] = curve_new_curve_from_array(p,c6);
+		curves[6] = curve_new_curve_from_array(p,c7);
+		curves[7] = curve_new_curve_from_array(p,c8);
+
+		for (s32 i=0; i<n; ++i) {
+			pointwise_depth(curves[i], curves, n);
+
+			printf("Curve %d: ", (i+1));
+			for (s32 j=0; j<p; ++j) {
+				printf("%.3f ", curves[i]->pointwise_depths[j]);
+			}
+			printf("\n");
 		};
-		printf("\n");
 
-		pointwise_depth(curves[0], curves, 3);
-
-		for (s32 i=0; i<curves[0]->num_points; ++i) {
-			printf("%f ", curves[0]->pointwise_depths[i]);
-		};
+		std::vector<f64> cdf_steps = ed_build_cdf_steps(curves, n);
+		for (s32 j=0; j<cdf_steps.size(); ++j) {
+			printf("%.3f ", cdf_steps[j]);
+		}
 		printf("\n");
 
 		return 0;
