@@ -977,6 +977,7 @@ ed_extrmal_depth_run(Curve* *curves, s32 num_curves)
 static void
 ed_example()
 {
+
 	// Example from Figure 1 of the Extremal Depth paper
 	f64 curves_data[] = {
 		 2.00,  2.10,  1.80,  1.52,  0.60, -0.50,
@@ -997,6 +998,12 @@ ed_example()
 	// compue extremal depth
 	ExtremalDepth *ed = ed_extrmal_depth_run(curves, 8);
 
+	/*
+	s32 *rank = ed_get_extremal_depth_rank(ed);
+	for (s32 i=0;i<ed->n;++i) {
+		curves[rank[i]].ed_rank = (1.0*i)/ed->n;
+	}
+	*/
 }
 
 //TODO: refactor this \/ method
