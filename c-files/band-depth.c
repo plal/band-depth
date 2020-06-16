@@ -668,7 +668,7 @@ void sliding_window_original_depth(Curve* *curves, s32 n, s32 window_size, s32 i
 
 /* ************* EXTREMAL DEPTH HELPER FUNCTIONS ************* */
 
-void pointwise_depth(Curve *curve, Curve* *curves, s32 n) {
+void ed_pointwise_depth(Curve *curve, Curve* *curves, s32 n) {
 	f64 size = curves[0]->num_points;
 
 	for(s32 i=0; i<size; ++i) {
@@ -685,6 +685,7 @@ void pointwise_depth(Curve *curve, Curve* *curves, s32 n) {
 
 std::vector<f64> ed_build_cdf_steps(Curve* *curves, s32 n) {
 	std::vector<f64> cdf_steps;
+
 	cdf_steps.push_back(curves[0]->pointwise_depths[0]);
 	for (s32 i=1; i<n; ++i) {
 		f64 key = curves[i]->pointwise_depths[0];
@@ -692,8 +693,43 @@ std::vector<f64> ed_build_cdf_steps(Curve* *curves, s32 n) {
 			cdf_steps.push_back(key);
 		}
 	}
+
 	std::stable_sort(cdf_steps.begin(), cdf_steps.end());
 	return cdf_steps;
+}
+
+f64 ed_get_proportion_from_cdf_step(Curve *curve, f64 cdf_step) {
+	f64 p = curve->num_points;
+	f64 count = 0.0;
+
+	for (s32 i=0; i<p; ++i) {
+		if (curve->pointwise_depths[i] <= cdf_step) {
+			count += 1.0;
+		}
+	}
+
+	f64 proportion = count/p;
+
+	return proportion;
+}
+
+
+f64** ed_build_cdf_matrix(Curve* *curves, s32 n, std::vector<f64> cdf_steps) {
+	s32 cols = cdf_steps.size();
+	s32 rows = n;
+
+	f64** cdf_prop_matrix = (f64**) malloc(rows * sizeof(f64*));
+	for (s32 i=0; i<rows; ++i) {
+		cdf_prop_matrix[i] = (f64*) malloc(cols * sizeof(f64));
+	}
+
+	for (s32 i=0; i<rows; ++i) {
+		for (s32 j=0; j<cols; ++j) {
+			cdf_prop_matrix[i][j] = ed_get_proportion_from_cdf_step(curves[i], cdf_steps[j]);
+		}
+	}
+
+	return cdf_prop_matrix;
 }
 
 //TODO: refactor this \/ method
@@ -818,7 +854,7 @@ int main(int argc, char *argv[]) {
 		curves[7] = curve_new_curve_from_array(p,c8);
 
 		for (s32 i=0; i<n; ++i) {
-			pointwise_depth(curves[i], curves, n);
+			ed_pointwise_depth(curves[i], curves, n);
 
 			printf("Curve %d: ", (i+1));
 			for (s32 j=0; j<p; ++j) {
@@ -828,10 +864,25 @@ int main(int argc, char *argv[]) {
 		};
 
 		std::vector<f64> cdf_steps = ed_build_cdf_steps(curves, n);
+		printf("******* cdf_steps *******\n");
 		for (s32 j=0; j<cdf_steps.size(); ++j) {
 			printf("%.3f ", cdf_steps[j]);
 		}
 		printf("\n");
+		printf("*************************\n");
+
+		s32 cols = cdf_steps.size();
+		f64 ** cdf_prop_matrix = ed_build_cdf_matrix(curves, n, cdf_steps);
+		printf("******* cdf_matrix *******\n");
+		for (s32 i=0; i<n; ++i) {
+			for (s32 j=0; j<cols; ++j) {
+				printf("%.3f ", cdf_prop_matrix[i][j]);
+			}
+			printf("\n");
+		}
+		printf("**************************\n");
+		printf("\n");
+
 
 		return 0;
 	} else {
