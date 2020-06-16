@@ -6,7 +6,77 @@
 #include <limits.h>
 #include <inttypes.h>
 
+
 #include "band-depth.h"
+
+//-- Assert -----------------------------------------------------------------------
+
+char* failed_assertion_(const char *expression, const char *filename, int line)
+{
+	char time_buffer[32];
+	time_t rawtime;
+	struct tm * timeinfo;
+	time ( &rawtime );
+	timeinfo = localtime ( &rawtime );
+	strftime(time_buffer, sizeof(time_buffer), "%Y-%m-%d %H:%M:%S", timeinfo);
+	// char buffer[Kilobytes(1)];
+	char *log_filename=".log";
+	FILE *f = fopen(log_filename,"a");
+	fprintf(f, "[%s] %s:%d: Assertion `%s` failed.\n", time_buffer, filename, line, expression);
+	fclose(f);
+	abort();
+}
+
+#if CHECK_ASSERTIONS
+#define Assert(EX) (void) ((EX) || (failed_assertion_(#EX, __FILE__, __LINE__),0))
+#else
+#define Assert(Expression)
+#endif
+
+//------------------------------------------------------------------------------
+
+
+//-- Simple Random Generator ---------------------------------------------------
+//
+// https://stackoverflow.com/questions/1640258/need-a-fast-random-generator-for-c
+//
+typedef struct {
+	u32 x;
+	u32 y;
+	u32 z;
+} rnd_State;
+
+rnd_State rnd_new() {          //period 2^96-1
+	return (rnd_State) {
+		.x = 123456789,
+		.y = 362436069,
+		.z = 521288629
+	};
+}
+
+u32 rnd_next(rnd_State *state) {          //period 2^96-1
+	u32 t;
+	state->x ^= state->x << 16;
+	state->x ^= state->x >> 5;
+	state->x ^= state->x << 1;
+
+	t = state->x;
+	state->x = state->y;
+	state->y = state->z;
+	state->z = t ^ state->x ^ state->y;
+
+	return state->z;
+}
+//-- Simple Random Generator ---------------------------------------------------
+
+
+
+
+
+
+
+
+
 
 // interface to C++ library
 #include "tdigest_glue.h"
@@ -496,6 +566,10 @@ void pointwise_depth(Curve *curve, Curve* *curves, s32 n) {
 }
 
 
+typedef struct {
+	s32 rank;
+	s32 lt_minus_gt;
+} ed_Aux;
 
 typedef struct {
 	Curve* *curves;
@@ -503,15 +577,11 @@ typedef struct {
 	s32 p; // num points
 	s32 k; // num different pointwise-depth values possible (n/2?)
 	s32 rank_matrix; // [ col0 ] [ col1 ] ... [colN] - n x p where each column is a permutation
+	s32 ltgt_abs_diff_matrix; // [ col0 ] [ col1 ] ... [colN] - n x p where each column is a permutation
 	s32 cdf_matrix; // n * n
 	s32 left;
 	s32 length;
 } ExtremalDepth;
-
-typedef struct {
-	ExtremalDepth *ed;
-	s32 column;
-} ed_SortColumn;
 
 static s32 ed_cmp(const void *a, const void *b, void *context_raw)
 {
@@ -531,56 +601,181 @@ static s32 ed_cmp(const void *a, const void *b, void *context_raw)
 }
 
 static s32*
-ed_get_rank_matrix(ExtremalDepth *self) { return OffsetPointer(self,self->rank_matrix); }
+ed_sort_rank(ExtremalDepth *self, s32 column, s32 *p) {
+	//
+	// 2^64 is more than enough
+	//
+	s32 stack[128];
+	stack[0] = 0;
+	stack[1] = n;
+	s32 stack_count = 2;
+
+	rnd_State rnd = rnd_new();
+
+	while (stack_count) {
+		Assert(stack_count % 2 == 0);
+		r = stack[--stack_count];
+		l = stack[--stack_count];
+		if (r - l <= 4) {
+			// insertion sort if less than 4 elements
+			for (s32 i=l;i<r;++i) {
+				Curve *c_i = self->curves[p[i]];
+				f64 xi = self->curves[p[i]]->values[column];
+				for (s32 j=l+1;j<r;++j) {
+					f64 xj = self->curves[p[j]]->values[column];
+					if (xi > xj) {
+						Swap(p[i],p[j]);
+						xi = xj;
+					}
+				}
+			}
+		} else {
+			s32 n = r - l;
+			s32 pp[] = {
+				l + rnd_next(&rnd) % n,
+				l + rnd_next(&rnd) % n,
+				l + rnd_next(&rnd) % n
+			};
+			for (s32 i=0;i<3;++i) {
+				f64 xi = self->curves[pp[i]]->values[column];
+				for (s32 j=1;j<3;++j) {
+					f64 xj = self->curves[pp[j]]->values[column];
+					if (xi > xj) {
+						Swap(p[i],p[j]);
+						xi = xj;
+					}
+				}
+			}
+			s32 pivot = pp[i];
+			f64 xp = self->curves[pivot]->values[column];
+			s32 a = l;
+			s32 b = r-1;
+			for (;;) {
+				while (a < b) {
+					f64 xa = self->curves[p[a]]->values[column];
+					if (xa <= xp) { ++a; }
+					else { break; }
+				}
+				for (;;) {
+					f64 xb = self->curves[p[b]]->values[column];
+					if (xp < xb) { --b; }
+					else { break; }
+				}
+				if (a < b) {
+					Swap(p[a], p[b]);
+				} else {
+					break;
+				}
+			}
+			stack[stack_count++] = l;
+			stack[stack_count++] = a;
+			stack[stack_count++] = a+1;
+			stack[stack_count++] = r;
+		}
+	}
+}
+
+
+
+
 
 static s32*
-ed_get_cdf_matrix(ExtremalDepth *self) { return OffsetPointer(self,self->cdf_matrix); }
+ed_get_rank_matrix(ExtremalDepth *self) { return OffsetedPointer(self,self->rank_matrix); }
+
+static s32*
+ed_get_rank_for_timestep(ExtremalDepth *self, s32 timestep) { return ed_get_rank_matrix(self) + timestep * self->p * sizeof(s32); }
+
+static s32*
+ed_get_ltgt_abs_diff_matrix(ExtremalDepth *self) { return OffsetedPointer(self,self->ltgt_abs_diff_matrix); }
+
+static s32*
+ed_get_ltgt_abs_diff_for_timestep(ExtremalDepth *self, s32 timestep) { return ed_get_ltgt_abs_diff_matrix(self) + timestep * self->p * sizeof(s32); }
+
+static s32*
+ed_get_cdf_matrix(ExtremalDepth *self) { return OffsetedPointer(self,self->cdf_matrix); }
+
+static s32*
+ed_get_cdf_for_curve(ExtremalDepth *self, s32 curve_index) { return ed_get_cdf_matrix(self) + curve_index * self->k * sizeof(s32); }
+
+/*
+
+Notes on extremal depth
+
+Let x1 < x2 < ... < x7
+
+in this case the possible values of abs_diffof
+
+     diff     = lt - gt
+
+     abs_diff = abs(diff)
+
+     lt   gt   diff           abs_diff
+x1   0    7-1  0-(7-1) = -6   6
+x2   1    7-2  1-(7-2) = -4   4
+x3   2    7-3  2-(7-3) = -2   2
+x4   3    7-4  3-(7-4) =  0   0
+x5   4    7-5  4-(7-5) =  2   2
+x6   5    7-6  5-(7-6) =  4   4
+x7   6    7-7  6-(7-7) =  6   6
+
+note that any difference between 0 and n-1 can be genrated if we
+allow for numbers being equal. For example, when n=7, to generate
+a 5 we can make x1 == x2 < x3 < ... < x7
+
+     lt   gt   diff           abs_diff
+x1   0    7-1  0-(7-1) = -6   6
+x2   0    7-2  0-(7-2) = -5   5
+x3   2    7-3  2-(7-3) = -2   2
+x4   3    7-4  3-(7-4) =  0   0
+x5   4    7-5  4-(7-5) =  2   2
+x6   5    7-6  5-(7-6) =  4   4
+x7   6    7-7  6-(7-7) =  6   6
+
+*/
 
 static ExtremalDepth*
 ed_extrmal_depth_run(Curve* *curves, s32 num_curves)
 {
 	s32 n = num_curves;
 	s32 p = curves[0]->num_points;
-	s32 k = n/2;
+	s32 k = n-1; // possible values for abs_diff
 
 	s32 header_storage = RAlign(sizeof(ExtremalDepth),8);
-	s32 rank_matrix_storage = RAlign(n * (p + 1) * sizeof(s32),8);
-	s32 cdf_matrix_storage = RAlign(n * k * sizeof(s32),8);
-	s32 storage = header_storage + rank_matrix_storage + cdf_matrix_storage;
+	// add an extra column for an auxiliar space
+	s32 rank_matrix_storage = RAlign(n * (p + 1) * sizeof(s32),8);    // (p+1) * n
+	s32 ltgt_abs_diff_matrix_storage = RAlign(n * p * sizeof(s32),8); // (p+0) * n
+	s32 cdf_matrix_storage = RAlign(n * k * sizeof(s32),8);           // (n+0) * k
+	s32 storage = header_storage + rank_matrix_storage + ltgt_abs_diff_matrix_storage + cdf_matrix_storage;
 
-	ExtremalDepth *result = malloc(storage);
+	ExtremalDepth *ed = malloc(storage);
 
-	*result = (ExtremalDepth) {
+	*ed = (ExtremalDepth) {
 		.curves = curves,
 		.n = n,
 		.p = p,
 		.rank_matrix = header_storage,
-		.cdf_matrix = header_storage + rank_matrix_storage,
+		.ltgt_abs_diff_matrix = header_storage + rank_matrix_storage,
+		.cdf_matrix = header_storage + rank_matrix_storage + ltgt_abs_diff_matrix_storage,
 		.left = (s32) sizeof(ExtremalDepth),
 		.length = storage
 	};
 
-	// 1
-	// 2
-	// 3
-	// 4
-	// 5
-
-	// k ~ n/2
 	for (s32 i=0;i<p;++i) {
-		s32 *column = ed_get_rank_matrix_column(result, i);
-		s32 *aux    = ed_get_rank_matrix_column(result, i+1);
+
+		s32 *rank          = ed_get_rank_for_timestep(ed, i);
+
+		s32 *aux_ltgt_diff = ed_get_rank_for_timestep(ed, i+1);
+
+		s32 *ltgt_abs_diff = ed_get_ltgt_abs_diff_for_timestep(ed, i);
+
 		for (s32 j=0;j<n;++j) {
-			column[i] = i;
-			aux = 0;
+			rank[j] = j;
+			aux_ltgt_diff[j] = 0;
 		}
 
-		ed_SortColumn sort_column = { .ed = result, .column = i };
-
 		// sort columns based on curve values
-		qsort_r(column, n, sizeof(s32), ed_cmp, &sort_column);
+		ed_sort_rank(ed, i, rank);
 
-		//
 		// curve: 3 2 1 4 0
 		// value: 1 2 2 3 5
 		//
@@ -588,27 +783,37 @@ ed_extrmal_depth_run(Curve* *curves, s32 num_curves)
 		// pass2: 0 1 1 3 4
 		//
 		// count +1 for each curve lower than j-th
+		// count -1 for each curve lower than j-th
 		//
-		f64 last_value = curves[column[0]]->values[i];
-		aux[0] = 0;
+		f64 last_value = curves[rank[0]]->values[i];
+		s32 cum = 0;
 		for (s32 j=1;j<n;++j) {
-			f64 v = curves[column[j]]->values[i];
+			f64 v = curves[rank[j]]->values[i];
 			if (last_value < v) {
-				aux[j] = j;
+				cum = j;
+				aux_ltgt_diff[j] += cum;
 			} else {
-				aux[j] = aux[j-1];
+				aux_ltgt_diff[j] += cum;
 			}
 		}
 
-		last_value = curves[column[n-1]]->values[i];
-		aux[0] = 0;
-		for (s32 j=1;j<n;++j) {
-			f64 v = curves[column[j]]->values[i];
+		last_value = curves[rank[n-1]]->values[i];
+		cum = 0;
+		for (s32 j=n-2;j>=0;--j) {
+			f64 v = curves[rank[j]]->values[i];
 			if (last_value > v) {
-				aux[j] -= j;
+				cum = n-1-j;
+				aux_ltgt_diff[j] -= cum;
 			} else {
-				aux[j] = aux[j-1];
+				aux_ltgt_diff[j] -= cum;
 			}
+		}
+
+		for (s32 j=0;j<n;++j) {
+			s32 abs_diff = Abs(aux_ltgt_diff[j]);
+			ltgt_abs_diff[p[j]] = abs_diff;
+			s32 *cdf_curve = ed_get_cdf_for_curve(ed, p[j]);
+			++cdf_curve[abs_diff];
 		}
 
 		// for (s32 j=0; j<n; ++j) {
@@ -617,6 +822,32 @@ ed_extrmal_depth_run(Curve* *curves, s32 num_curves)
 		// curve->pointwise_depths[i] = 1 - ((1.0*abs(count))/n);
 
 	}
+}
+
+static void
+ed_example()
+{
+	// Example from Figure 1 of the Extremal Depth paper
+	f64 curves[] = {
+		2.0,  2.1,  1.8,  1.5,  0.6, -0.5,
+		1.5,  1.5,  1.5,  1.5,  1.4,  1.4,
+		1.1,  1.1,  1.3,  1.2,  1.2,  1.3,
+		1.0,  0.9,  1.1,  1.5,  2.3,  3.5,
+		0.6,  0.5,  0.1, -0.6, -1.5, -2.6,
+		0.0,  0.4,  0.1,  0.2,  0.1, -0.3,
+		-0.8, -0.7, -0.3, -0.3, -0.6, -0.6,
+		-1.4, -1.1, -1.0, -1.1, -1.4, -1.6
+	};
+
+	Curve *curves[8];
+	for (s32 i=0;i<8;++i) {
+		curves[i] = curve_new_curve_from_array(6, curves + 6 * i);
+	}
+
+	// compue extremal depth
+	ExtremalDepth *ed = ed_extrmal_depth_run(curves, 8);
+
+
 }
 
 //TODO: refactor this \/ method
@@ -712,6 +943,10 @@ void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_m
 
 
 int main(int argc, char *argv[]) {
+
+#if 1
+	ed_example()
+#else
 	srand ( time(NULL) );
 
 	FILE *fp;
@@ -816,6 +1051,6 @@ int main(int argc, char *argv[]) {
 			printf("Failed to open the file\n");
 		}
 	}
+#endif
 	return(0);
-
 }

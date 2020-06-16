@@ -33,6 +33,17 @@ typedef u64      b64;
 #define RAlign(a,b) (b*((a+b-1)/b))
 #define LAlign(a,b) (b*(a/b))
 
+#define Abs(x) ((x) >= 0 ? (x) : -(x))
+
+#if CHECK_ASSERTIONS
+#define Assert(EX) (void) ((EX) || (platform.failed_assertion(#EX, __FILE__, __LINE__),0))
+#else
+#define Assert(Expression)
+#endif
+#define InvalidCodePath Assert(!"InvalidCodePath")
+#define InvalidDefaultCase default: {InvalidCodePath;} break
+
+
 /* ************* DATA STRUCTURES ************* */
 
 #define accepted_diff  0.000001

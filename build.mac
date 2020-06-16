@@ -1,10 +1,36 @@
 #!/bin/bash
 
+AR=ar
+CC=clang
+CXX=clang++
+CXX_FLAGS="-std=c++14 -stdlib=libc++ -g -ggdb"
+
+find `pwd` | grep -e "[.]c$" > .ctags-files
+find `pwd` | grep -e "[.]h$" >> .ctags-files
+ctags -L .ctags-files
+
+cat <<EOF | grep -v "^#" > .tmp_commands
+$CXX $CXX_FLAGS -c c-files/tdigest_glue.cpp
+$CXX $CXX_FLAGS -c c-files/libs/TDigest.cpp
+$AR rcs libtdigest_glue.a tdigest_glue.o TDigest.o
+$CC  -g -ggdb -c c-files/band-depth.c
+$CC  -o band-depth band-depth.o -L. -ltdigest_glue -lm -lstdc++ 
+EOF
+
+# gcc -o band-depth -Wl,-Bstatic libtdigest_glue.a band-depth.o -lm -lstdc++ 
+
+while read cmd; do 
+	echo "CMD: $cmd"
+	$cmd
+done < .tmp_commands
+
+
+
 # clang++ -std=c++14 -stdlib=libc++ -g -ggdb -c c-files/tdigest_glue.cpp
 # clang++ -std=c++14 -stdlib=libc++ -g -ggdb -c c-files/libs/TDigest.cpp
 # ar rcs libtdigest_glue.a tdigest_glue.o TDigest.o
 
-clang -g -ggdb -o band-depth c-files/band-depth.c -lc++ libtdigest_glue.a
+# clang -g -ggdb -o band-depth c-files/band-depth.c -lc++ libtdigest_glue.a
 
 # # gcc band-depth.c -o band-depth
 #
