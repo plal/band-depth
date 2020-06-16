@@ -10,9 +10,9 @@ find `pwd` | grep -e "[.]h$" >> .ctags-files
 ctags -L .ctags-files
 
 cat <<EOF | grep -v "^#" > .tmp_commands
-$CXX $CXX_FLAGS -c c-files/tdigest_glue.cpp
-$CXX $CXX_FLAGS -c c-files/libs/TDigest.cpp
-$AR rcs libtdigest_glue.a tdigest_glue.o TDigest.o
+# $CXX $CXX_FLAGS -c c-files/tdigest_glue.cpp
+# $CXX $CXX_FLAGS -c c-files/libs/TDigest.cpp
+# $AR rcs libtdigest_glue.a tdigest_glue.o TDigest.o
 $CC  -g -ggdb -c c-files/band-depth.c
 $CC  -o band-depth band-depth.o -L. -ltdigest_glue -lm -lstdc++ 
 EOF

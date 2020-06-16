@@ -565,7 +565,6 @@ void pointwise_depth(Curve *curve, Curve* *curves, s32 n) {
 	};
 }
 
-
 typedef struct {
 	s32 rank;
 	s32 lt_minus_gt;
@@ -583,95 +582,97 @@ typedef struct {
 	s32 length;
 } ExtremalDepth;
 
-static s32 ed_cmp(const void *a, const void *b, void *context_raw)
-{
-	s32 aa = ((s32*)a)[0];
-	s32 bb = ((s32*)b)[0];
-	ed_SortColumn *context = (ed_SortColumn*) context_raw;
-
-	ExtremalDepth *ed = context->ed;
-	s32 column = context->column;
-
-	f64 val_aa = ed->curves[aa]->values[column];
-	f64 val_bb = ed->curves[bb]->values[column];
-
-	if (val_aa < val_bb) return -1;
-	else if (val_aa > val_bb) return 1;
-	else return 0;
-}
 
 static s32*
-ed_sort_rank(ExtremalDepth *self, s32 column, s32 *p) {
-	//
-	// 2^64 is more than enough
-	//
-	s32 stack[128];
-	stack[0] = 0;
-	stack[1] = n;
-	s32 stack_count = 2;
+ed_get_rank_matrix(ExtremalDepth *self) { return OffsetedPointer(self,self->rank_matrix); }
 
-	rnd_State rnd = rnd_new();
+static s32*
+ed_get_extremal_depth_rank(ExtremalDepth *self) { return ed_get_rank_matrix(self) + self->p * self->n; }
 
-	while (stack_count) {
-		Assert(stack_count % 2 == 0);
-		r = stack[--stack_count];
-		l = stack[--stack_count];
-		if (r - l <= 4) {
-			// insertion sort if less than 4 elements
-			for (s32 i=l;i<r;++i) {
-				Curve *c_i = self->curves[p[i]];
-				f64 xi = self->curves[p[i]]->values[column];
-				for (s32 j=l+1;j<r;++j) {
-					f64 xj = self->curves[p[j]]->values[column];
-					if (xi > xj) {
-						Swap(p[i],p[j]);
-						xi = xj;
-					}
-				}
-			}
-		} else {
-			s32 n = r - l;
-			s32 pp[] = {
-				l + rnd_next(&rnd) % n,
-				l + rnd_next(&rnd) % n,
-				l + rnd_next(&rnd) % n
-			};
-			for (s32 i=0;i<3;++i) {
-				f64 xi = self->curves[pp[i]]->values[column];
-				for (s32 j=1;j<3;++j) {
-					f64 xj = self->curves[pp[j]]->values[column];
-					if (xi > xj) {
-						Swap(p[i],p[j]);
-						xi = xj;
-					}
-				}
-			}
-			s32 pivot = pp[i];
-			f64 xp = self->curves[pivot]->values[column];
-			s32 a = l;
-			s32 b = r-1;
-			for (;;) {
-				while (a < b) {
-					f64 xa = self->curves[p[a]]->values[column];
-					if (xa <= xp) { ++a; }
-					else { break; }
-				}
-				for (;;) {
-					f64 xb = self->curves[p[b]]->values[column];
-					if (xp < xb) { --b; }
-					else { break; }
-				}
-				if (a < b) {
-					Swap(p[a], p[b]);
-				} else {
-					break;
-				}
-			}
-			stack[stack_count++] = l;
-			stack[stack_count++] = a;
-			stack[stack_count++] = a+1;
-			stack[stack_count++] = r;
+static s32*
+ed_get_rank_for_timestep(ExtremalDepth *self, s32 timestep) { return ed_get_rank_matrix(self) + timestep * self->n; }
+
+static s32*
+ed_get_ltgt_abs_diff_matrix(ExtremalDepth *self) { return OffsetedPointer(self,self->ltgt_abs_diff_matrix); }
+
+static s32*
+ed_get_ltgt_abs_diff_for_timestep(ExtremalDepth *self, s32 timestep) { return ed_get_ltgt_abs_diff_matrix(self) + timestep * self->n; }
+
+static s32*
+ed_get_cdf_matrix(ExtremalDepth *self) { return OffsetedPointer(self,self->cdf_matrix); }
+
+static s32*
+ed_get_cdf_for_curve(ExtremalDepth *self, s32 curve_index) { return ed_get_cdf_matrix(self) + curve_index * self->k; }
+
+static void
+ed_print_cdf_raw(ExtremalDepth *self) {
+	// accumulate each of the curves CDF
+	for (s32 i=0;i<self->n;++i) {
+		s32 *cdf_curve = ed_get_cdf_for_curve(self, i);
+		for (s32 j=0;j<self->k;++j) {
+			printf("%-6d ", cdf_curve[j]);
 		}
+		printf("\n");
+	}
+}
+
+static void
+ed_print_cdf(ExtremalDepth *self) {
+	// accumulate each of the curves CDF
+	for (s32 i=0;i<self->n;++i) {
+		s32 *cdf_curve = ed_get_cdf_for_curve(self, i);
+		for (s32 j=0;j<self->k;++j) {
+			printf("%-6.2f ", (1.0 * cdf_curve[j])/self->p);
+		}
+		printf("\n");
+	}
+}
+
+static void
+ed_print_extremal_depth_rank(ExtremalDepth *self) {
+	// accumulate each of the curves CDF
+	s32 *rank = ed_get_extremal_depth_rank(self);
+	for (s32 i=0;i<self->n;++i) {
+		printf("%-6d ", rank[i]);
+	}
+	printf("\n");
+}
+
+static void
+ed_print_rank(ExtremalDepth *self) {
+	// accumulate each of the curves CDF
+	for (s32 i=0;i<self->p;++i) {
+		s32 *rank = ed_get_rank_for_timestep(self, i);
+		for (s32 j=0;j<self->n;++j) {
+			printf("%-6d ", rank[j]);
+		}
+		printf("\n");
+	}
+}
+
+static void
+ed_print_ltgt_abs_diff(ExtremalDepth *self) {
+	// accumulate each of the curves CDF
+	for (s32 i=0;i<self->p;++i) {
+		s32 *rank = ed_get_ltgt_abs_diff_for_timestep(self, i);
+		for (s32 j=0;j<self->n;++j) {
+			printf("%-6d ", rank[j]);
+		}
+		printf("\n");
+	}
+}
+
+static void
+ed_print_ed_sorted_cdf(ExtremalDepth *self) {
+	s32 *rank = ed_get_extremal_depth_rank(self);
+	// accumulate each of the curves CDF
+	for (s32 i=0;i<self->n;++i) {
+		s32 *cdf_curve = ed_get_cdf_for_curve(self, rank[i]);
+		printf("curve[%05d]: ", rank[i]);
+		for (s32 j=0;j<self->k;++j) {
+			printf("%-6.2f ", (1.0 * cdf_curve[j])/self->p);
+		}
+		printf("\n");
 	}
 }
 
@@ -679,23 +680,136 @@ ed_sort_rank(ExtremalDepth *self, s32 column, s32 *p) {
 
 
 
-static s32*
-ed_get_rank_matrix(ExtremalDepth *self) { return OffsetedPointer(self,self->rank_matrix); }
 
-static s32*
-ed_get_rank_for_timestep(ExtremalDepth *self, s32 timestep) { return ed_get_rank_matrix(self) + timestep * self->p * sizeof(s32); }
+//
+// - input rank is a permutation of 0 .. n-1
+// - where n is the number of curves
+//
+static void
+ed_sort_rank(ExtremalDepth *self, s32 timestep, s32 *rank, rnd_State *rnd) {
 
-static s32*
-ed_get_ltgt_abs_diff_matrix(ExtremalDepth *self) { return OffsetedPointer(self,self->ltgt_abs_diff_matrix); }
+	// ed_print_rank(self);
 
-static s32*
-ed_get_ltgt_abs_diff_for_timestep(ExtremalDepth *self, s32 timestep) { return ed_get_ltgt_abs_diff_matrix(self) + timestep * self->p * sizeof(s32); }
+	//
+	// 2^64 is more than enough
+	//
+	s32 stack[128];
+	stack[0] = 0;
+	stack[1] = self->n;
+	s32 stack_count = 2;
 
-static s32*
-ed_get_cdf_matrix(ExtremalDepth *self) { return OffsetedPointer(self,self->cdf_matrix); }
+	while (stack_count) {
+		Assert(stack_count % 2 == 0);
+		s32 r = stack[--stack_count];
+		s32 l = stack[--stack_count];
+		if (r - l <= 4) {
+			// insertion sort if less than 4 elements
+			for (s32 i=l;i<r;++i) {
+				f64 xi = self->curves[rank[i]]->values[timestep];
+				for (s32 j=i+1;j<r;++j) {
+					f64 xj = self->curves[rank[j]]->values[timestep];
+					if (xi > xj) {
+						Swap(rank[i],rank[j]);
+						xi = xj;
+					}
+				}
+			}
+		} else {
+			// TODO optimize the details on this quicksort
+			// it is written mostly as a proof
+			s32 n = r - l;
+			s32 pp[] = {
+				rank[l + rnd_next(rnd) % n],
+				rank[l + rnd_next(rnd) % n],
+				rank[l + rnd_next(rnd) % n]
+			};
+			for (s32 i=0;i<3;++i) {
+				f64 xi = self->curves[pp[i]]->values[timestep];
+				for (s32 j=i+1;j<3;++j) {
+					f64 xj = self->curves[pp[j]]->values[timestep];
+					if (xi > xj) {
+						Swap(pp[i],pp[j]);
+						xi = xj;
+					}
+				}
+			}
+			s32 pivot = pp[1];
+			f64 xp = self->curves[pivot]->values[timestep];
+			s32 a = l;
+			s32 b = r-1;
+			while (a < b) {
+				while (a < b) {
+					f64 xa = self->curves[rank[a]]->values[timestep];
+					if (xa <= xp) { ++a; }
+					else { break; }
+				}
+				while (a < b) {
+					f64 xb = self->curves[rank[b]]->values[timestep];
+					if (xp < xb) { --b; }
+					else { break; }
+				}
+				if (a < b) {
+					Swap(rank[a], rank[b]);
+				}
+			}
+			stack[stack_count++] = l;
+			stack[stack_count++] = a;
+			stack[stack_count++] = a;
+			stack[stack_count++] = r;
+		}
+	}
+}
 
-static s32*
-ed_get_cdf_for_curve(ExtremalDepth *self, s32 curve_index) { return ed_get_cdf_matrix(self) + curve_index * self->k * sizeof(s32); }
+//
+// [l,r)
+//
+static void
+ed_3way_quicksort(ExtremalDepth *self, s32 *rank, s32 timestep, s32 l, s32 r) {
+	if (r - l <= 1) return;
+
+	// l ----------------------------> lt                          gt                          r
+	// [ elements that are less than ) [ elements that are equal ) [ elements that are great )
+	s32 lt = l;
+	s32 gt = r;
+	s32 xp = ed_get_cdf_for_curve(self, rank[l])[timestep];
+	s32 i = l+1;
+	while (i < gt) {
+		s32 xi = ed_get_cdf_for_curve(self, rank[i])[timestep];
+		if  (xi > xp) {
+			Swap(rank[i],rank[l]);
+			++i;
+			++lt;
+		} else if (xi < xp) {
+			--gt;
+			Swap(rank[i],rank[gt]);
+		} else {
+			++i;
+		}
+	}
+	ed_3way_quicksort(self, rank, timestep, l, lt);
+	ed_3way_quicksort(self, rank, timestep+1, lt, gt);
+	ed_3way_quicksort(self, rank, timestep, gt, r);
+}
+
+
+static void
+ed_compute_extremal_depth_rank(ExtremalDepth *self) {
+
+	s32 *rank = ed_get_extremal_depth_rank(self);
+	for (s32 i=0;i<self->n;++i) {
+		rank[i] = i;
+	}
+
+	// use msb radix sort variant
+	ed_3way_quicksort(self, rank, 0, 0, self->n);
+}
+
+
+
+
+
+
+
 
 /*
 
@@ -738,7 +852,7 @@ ed_extrmal_depth_run(Curve* *curves, s32 num_curves)
 {
 	s32 n = num_curves;
 	s32 p = curves[0]->num_points;
-	s32 k = n-1; // possible values for abs_diff
+	s32 k = n+1; // 0, 1, ... n
 
 	s32 header_storage = RAlign(sizeof(ExtremalDepth),8);
 	// add an extra column for an auxiliar space
@@ -748,17 +862,21 @@ ed_extrmal_depth_run(Curve* *curves, s32 num_curves)
 	s32 storage = header_storage + rank_matrix_storage + ltgt_abs_diff_matrix_storage + cdf_matrix_storage;
 
 	ExtremalDepth *ed = malloc(storage);
+	memset(ed, 0, storage);
 
 	*ed = (ExtremalDepth) {
 		.curves = curves,
 		.n = n,
 		.p = p,
+		.k = k,
 		.rank_matrix = header_storage,
 		.ltgt_abs_diff_matrix = header_storage + rank_matrix_storage,
 		.cdf_matrix = header_storage + rank_matrix_storage + ltgt_abs_diff_matrix_storage,
-		.left = (s32) sizeof(ExtremalDepth),
+		.left = storage,
 		.length = storage
 	};
+
+	rnd_State rnd = rnd_new();
 
 	for (s32 i=0;i<p;++i) {
 
@@ -774,7 +892,7 @@ ed_extrmal_depth_run(Curve* *curves, s32 num_curves)
 		}
 
 		// sort columns based on curve values
-		ed_sort_rank(ed, i, rank);
+		ed_sort_rank(ed, i, rank, &rnd);
 
 		// curve: 3 2 1 4 0
 		// value: 1 2 2 3 5
@@ -811,42 +929,71 @@ ed_extrmal_depth_run(Curve* *curves, s32 num_curves)
 
 		for (s32 j=0;j<n;++j) {
 			s32 abs_diff = Abs(aux_ltgt_diff[j]);
-			ltgt_abs_diff[p[j]] = abs_diff;
-			s32 *cdf_curve = ed_get_cdf_for_curve(ed, p[j]);
-			++cdf_curve[abs_diff];
+			ltgt_abs_diff[rank[j]] = abs_diff;
+			// 1 - (abs_diff) / n == (n - abs_diff) / n == index
+			//
+			// index on the CDF is n - abs_diff and varies from 0 to n
+			//
+			s32 *cdf_curve = ed_get_cdf_for_curve(ed, rank[j]);
+			++cdf_curve[n - abs_diff];
 		}
-
-		// for (s32 j=0; j<n; ++j) {
-		// 	count += ((curves[j]->values[i] < curve->values[i]) - (curves[j]->values[i] > curve->values[i]));
-		// }
-		// curve->pointwise_depths[i] = 1 - ((1.0*abs(count))/n);
-
 	}
+
+	// accumulate each of the curves CDF
+	for (s32 i=0;i<ed->n;++i) {
+		s32 *cdf_curve = ed_get_cdf_for_curve(ed, i);
+		s32 cum = 0;
+		for (s32 j=0;j<ed->k;++j) {
+			cum += cdf_curve[j];
+			cdf_curve[j] = cum;
+		}
+	}
+
+	printf("Rank\n");
+	ed_print_rank(ed);
+
+	printf("ltgt_abs_diff\n");
+	ed_print_ltgt_abs_diff(ed);
+
+	printf("CDF\n");
+	ed_print_cdf(ed);
+
+	// TODO final sorting based on the CDF
+	ed_compute_extremal_depth_rank(ed);
+
+	printf("Extremal Depth Rank\n");
+	ed_print_extremal_depth_rank(ed);
+
+	//
+	printf("Curves Sorted by Extremal Depth\n");
+	ed_print_ed_sorted_cdf(ed);
+
+	return ed;
+
 }
 
 static void
 ed_example()
 {
 	// Example from Figure 1 of the Extremal Depth paper
-	f64 curves[] = {
-		2.0,  2.1,  1.8,  1.5,  0.6, -0.5,
-		1.5,  1.5,  1.5,  1.5,  1.4,  1.4,
-		1.1,  1.1,  1.3,  1.2,  1.2,  1.3,
-		1.0,  0.9,  1.1,  1.5,  2.3,  3.5,
-		0.6,  0.5,  0.1, -0.6, -1.5, -2.6,
-		0.0,  0.4,  0.1,  0.2,  0.1, -0.3,
-		-0.8, -0.7, -0.3, -0.3, -0.6, -0.6,
-		-1.4, -1.1, -1.0, -1.1, -1.4, -1.6
+	f64 curves_data[] = {
+		 2.00,  2.10,  1.80,  1.52,  0.60, -0.50,
+		 1.50,  1.50,  1.50,  1.51,  1.40,  1.40,
+		 1.10,  1.10,  1.30,  1.20,  1.20,  1.30,
+		 1.00,  0.90,  1.10,  1.50,  2.30,  3.50,
+		 0.60,  0.50,  0.11, -0.60, -1.50, -2.60,
+		 0.00,  0.40,  0.10,  0.20,  0.10, -0.30,
+		-0.80, -0.70, -0.30, -0.30, -0.60, -0.60,
+		-1.40, -1.10, -1.00, -1.10, -1.40, -1.60
 	};
 
 	Curve *curves[8];
 	for (s32 i=0;i<8;++i) {
-		curves[i] = curve_new_curve_from_array(6, curves + 6 * i);
+		curves[i] = curve_new_curve_from_array(6, curves_data + 6 * i);
 	}
 
 	// compue extremal depth
 	ExtremalDepth *ed = ed_extrmal_depth_run(curves, 8);
-
 
 }
 
@@ -945,7 +1092,7 @@ void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_m
 int main(int argc, char *argv[]) {
 
 #if 1
-	ed_example()
+	ed_example();
 #else
 	srand ( time(NULL) );
 
