@@ -719,42 +719,44 @@ ed_sort_rank(ExtremalDepth *self, s32 timestep, s32 *rank, rnd_State *rnd) {
 			// it is written mostly as a proof
 			s32 n = r - l;
 			s32 pp[] = {
-				rank[l + rnd_next(rnd) % n],
-				rank[l + rnd_next(rnd) % n],
-				rank[l + rnd_next(rnd) % n]
+				l + rnd_next(rnd) % n,
+				l + rnd_next(rnd) % n,
+				l + rnd_next(rnd) % n
 			};
 			for (s32 i=0;i<3;++i) {
-				f64 xi = self->curves[pp[i]]->values[timestep];
+				f64 xi = self->curves[rank[pp[i]]]->values[timestep];
 				for (s32 j=i+1;j<3;++j) {
-					f64 xj = self->curves[pp[j]]->values[timestep];
+					f64 xj = self->curves[rank[pp[j]]]->values[timestep];
 					if (xi > xj) {
 						Swap(pp[i],pp[j]);
 						xi = xj;
 					}
 				}
 			}
-			s32 pivot = pp[1];
-			f64 xp = self->curves[pivot]->values[timestep];
-			s32 a = l;
-			s32 b = r-1;
-			while (a < b) {
-				while (a < b) {
-					f64 xa = self->curves[rank[a]]->values[timestep];
-					if (xa <= xp) { ++a; }
-					else { break; }
-				}
-				while (a < b) {
-					f64 xb = self->curves[rank[b]]->values[timestep];
-					if (xp < xb) { --b; }
-					else { break; }
-				}
-				if (a < b) {
-					Swap(rank[a], rank[b]);
+			Swap(rank[l], rank[pp[1]]);
+			f64 xp = self->curves[rank[l]]->values[timestep];
+
+			s32 lt = l;
+			s32 gt = r;
+			s32 i  = l+1;
+			// l ----------------------------> lt                          gt                          r
+			// [ elements that are less than ) [ elements that are equal ) [ elements that are great )
+			while (i < gt) {
+				f64 xi = self->curves[rank[i]]->values[timestep];
+				if  (xi < xp) {
+					Swap(rank[i],rank[lt]);
+					++i;
+					++lt;
+				} else if (xi > xp) {
+					--gt;
+					Swap(rank[i],rank[gt]);
+				} else {
+					++i;
 				}
 			}
 			stack[stack_count++] = l;
-			stack[stack_count++] = a;
-			stack[stack_count++] = a;
+			stack[stack_count++] = lt;
+			stack[stack_count++] = gt;
 			stack[stack_count++] = r;
 		}
 	}
@@ -776,7 +778,7 @@ ed_3way_quicksort(ExtremalDepth *self, s32 *rank, s32 timestep, s32 l, s32 r) {
 	while (i < gt) {
 		s32 xi = ed_get_cdf_for_curve(self, rank[i])[timestep];
 		if  (xi > xp) {
-			Swap(rank[i],rank[l]);
+			Swap(rank[i],rank[lt]);
 			++i;
 			++lt;
 		} else if (xi < xp) {
