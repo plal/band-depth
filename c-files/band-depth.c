@@ -862,26 +862,25 @@ int main(int argc, char *argv[]) {
 			}
 			printf("\n");
 		};
+		printf("\n");
 
 		std::vector<f64> cdf_steps = ed_build_cdf_steps(curves, n);
-		printf("******* cdf_steps *******\n");
+		printf("cdf_steps\n");
 		for (s32 j=0; j<cdf_steps.size(); ++j) {
 			printf("%.3f ", cdf_steps[j]);
 		}
-		printf("\n");
-		printf("*************************\n");
+		printf("\n\n");
 
 		s32 cols = cdf_steps.size();
 		f64 ** cdf_prop_matrix = ed_build_cdf_matrix(curves, n, cdf_steps);
-		printf("******* cdf_matrix *******\n");
+		printf("cdf_matrix\n");
 		for (s32 i=0; i<n; ++i) {
 			for (s32 j=0; j<cols; ++j) {
 				printf("%.3f ", cdf_prop_matrix[i][j]);
 			}
 			printf("\n");
 		}
-		printf("**************************\n");
-		printf("\n");
+		printf("\n\n");
 
 
 		return 0;

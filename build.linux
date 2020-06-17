@@ -4,12 +4,12 @@
 g++ c-files/band-depth.c c-files/libs/TDigest.cpp -o band-depth
 
 ./band-depth inputs/taxis_v1.txt outputs/taxis_v1_s15_mon 15 0
-./band-depth inputs/taxis_v1.txt outputs/taxis_v1_s15_tue 15 1
-./band-depth inputs/taxis_v1.txt outputs/taxis_v1_s15_wed 15 2
-./band-depth inputs/taxis_v1.txt outputs/taxis_v1_s15_thu 15 3
-./band-depth inputs/taxis_v1.txt outputs/taxis_v1_s15_fri 15 4
-./band-depth inputs/taxis_v1.txt outputs/taxis_v1_s15_sat 15 5
-./band-depth inputs/taxis_v1.txt outputs/taxis_v1_s15_sun 15 6
+#./band-depth inputs/taxis_v1.txt outputs/taxis_v1_s15_tue 15 1
+#./band-depth inputs/taxis_v1.txt outputs/taxis_v1_s15_wed 15 2
+#./band-depth inputs/taxis_v1.txt outputs/taxis_v1_s15_thu 15 3
+#./band-depth inputs/taxis_v1.txt outputs/taxis_v1_s15_fri 15 4
+#./band-depth inputs/taxis_v1.txt outputs/taxis_v1_s15_sat 15 5
+#./band-depth inputs/taxis_v1.txt outputs/taxis_v1_s15_sun 15 6
 #./band-depth inputs/taxis_v1.txt outputs/taxis_v1
 #./band-depth inputs/taxis_v2.txt outputs/taxis_v2
 #./band-depth inputs/taxis_v3.txt outputs/taxis_v3
