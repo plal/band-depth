@@ -80,6 +80,7 @@ typedef struct {
 	f64 t_digest_modified_depth_time;
 	f64 sliding_depth;
 	f64 sliding_depth_time;
+    f64 extremal_depth;
 	f64* pointwise_depths;
 	f64 values[];
 } Curve;
@@ -88,4 +89,3 @@ struct tdigest_info {
 	size_t  size;
 	clock_t time;
 };
-

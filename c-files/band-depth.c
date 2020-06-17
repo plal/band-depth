@@ -205,7 +205,9 @@ void curve_write_to_file(FILE *f, Curve *curve) {
 	fprintf(f,"%f,",curve->t_digest_modified_depth_time);
 
 	fprintf(f,"%f,",curve->sliding_depth);
-	fprintf(f,"%f\n",curve->sliding_depth_time);
+	fprintf(f,"%f,",curve->sliding_depth_time);
+
+	fprintf(f,"%f\n",curve->extremal_depth);
 
 }
 
@@ -806,13 +808,6 @@ ed_compute_extremal_depth_rank(ExtremalDepth *self) {
 	ed_3way_quicksort(self, rank, 0, 0, self->n);
 }
 
-
-
-
-
-
-
-
 /*
 
 Notes on extremal depth
@@ -850,7 +845,7 @@ x7   6    7-7  6-(7-7) =  6   6
 */
 
 static ExtremalDepth*
-ed_extrmal_depth_run(Curve* *curves, s32 num_curves)
+ed_extremal_depth_run(Curve* *curves, s32 num_curves)
 {
 	s32 n = num_curves;
 	s32 p = curves[0]->num_points;
@@ -996,14 +991,15 @@ ed_example()
 	}
 
 	// compue extremal depth
-	ExtremalDepth *ed = ed_extrmal_depth_run(curves, 8);
+	ExtremalDepth *ed = ed_extremal_depth_run(curves, 8);
 
-	/*
+	/**/
 	s32 *rank = ed_get_extremal_depth_rank(ed);
 	for (s32 i=0;i<ed->n;++i) {
-		curves[rank[i]].ed_rank = (1.0*i)/ed->n;
+		printf("curve[%d] rank: %d\n", rank[i]+1, i+1);
+		//curves[rank[i]].ed_rank = (1.0*i)/ed->n;
 	}
-	*/
+	/**/
 }
 
 //TODO: refactor this \/ method
@@ -1015,7 +1011,8 @@ void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_m
 	fprintf(summary,"fd_time,fmd_time,");
 	fprintf(summary,"td_build_time,td_size,");
 	fprintf(summary,"td_time,tmd_time,");
-	fprintf(summary,"sd_time\n");
+	fprintf(summary,"sd_time,");
+	fprintf(summary,"ed_time\n");
 
 	fprintf(summary,"%d,",n);
 	fprintf(summary,"%d,",size);
@@ -1085,12 +1082,23 @@ void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_m
 	*/
 
 	clock_t t_sliding_depth = clock();
-	sliding_window_original_depth(curves, n, 61);
+	sliding_window_original_depth(curves, n, 15);
 	t_sliding_depth = clock() - t_sliding_depth;
 	double time_taken_sd = ((double)t_sliding_depth)/CLOCKS_PER_SEC; // in seconds
 	fprintf(summary,"%f,", time_taken_sd);
 
-	fprintf(output,"od,od_time,fd,fd_time,td,td_time,omd,omd_time,fmd,fmd_time,tmd,tmd_time,sd,sd_time\n");
+	clock_t t_extremal_depth = clock();
+	ExtremalDepth *ed = ed_extremal_depth_run(curves, n);
+	s32 *rank = ed_get_extremal_depth_rank(ed);
+	for (s32 i=0; i<ed->n; ++i) {
+		//printf("curve[%d] rank: %d\n", rank[i]+1, i+1);
+		curves[rank[i]]->extremal_depth = (1.0*(i+1))/ed->n;
+	}
+	t_extremal_depth = clock() - t_extremal_depth;
+	double time_taken_ed = ((double)t_extremal_depth)/CLOCKS_PER_SEC; // in seconds
+	fprintf(summary,"%f,", time_taken_ed);
+
+	fprintf(output,"od,od_time,fd,fd_time,td,td_time,omd,omd_time,fmd,fmd_time,tmd,tmd_time,sd,sd_time,ed\n");
 	for(s32 i = 0; i < n; i++) {
 		curve_write_to_file(output,curves[i]);
 	}
@@ -1100,7 +1108,7 @@ void band_depths_run_and_summarize(Curve* *curves, s32 n, s32 size, s32 **rank_m
 
 int main(int argc, char *argv[]) {
 
-#if 1
+#if 0
 	ed_example();
 #else
 	srand ( time(NULL) );
@@ -1109,7 +1117,7 @@ int main(int argc, char *argv[]) {
 	char *filename;
 	char *outputname;
 
-	s32 main = 0;
+	s32 main = 1;
 	if (main == 0) {
 		f64 c0[] = {1.0, 4.0};
 		f64 c1[] = {2.0, 2.0};
@@ -1135,7 +1143,7 @@ int main(int argc, char *argv[]) {
 		printf("\n");
 
 		printf("starting ed...\n");
-		ExtremalDepth *ed = ed_extrmal_depth_run(curves, 3);
+		ExtremalDepth *ed = ed_extremal_depth_run(curves, 3);
 		printf("ending ed...\n");
 
 		return 0;
