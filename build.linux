@@ -9,12 +9,13 @@ g++ -g -ggdb -c c-files/tdigest_glue.cpp
 g++ -g -ggdb -c c-files/libs/TDigest.cpp
 ar rcs libtdigest_glue.a tdigest_glue.o TDigest.o
 gcc -g -ggdb -c c-files/band-depth.c
-gcc -o band-depth band-depth.o -L. -ltdigest_glue -lm -lstdc++ 
+gcc -o band-depth band-depth.o -L. -ltdigest_glue -lm -lstdc++
+./band-depth inputs/taxis_v1.txt outputs/taxis_v1_ed
 EOF
 
-# gcc -o band-depth -Wl,-Bstatic libtdigest_glue.a band-depth.o -lm -lstdc++ 
+# gcc -o band-depth -Wl,-Bstatic libtdigest_glue.a band-depth.o -lm -lstdc++
 
-while read cmd; do 
+while read cmd; do
 	echo "CMD: $cmd"
 	$cmd
 done < .tmp_commands
