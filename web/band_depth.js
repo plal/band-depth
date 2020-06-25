@@ -87,6 +87,41 @@ function u_parse_tables(st, field_delim, record_delim, table_delim)
 	return results
 }
 
+function InconsistentSizeException(message) {
+	this.message = message;
+ 	this.name = "InconsistentSizeException";
+}
+
+function merge_tables(inputs, outputs) {
+	//console.log(outputs.rows, outputs.columns)
+
+	if (inputs.rows != outputs.rows) { throw InconsistentSizeException("SizeMismatch") }
+
+	rows 	 = inputs.rows
+	in_cols  = inputs.columns
+	out_cols = outputs.columns
+
+	let data = []
+
+	for(let i=0; i<rows; i++) {
+		let tseries = {values:[], depths:[]}
+
+		for(let j=0; j<in_cols;j++) {
+			tseries.values.push(inputs.column_values[j][i])
+		}
+
+		//depth values order: original, fast, tdigest, original modified, fast modified, tdigest modified, sliding (wsize 15), extremal
+		for(let j=0; j<out_cols;j=j+2) {
+			//console.log(j)
+			tseries.depths.push(outputs.column_values[j][i]);
+		}
+		data.push(tseries)
+	}
+
+	return data
+}
+
+
 global = { ui: {} }
 data   = {}
 
@@ -194,9 +229,12 @@ function update()
 function main()
 {
 	// read the two tables
-	data.input= u_parse_tables(data_input, '|', '\n', String.fromCharCode(1))[0]
+	data.input  = u_parse_tables(data_input, '|', '\n', String.fromCharCode(1))[0]
 	data.output = u_parse_tables(data_output, '|', '\n', String.fromCharCode(1))[0]
-
+	//console.log(data.input)
+	//console.log(data.output)
+	full_table = merge_tables(data.input, data.output)
+	console.log(full_table)
 
 	prepare_ui()
 
