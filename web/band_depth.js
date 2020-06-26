@@ -108,7 +108,7 @@ const DEPTH_sd        = 12
 const DEPTH_sd_time   = 13
 const DEPTH_ed        = 14
 
-global = { ui: {}, mouse: { position:[0,0], last_position:[0,0] }, events: [], draw_curves: true, draw_bands: true }
+global = { ui: {}, mouse: { position:[0,0], last_position:[0,0] }, events: [], draw_curves: true, draw_bands: true, coef: 1 }
 data   = { records: [], focused_timestep: null, focused_record: null }
 
 
@@ -174,8 +174,10 @@ function prepare_data() {
 		ed_rank[i] = i
 	}
 	ed_rank.sort(function(a,b) {
+		// return 0.5 - Math.random()
 		return data.records[a].depths[DEPTH_ed] - data.records[b].depths[DEPTH_ed] 
 	})
+
 	for (let i=0;i<data.num_records;i++) {
 		ed_inverse_rank[ed_rank[i]] = i
 	}
@@ -319,7 +321,19 @@ function update_timeseries_canvas()
 		// let colors = ['#fff5f0','#fee0d2','#fcbba1','#fc9272','#fb6a4a','#ef3b2c','#cb181d','#a50f15','#67000d']
 		let colors = ['#67001f','#b2182b','#d6604d','#f4a582','#fddbc7','#f7f7f7','#d1e5f0','#92c5de','#4393c3','#2166ac','#053061']
 		for (let i=0;i<colors.length;i++) {
-			colors[i] = colors[i] + '4f'
+			let r = parseInt(colors[i].slice(1,3),16)
+			let g = parseInt(colors[i].slice(3,5),16)
+			let b = parseInt(colors[i].slice(5,7),16)
+			let o = 0.7
+			r = Math.trunc(r * o + 255 * (1-o)).toString(16)
+			g = Math.trunc(g * o + 255 * (1-o)).toString(16)
+			b = Math.trunc(b * o + 255 * (1-o)).toString(16)
+			r = r.length == 2 ? r : ("0"+r)
+			g = g.length == 2 ? g : ("0"+g)
+			b = b.length == 2 ? b : ("0"+b)
+			let color = "#" + r + g + b
+			colors[i] = color
+			// colors[i] = colors[i] + '4f'
 		}
 		let bands = data.ed_bands
 		let num_bands = bands.coef.length
@@ -394,9 +408,16 @@ function update_timeseries_canvas()
 	if (global.draw_curves) {
 		ctx.strokeStyle = '#0000005f'
 		ctx.lineWidth  = 1
-		for (let i=0;i<num_records;i++) {
-			if (data.focused_record == null || (i != data.focused_record)) {
-				draw_timeseries(i)
+
+		let n = num_records
+		let k = Math.trunc(global.coef * n)
+		let a = n - k
+		let b = n
+
+		for (let i=a;i<b;i++) {
+			let curve_i = data.ed_rank[i]
+			if (data.focused_record == null || (curve_i != data.focused_record)) {
+				draw_timeseries(curve_i)
 			}
 		}
 
@@ -413,7 +434,7 @@ function update_timeseries_canvas()
 			let value = record.values[data.focused_timestep]
 			let date = new Date(new Date(2018,0,1).getTime() + (1000 * 24 * 60 * 60 * data.focused_record))
 			let rank = data.ed_inverse_rank[data.focused_record] + 1
-			let text = `ID: ${data.focused_record} ${date.toDateString()} ${data.focused_timestep}h  #trips: ${value}  ED: ${record.depths[DEPTH_ed]} r${rank}`
+			let text = `coef: ${global.coef}  ID: ${data.focused_record} ${date.toDateString()} ${data.focused_timestep}h  #trips: ${value}  ED: ${record.depths[DEPTH_ed]} r${rank}`
 			ctx.font = '24px Monospace';
 			ctx.textAlign = 'right';
 			ctx.fillText(text, rect[0] + rect[2] - 10, rect[1] + rect[3] - 12);
@@ -428,6 +449,8 @@ function update_timeseries_canvas()
 const KEY_0=48
 const KEY_1=49
 const KEY_2=50
+const KEY_3=51
+const KEY_4=52
 
 function process_events()
 {
@@ -452,6 +475,12 @@ function process_events()
 					global.draw_curves = !global.draw_curves
 				} else if (e.keyCode == KEY_2) {
 					global.draw_bands= !global.draw_bands
+				} else if (e.keyCode == KEY_3) {
+					global.coef = global.coef - 0.01
+					if (global.coef < 0) global.coef = 0
+				} else if (e.keyCode == KEY_4) {
+					global.coef = global.coef + 0.01
+					if (global.coef > 1) global.coef = 1
 				}
 			} break
 		}
