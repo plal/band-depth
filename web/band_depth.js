@@ -91,54 +91,125 @@ function u_parse_tables(st, field_delim, record_delim, table_delim)
 
 const MSEC_PER_FRAME = 33
 
-		//depth values order: original, fast, tdigest, original modified, fast modified, tdigest modified, sliding (wsize 15), extremal
-const DEPTH_ORIGINAL = 0
-const DEPTH_FAST = 1
-const DEPTH_TDIGEST = 2
-const DEPTH_ORIGINAL_MODIFIED = 3
-const DEPTH_FAST_MODIFIED = 4
-const DEPTH_TDIGEST_MODIFIED = 5
-const DEPTH_SLIDING_15 = 6
-const DEPTH_EXTREMAL = 7
+//depth values order: original, fast, tdigest, original modified, fast modified, tdigest modified, sliding (wsize 15), extremal
+const DEPTH_od        = 0
+const DEPTH_od_time   = 1
+const DEPTH_fd        = 2
+const DEPTH_fd_time   = 3
+const DEPTH_td        = 4
+const DEPTH_td_time   = 5
+const DEPTH_omd       = 6
+const DEPTH_omd_time  = 7
+const DEPTH_fmd       = 8
+const DEPTH_fmd_time  = 9
+const DEPTH_tmd       = 10
+const DEPTH_tmd_time  = 11
+const DEPTH_sd        = 12
+const DEPTH_sd_time   = 13
+const DEPTH_ed        = 14
 
-function InconsistentSizeException(message) {
-	this.message = message;
- 	this.name = "InconsistentSizeException";
+global = { ui: {}, mouse: { position:[0,0], last_position:[0,0] }, events: [], draw_curves: true, draw_bands: true }
+data   = { records: [], focused_timestep: null, focused_record: null }
+
+
+
+function prepare_band(rank, coef) {
+	let n = data.num_records
+	let m = Math.trunc(data.num_records * coef)
+	let a = n - m
+	let b = n
+	
+	let ymin = new Array(data.timesteps)
+	let ymax = new Array(data.timesteps)
+
+	for (let j=0;j<data.num_timesteps;j++) {
+		let y = data.records[rank[a]].values[j]
+		ymin[j] = y
+		ymax[j] = y
+		for (let k=a+1;k<b;++k) {
+			y = data.records[rank[k]].values[j]
+			ymin[j] = Math.min(y,ymin[j])
+			ymax[j] = Math.max(y,ymax[j])
+		}
+	}
+
+	return [ymin, ymax]
+
 }
 
-function merge_tables(inputs, outputs) {
+
+function prepare_data() {
 	//console.log(outputs.rows, outputs.columns)
 
-	if (inputs.rows != outputs.rows) { throw InconsistentSizeException("SizeMismatch") }
+	// read the two tables
+	let inputs  = u_parse_tables(data_input, '|', '\n', String.fromCharCode(1))[0]
+	let outputs = u_parse_tables(data_output, '|', '\n', String.fromCharCode(1))[0]
 
-	rows 	 = inputs.rows
-	in_cols  = inputs.columns
-	out_cols = outputs.columns
+	if (inputs.rows != outputs.rows) { throw Exception("SizeMismatch") }
 
-	let data = []
-
+	let rows     = inputs.rows
+	let in_cols  = inputs.columns
+	let out_cols = outputs.columns
+	let records = []
 	for(let i=0; i<rows; i++) {
-
 		let tseries = {values:[], depths: []}
-
 		for(let j=0; j<in_cols;j++) {
 			tseries.values.push(parseFloat(inputs.column_values[j][i]))
 		}
-
 		//depth values order: original, fast, tdigest, original modified, fast modified, tdigest modified, sliding (wsize 15), extremal
-		for(let j=0; j<out_cols;j=j+2) {
+		for(let j=0; j<out_cols;j++) {
 			//console.log(j)
 			tseries.depths.push(parseFloat(outputs.column_values[j][i]));
 		}
-		data.push(tseries)
+		records.push(tseries)
+	}
+	data.records =  records
+	data.num_timesteps = in_cols
+	data.num_records = rows
+
+	// create permutation for each depth we care
+	let ed_rank = new Array(data.num_records)
+	let ed_inverse_rank = new Array(data.num_records)
+	for (let i=0;i<data.num_records;i++) {
+		ed_rank[i] = i
+	}
+	ed_rank.sort(function(a,b) {
+		return data.records[a].depths[DEPTH_ed] - data.records[b].depths[DEPTH_ed] 
+	})
+	for (let i=0;i<data.num_records;i++) {
+		ed_inverse_rank[ed_rank[i]] = i
+	}
+	data.ed_rank = ed_rank
+	data.ed_inverse_rank = ed_inverse_rank
+
+	// ed_bands
+	let ed_bands = { coef: [], ymin: [], ymax: []}
+	let delta = 1.0/12
+	for (let i=0;i<11;++i) {
+		let coef = 1 - delta - delta * i
+		x = prepare_band(data.ed_rank, coef)
+		ed_bands.coef.push(coef)
+		ed_bands.ymin.push(x[0])
+		ed_bands.ymax.push(x[1])
 	}
 
-	return data
+	data.ed_bands = ed_bands
+
+	console.log("bands")
+
+
+
+	// // create permutation for each depth we care
+	// let ed_rank = new Array(data.num_records)
+	// for (let i=0;i<data.num_records;i++) {
+	// 	ed_rank[i] = i
+	// }
+	// ed_rank.sort(function(a,b) {
+	// 	return data.records[a].depths[DEPTH_EXTREMAL] - data.records[b].depths[DEPTH_EXTREMAL] 
+	// })
 }
 
 
-global = { ui: {}, mouse: { position:[0,0], last_position:[0,0] }, events: [] }
-data   = { records: [], focused_timestep: null, focused_record: null }
 
 function event_loop()
 {
@@ -182,6 +253,11 @@ function prepare_ui()
 	global.ui.main_div.onmousedown = function(e){
 		global.events.push(e)
 	}
+
+	window.onkeydown = function(e) {
+		global.events.push(e)
+	}
+
 }
 
 function update_timeseries_canvas()
@@ -209,6 +285,9 @@ function update_timeseries_canvas()
 	// console.log('version updated: '+global.version)
 	ctx.clearRect(0,0,canvas.width, canvas.height)
 
+
+
+
 	let num_records   = data.records.length	
 	let num_timesteps = data.records[0].values.length
 
@@ -234,6 +313,39 @@ function update_timeseries_canvas()
 		let py = tseries_rect[1] + (tseries_rect[3] - 1 - (1.0 * (y - y_min_value) / (y_max_value - y_min_value)) * tseries_rect[3])
 		return [px,py]
 	}
+
+	if (global.draw_bands) {
+		// draw bands
+		// let colors = ['#fff5f0','#fee0d2','#fcbba1','#fc9272','#fb6a4a','#ef3b2c','#cb181d','#a50f15','#67000d']
+		let colors = ['#67001f','#b2182b','#d6604d','#f4a582','#fddbc7','#f7f7f7','#d1e5f0','#92c5de','#4393c3','#2166ac','#053061']
+		for (let i=0;i<colors.length;i++) {
+			colors[i] = colors[i] + '4f'
+		}
+		let bands = data.ed_bands
+		let num_bands = bands.coef.length
+		for (let i=0;i<num_bands;i++) {
+			let coef = bands.coef[i]
+			let ymin = bands.ymin[i]
+			let ymax = bands.ymax[i]
+			ctx.save()
+			ctx.beginPath()
+			let p = map(0,ymin[0])
+			ctx.moveTo(p[0],p[1])
+			for (let j=1;j<data.num_timesteps;j++) {
+				p = map(j,ymin[j])
+				ctx.lineTo(p[0],p[1])
+			}
+			for (let j=data.num_timesteps-1;j>=0;j--) {
+				p = map(j,ymax[j])
+				ctx.lineTo(p[0],p[1])
+			}
+			ctx.closePath()
+			ctx.fillStyle=colors[i]
+			ctx.fill()
+			ctx.restore()
+		}
+	}
+
 
 	let closest_timestep = null
 	let closest_record  = null
@@ -279,36 +391,43 @@ function update_timeseries_canvas()
 		ctx.stroke()
 	}
 
-	ctx.strokeStyle = '#0000007f'
-	ctx.lineWidth  = 1
-	for (let i=0;i<num_records;i++) {
-		if (data.focused_record == null || (i != data.focused_record)) {
-			draw_timeseries(i)
+	if (global.draw_curves) {
+		ctx.strokeStyle = '#0000005f'
+		ctx.lineWidth  = 1
+		for (let i=0;i<num_records;i++) {
+			if (data.focused_record == null || (i != data.focused_record)) {
+				draw_timeseries(i)
+			}
 		}
-	}
 
-	if (data.focused_record != null) {
-		ctx.strokeStyle = '#8800007f'
-		ctx.lineWidth  = 3
-		draw_timeseries(data.focused_record)
+		if (data.focused_record != null) {
+			ctx.strokeStyle = '#8800005f'
+			ctx.lineWidth  = 3
+			draw_timeseries(data.focused_record)
 
-		ctx.strokeStyle = '#880000ff'
-		draw_point(data.focused_record, data.focused_timestep, 3)
+			ctx.strokeStyle = '#880000ff'
+			draw_point(data.focused_record, data.focused_timestep, 3)
 
-		// print the details of the focused timeseries
-		let record = data.records[data.focused_record]
-		let value = record.values[data.focused_timestep]
-		let date = new Date(new Date(2018,0,1).getTime() + (1000 * 24 * 60 * 60 * data.focused_record))
-		let text = `ID: ${data.focused_record} ${date.toDateString()} ${data.focused_timestep}h  #trips: ${value}  ED: ${record.depths[DEPTH_EXTREMAL]}`
-		ctx.font = '24px Monospace';
-		ctx.textAlign = 'right';
-		ctx.fillText(text, rect[0] + rect[2] - 10, rect[1] + rect[3] - 12);
+			// print the details of the focused timeseries
+			let record = data.records[data.focused_record]
+			let value = record.values[data.focused_timestep]
+			let date = new Date(new Date(2018,0,1).getTime() + (1000 * 24 * 60 * 60 * data.focused_record))
+			let rank = data.ed_inverse_rank[data.focused_record] + 1
+			let text = `ID: ${data.focused_record} ${date.toDateString()} ${data.focused_timestep}h  #trips: ${value}  ED: ${record.depths[DEPTH_ed]} r${rank}`
+			ctx.font = '24px Monospace';
+			ctx.textAlign = 'right';
+			ctx.fillText(text, rect[0] + rect[2] - 10, rect[1] + rect[3] - 12);
+		}
 	}
 
 	// update focused record
 	data.focused_record   = closest_record
 	data.focused_timestep = closest_timestep
 }
+
+const KEY_0=48
+const KEY_1=49
+const KEY_2=50
 
 function process_events()
 {
@@ -320,13 +439,20 @@ function process_events()
 			case "mousemove": {
 				global.mouse.position      = [e.x, e.y]
 				global.mouse.last_position = global.mouse.position
-				console.log(e.type)
+				// console.log(e.type)
 			} break
 			case "mousedown": {
-				console.log(e.type)
+				// console.log(e.type)
 			} break
 			case "mouseup": {
-				console.log(e.type)
+				// console.log(e.type)
+			} break
+			case "keydown": {
+				if (e.keyCode == KEY_1) {
+					global.draw_curves = !global.draw_curves
+				} else if (e.keyCode == KEY_2) {
+					global.draw_bands= !global.draw_bands
+				}
 			} break
 		}
 
@@ -350,10 +476,7 @@ function update()
 
 function main()
 {
-	// read the two tables
-	tmp_input  = u_parse_tables(data_input, '|', '\n', String.fromCharCode(1))[0]
-	tmp_output = u_parse_tables(data_output, '|', '\n', String.fromCharCode(1))[0]
-	data.records =  merge_tables(tmp_input, tmp_output)
+	prepare_data()
 
 	prepare_ui()
 
