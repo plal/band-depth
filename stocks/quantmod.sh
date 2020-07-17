@@ -1,5 +1,3 @@
-
-
 # symbol date_start
 cat <<'EOF' > tmp_download_symbol.R
 #!/usr/bin/env Rscript
@@ -7,169 +5,57 @@ require(quantmod)
 args = commandArgs(trailingOnly=TRUE)
 input_symbol = args[1]
 input_from = as.Date(args[2])
-x <- as.data.frame(quantmod::getSymbols(input_symbol, src ="yahoo", from=input_from, auto.assign=F))
+x <- quantmod::getSymbols(input_symbol, src ="yahoo", from=input_from, auto.assign=F)
+colnames(x) = c("open","high","low","close","volume","adj")
 x <- data.frame(symbol=input_symbol, date=rownames(x), x)
 write.table(x,sep="|",quote=F,row.names=F)
 EOF
 chmod +x tmp_download_symbol.R
 
-cat <<'EOF' > tmp_bvsp_symbols
-ABEV3
-AZUL4
-BTOW3
-B3SA3
-BBAS3
-BBSE3
-BBDC3
-BBDC4
-BRAP4
-BRML3
-BRKM5
-BRFS3
-BPAC11
-CRFB3
-CCRO3
-CVCB3
-CMIG4
-HGTX3
-CIEL3
-COGN3
-CSAN3
-CPFE3
-CSNA3
-CYRE3
-ECOR3
-ENBR3
-ELET3
-ELET6
-EMBR3
-EGIE3
-EQTL3
-GGBR4
-GOLL4
-PCAR4
-FLRY3
-HAPV3
-HYPE3
-IGTA3
-GNDI3
-IRBR3
-ITUB4
-ITSA4
-JBSS3
-KLBN11
-RENT3
-LAME4
-LREN3
-MGLU3
-MRFG3
-GOAU4
-BEEF3
-MRVE3
-MULT3
-NTCO3
-PETR3
-PETR4
-QUAL3
-RADL3
-RAIL3
-SBSP3
-SANB11
-SULA11
-SUZB3
-TAEE11
-VIVT4
-TIMP3
-TOTS3
-UGPA3
-USIM5
-VALE3
-VVAR3
-YDUQ3
-WEGE3
+cat <<'EOF' | tr ' ' '\n' > tmp_bvsp_symbols
+ABEV3 AZUL4 BTOW3 B3SA3 BBAS3 BBSE3 BBDC3 BBDC4 BRAP4 BRML3 BRKM5 BRFS3 BPAC11
+CRFB3 CCRO3 CVCB3 CMIG4 HGTX3 CIEL3 COGN3 CSAN3 CPFE3 CSNA3 CYRE3 ECOR3 ENBR3
+ELET3 ELET6 EMBR3 EGIE3 EQTL3 GGBR4 GOLL4 PCAR4 FLRY3 HAPV3 HYPE3 IGTA3 GNDI3
+IRBR3 ITUB4 ITSA4 JBSS3 KLBN11 RENT3 LAME4 LREN3 MGLU3 MRFG3 GOAU4 BEEF3 MRVE3
+MULT3 NTCO3 PETR3 PETR4 QUAL3 RADL3 RAIL3 SBSP3 SANB11 SULA11 SUZB3 TAEE11
+VIVT4 TIMP3 TOTS3 UGPA3 USIM5 VALE3 VVAR3 YDUQ3 WEGE3
 EOF
+
+cat <<'EOF' | tr ' ' '\n' > tmp_snp500_symbols
+A AAL AAP AAPL ABBV ABC ABMD ABT ACN ADBE ADI ADM ADP ADSK AEE AEP AES AFL AIG
+AIV AIZ AJG AKAM ALB ALGN ALK ALL ALLE ALXN AMAT AMCR AMD AME AMGN AMP AMT AMZN
+ANET ANSS ANTM AON AOS APA APD APH APTV ARE ATO ATVI AVB AVGO AVY AWK AXP AZO
+BA BAC BAX BBY BDX BEN BF.B BIIB BIO BK BKNG BKR BLK BLL BMY BR BRK.B BSX BWA
+BXP C CAG CAH CARR CAT CB CBOE CBRE CCI CCL CDNS CDW CE CERN CF CFG CHD CHRW
+CHTR CI CINF CL CLX CMA CMCSA CME CMG CMI CMS CNC CNP COF COG COO COP COST COTY
+CPB CPRT CRM CSCO CSX CTAS CTL CTSH CTVA CTXS CVS CVX CXO D DAL DD DE DFS DG
+DGX DHI DHR DIS DISCA DISCK DISH DLR DLTR DOV DOW DPZ DRE DRI DTE DUK DVA DVN
+DXC DXCM EA EBAY ECL ED EFX EIX EL EMN EMR EOG EQIX EQR ES ESS ETFC ETN ETR
+EVRG EW EXC EXPD EXPE EXR F FANG FAST FB FBHS FCX FDX FE FFIV FIS FISV FITB
+FLIR FLS FLT FMC FOX FOXA FRC FRT FTI FTNT FTV GD GE GILD GIS GL GLW GM GOOG
+GOOGL GPC GPN GPS GRMN GS GWW HAL HAS HBAN HBI HCA HD HES HFC HIG HII HLT HOLX
+HON HPE HPQ HRB HRL HSIC HST HSY HUM HWM IBM ICE IDXX IEX IFF ILMN INCY INFO
+INTC INTU IP IPG IPGP IQV IR IRM ISRG IT ITW IVZ J JBHT JCI JKHY JNJ JNPR JPM K
+KEY KEYS KHC KIM KLAC KMB KMI KMX KO KR KSS KSU L LB LDOS LEG LEN LH LHX LIN
+LKQ LLY LMT LNC LNT LOW LRCX LUV LVS LW LYB LYV MA MAA MAR MAS MCD MCHP MCK MCO
+MDLZ MDT MET MGM MHK MKC MKTX MLM MMC MMM MNST MO MOS MPC MRK MRO MS MSCI MSFT
+MSI MTB MTD MU MXIM MYL NBL NCLH NDAQ NEE NEM NFLX NI NKE NLOK NLSN NOC NOV NOW
+NRG NSC NTAP NTRS NUE NVDA NVR NWL NWS NWSA O ODFL OKE OMC ORCL ORLY OTIS OXY
+PAYC PAYX PBCT PCAR PEAK PEG PEP PFE PFG PG PGR PH PHM PKG PKI PLD PM PNC PNR
+PNW PPG PPL PRGO PRU PSA PSX PVH PWR PXD PYPL QCOM QRVO RCL RE REG REGN RF RHI
+RJF RL RMD ROK ROL ROP ROST RSG RTX SBAC SBUX SCHW SEE SHW SIVB SJM SLB SLG SNA
+SNPS SO SPG SPGI SRE STE STT STX STZ SWK SWKS SYF SYK SYY T TAP TDG TDY TEL TFC
+TFX TGT TIF TJX TMO TMUS TPR TROW TRV TSCO TSN TT TTWO TWTR TXN TXT TYL UA UAA
+UAL UDR UHS ULTA UNH UNM UNP UPS URI USB V VAR VFC VIAC VLO VMC VNO VRSK VRSN
+VRTX VTR VZ WAB WAT WBA WDC WEC WELL WFC WHR WLTW WM WMB WMT WRB WRK WST WU WY
+WYNN XEL XLNX XOM XRAY XRX XYL YUM ZBH ZBRA ZION ZTS
+EOF
+
 
 rm -f script
 date_from="2010-01-01"
-cat tmp_bvsp_symbols | awk '{ printf "./tmp_download_symbol.R %s.SA '"${date_from}"' 2>/dev/null > data_%s\n", $0, $0 }' >> script
-
-#
-# ./tmp_download_symbol.R ^BVSP 2010-01-01 2>/dev/null | tee BVSP | less 
-#
-# AmBev	ABEV3	beverages	São Paulo
-# Azul	AZUL4	airlines	Barueri
-# B2W	BTOW3	online retail	Rio de Janeiro
-# B3	B3SA3	stock exchange	São Paulo
-# Banco do Brasil	BBAS3	banking	Brasília
-# BB Seguridade	BBSE3	insurance	Brasília
-# Bradesco	BBDC3	banking	Osasco
-# Bradesco	BBDC4	banking	Osasco
-# Bradespar	BRAP4	holding	São Paulo
-# BRMalls	BRML3	real state	Rio de Janeiro
-# Braskem	BRKM5	petrochemicals	São Paulo
-# BRF	BRFS3	foods	Itajaí
-# BTG Pactual	BPAC11	banking	São Paulo
-# Carrefour Brasil	CRFB3	retail	São Paulo
-# CCR	CCRO3	transportation	São Paulo
-# CVC Brasil	CVCB3	travel and tourism	Santo André
-# CEMIG	CMIG4	electricity utility	Belo Horizonte
-# Cia. Hering	HGTX3	clothing	Blumenau
-# Cielo	CIEL3	payment system	Barueri
-# Cogna	COGN3	higher education	Belo Horizonte
-# Cosan	CSAN3	conglomerate	São Paulo
-# CPFL Energia	CPFE3	electric utility	Campinas
-# CSN	CSNA3	siderurgy and metallurgy	Rio de Janeiro
-# Cyrela Brazil Realty	CYRE3	real estate	São Paulo
-# EcoRodovias	ECOR3	transportation	São Paulo
-# EDP - Energias do Brasil	ENBR3	electricity utility	São Paulo
-# Eletrobras	ELET3	electric utility	Rio de Janeiro
-# Eletrobras	ELET6	electric utility	Rio de Janeiro
-# Embraer	EMBR3	aerospace/defense	São José dos Campos
-# ENGIE Brasil	EGIE3	electricity utility	Florianópolis
-# Equatorial Energia	EQTL3	electricity utility	Brasília
-# Gerdau	GGBR4	siderurgy and metallurgy	São Paulo
-# Gol	GOLL4	airlines	São Paulo
-# GPA	PCAR4	retail	São Paulo
-# Grupo Fleury	FLRY3	healthcare	São Paulo
-# Grupo Hapvida	HAPV3	healthcare	Fortaleza
-# Hypera Pharma	HYPE3	pharmaceutical	São Paulo
-# Iguatemi	IGTA3	shopping malls	São Paulo
-# Intermédica	GNDI3	healthcare	São Paulo
-# IRB Brasil RE	IRBR3	insurance	Rio de Janeiro
-# Itaú Unibanco	ITUB4	banking	São Paulo
-# Itaúsa	ITSA4	holding	São Paulo
-# JBS	JBSS3	food and beverages	São Paulo
-# Klabin	KLBN11	paper and pulp	São Paulo
-# Localiza	RENT3	rental car	Belo Horizonte
-# Lojas Americanas	LAME4	department store	Rio de Janeiro
-# Lojas Renner	LREN3	department store	Porto Alegre
-# Magazine Luiza	MGLU3	department store	São Paulo
-# Marfrig	MRFG3	foods	São Paulo
-# Metalúrgica Gerdau	GOAU4	holding	Porto Alegre
-# Minerva Foods	BEEF3	foods	Barretos
-# MRV	MRVE3	construction and real estate	Belo Horizonte
-# Multiplan	MULT3	shopping malls	Rio de Janeiro
-# Natura & Co	NTCO3	cosmetics	São Paulo
-# Petrobras	PETR3	oil and gas	Rio de Janeiro
-# Petrobras	PETR4	oil and gas	Rio de Janeiro
-# Qualicorp	QUAL3	insurance	São Paulo
-# RaiaDrogasil	RADL3	drugstore	São Paulo
-# Rumo	RAIL3	logistics	Curitiba
-# Sabesp	SBSP3	waste management	São Paulo
-# Santander Brasil	SANB11	banking	São Paulo
-# SulAmérica Seguros	SULA11	insurance	Rio de Janeiro
-# Suzano Papel e Celulose	SUZB3	pulp and paper	Salvador
-# Taesa S.A.	TAEE11	electricity utility	Rio de Janeiro
-# Telefônica Vivo	VIVT4	telecommunications	São Paulo
-# TIM Participações	TIMP3	telecommunications	Rio de Janeiro
-# TOTVS	TOTS3	software	São Paulo
-# Ultrapar	UGPA3	conglomerate	São Paulo
-# Usiminas	USIM5	siderurgy and metallurgy	Belo Horizonte
-# Vale	VALE3	mining	Rio de Janeiro
-# Via Varejo	VVAR3	retail	São Caetano do Sul
-# YDUQS	YDUQ3	higher education	Rio de Janeiro
-# WEG	WEGE3	industrial engineering	Jaraguá do Sul
-
+cat tmp_bvsp_symbols | awk '{ printf "echo %s.SA; ./tmp_download_symbol.R %s.SA '"${date_from}"' 2>/dev/null > data/data_%s.SA\n", $0, $0, $0 }' >> script
+cat tmp_snp500_symbols | awk '{ printf "echo %s; ./tmp_download_symbol.R %s '"${date_from}"' 2>/dev/null > data/data_%s\n", $0, $0, $0 }' >> script
 
 cat <<'EOF' > tmp_plot.R
 #!/usr/bin/env Rscript
