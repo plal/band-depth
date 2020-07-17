@@ -1,16 +1,16 @@
 # symbol date_start
-cat <<'EOF' > tmp_download_symbol.R
+cat <<'EOF' > pull_symbol
 #!/usr/bin/env Rscript
 require(quantmod)
 args = commandArgs(trailingOnly=TRUE)
 input_symbol = args[1]
 input_from = as.Date(args[2])
-x <- quantmod::getSymbols(input_symbol, src ="yahoo", from=input_from, auto.assign=F)
-colnames(x) = c("open","high","low","close","volume","adj")
+x <- as.data.frame(quantmod::getSymbols(input_symbol, src ="yahoo", from=input_from, auto.assign=F))
+colnames(x) <- c("open","high","low","close","volume","adj")
 x <- data.frame(symbol=input_symbol, date=rownames(x), x)
 write.table(x,sep="|",quote=F,row.names=F)
 EOF
-chmod +x tmp_download_symbol.R
+chmod +x pull_symbol
 
 cat <<'EOF' | tr ' ' '\n' > tmp_bvsp_symbols
 ABEV3 AZUL4 BTOW3 B3SA3 BBAS3 BBSE3 BBDC3 BBDC4 BRAP4 BRML3 BRKM5 BRFS3 BPAC11
@@ -18,7 +18,7 @@ CRFB3 CCRO3 CVCB3 CMIG4 HGTX3 CIEL3 COGN3 CSAN3 CPFE3 CSNA3 CYRE3 ECOR3 ENBR3
 ELET3 ELET6 EMBR3 EGIE3 EQTL3 GGBR4 GOLL4 PCAR4 FLRY3 HAPV3 HYPE3 IGTA3 GNDI3
 IRBR3 ITUB4 ITSA4 JBSS3 KLBN11 RENT3 LAME4 LREN3 MGLU3 MRFG3 GOAU4 BEEF3 MRVE3
 MULT3 NTCO3 PETR3 PETR4 QUAL3 RADL3 RAIL3 SBSP3 SANB11 SULA11 SUZB3 TAEE11
-VIVT4 TIMP3 TOTS3 UGPA3 USIM5 VALE3 VVAR3 YDUQ3 WEGE3
+VIVT4 TIMP3 TOTS3 UGPA3 USIM5 VALE3 VVAR3 YDUQ3 WEGE3 
 EOF
 
 cat <<'EOF' | tr ' ' '\n' > tmp_snp500_symbols
@@ -51,26 +51,79 @@ VRTX VTR VZ WAB WAT WBA WDC WEC WELL WFC WHR WLTW WM WMB WMT WRB WRK WST WU WY
 WYNN XEL XLNX XOM XRAY XRX XYL YUM ZBH ZBRA ZION ZTS
 EOF
 
-
 rm -f script
-date_from="2010-01-01"
-cat tmp_bvsp_symbols | awk '{ printf "echo %s.SA; ./tmp_download_symbol.R %s.SA '"${date_from}"' 2>/dev/null > data/data_%s.SA\n", $0, $0, $0 }' >> script
-cat tmp_snp500_symbols | awk '{ printf "echo %s; ./tmp_download_symbol.R %s '"${date_from}"' 2>/dev/null > data/data_%s\n", $0, $0, $0 }' >> script
+date_from="2000-01-01"
 
-cat <<'EOF' > tmp_plot.R
+cat <<EOF > tmp_mutf
+FNILX Fidelity ZERO Large Cap Index Fund
+FZROX Fidelity ZERO Total Market Index Fund
+VTSMX Vanguard Total Stock Market Index Fund
+VIGIX Vanguard Growth Index Fund Institutional Shares
+FXAIX Fidelity 500 Index Fund
+VOO Vanguard Index Funds S&P 500 ETF USD
+VUG Vanguard Index FDS Vanguard Growth
+EOF
+
+cat <<EOF > tmp_idx
+GSPC S&P 500
+BVSP Bovespa
+EOF
+
+for name in $(cat tmp_mutf | grep -v "^#" | cut -f 1 -d' ' | paste -d' ' -s -); do
+	echo "echo \"mutf:${name}\"; ./pull_symbol ${name} ${date_from} 2>/dev/null > data/m/${name}" >> script
+done
+
+for name in $(cat tmp_idx | grep -v "^#" | cut -f 1 -d' ' | paste -d' ' -s -); do
+	echo "echo \"idx:^${name}\"; ./pull_symbol ^${name} ${date_from} 2>/dev/null > data/i/${name}" >> script
+done
+
+cat tmp_bvsp_symbols | awk '{ printf "echo \"bvsp:%s.SA\"; ./tmp_download_symbol.R %s.SA '"${date_from}"' 2>/dev/null > data/s/%s.SA\n", $0, $0, $0 }' >> script
+cat tmp_snp500_symbols | awk '{ printf "echo \"snp500:%s\"; ./tmp_download_symbol.R %s '"${date_from}"' 2>/dev/null > data/s/%s\n", $0, $0, $0 }' >> script
+
+name="BOVA11"
+echo "echo \"mutf:^${name}\"; ./pull_symbol ${name}.SA ${date_from} 2>/dev/null > data/m/${name}.SA" >> script
+
+cat <<'EOF' > plot
 #!/usr/bin/env Rscript
 require(quantmod)
 args = commandArgs(trailingOnly=TRUE)
-# args <- c("2020-01-01", "2020-07-15", "2020-07-15", "GGBR4", "KLBN11", "AZUL4")
-date_start = args[1]
-date_end   = args[2]
-date_norm  = args[3]
-symbols = args[4:length(args)]
+# args = c("-f=2000-01-01", "-r=2020-07-15", "i/BVSP", "i/GSPC")
+# args <- c("-f:2000-01-01", "-r:2020-07-15", "-t:2020-07-15", "GGBR4", "KLBN11", "AZUL4")
+prefix3 <- substr(args,1,3)
+suffix4 <- substr(args,4,10000)
+from_args <- which(prefix3 == "-f=" | prefix3 == "-f:")
+to_args   <- which(prefix3 == "-t=" | prefix3 == "-t:")
+ref_args  <- which(prefix3 == "-r=" | prefix3 == "-r:")
+to   = Sys.Date()
+from = to - 365
+ref  = from
+if (length(from_args) > 0) {
+	from = try(as.Date(suffix4[max(from_args)]),silent=TRUE)
+	stopifnot(class(from) != "try-error")
+}
+if (length(to_args) > 0) {
+	to = try(as.Date(suffix4[max(to_args)]),silent=TRUE)
+	stopifnot(class(to) != "try-error")
+}
+if (length(ref_args) > 0) {
+	ref = try(as.Date(suffix4[max(ref_args)]),silent=TRUE)
+	stopifnot(class(ref) != "try-error")
+}
 
-filenames=sprintf("data/data_%s", symbols)
+symbol_args <- 1:length(args)
+symbol_args <- setdiff(symbol_args, c(from_args, to_args, ref_args))
+
+date_start = as.character(from)
+date_end   = as.character(to)
+date_norm  = as.character(ref)
+symbols = args[symbol_args]
+
+# one year until today is the default
+
+filenames=sprintf("data/%s", symbols)
+print(filenames)
 
 time_bins = as.numeric(as.Date(date_end) - as.Date(date_start)) + 1
-
 
 value_range = c(1,1)
 tables = list()
@@ -109,7 +162,7 @@ legend("bottomleft",names(tables),col=1:length(tables),pch=16,cex=0.6)
 dev.off()
 
 EOF
-chmod +x tmp_plot.R
+chmod +x plot
 
 
 
