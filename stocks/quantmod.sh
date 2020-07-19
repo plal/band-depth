@@ -77,8 +77,8 @@ for name in $(cat tmp_idx | grep -v "^#" | cut -f 1 -d' ' | paste -d' ' -s -); d
 	echo "echo \"idx:^${name}\"; ./pull_symbol ^${name} ${date_from} 2>/dev/null > data/i/${name}" >> script
 done
 
-cat tmp_bvsp_symbols | awk '{ printf "echo \"bvsp:%s.SA\"; ./tmp_download_symbol.R %s.SA '"${date_from}"' 2>/dev/null > data/s/%s.SA\n", $0, $0, $0 }' >> script
-cat tmp_snp500_symbols | awk '{ printf "echo \"snp500:%s\"; ./tmp_download_symbol.R %s '"${date_from}"' 2>/dev/null > data/s/%s\n", $0, $0, $0 }' >> script
+cat tmp_bvsp_symbols | awk '{ printf "echo \"bvsp:%s.SA\"; ./pull_symbol %s.SA '"${date_from}"' 2>/dev/null > data/s/%s.SA\n", $0, $0, $0 }' >> script
+cat tmp_snp500_symbols | awk '{ printf "echo \"snp500:%s\"; ./pull_symbol %s '"${date_from}"' 2>/dev/null > data/s/%s\n", $0, $0, $0 }' >> script
 
 name="BOVA11"
 echo "echo \"mutf:^${name}\"; ./pull_symbol ${name}.SA ${date_from} 2>/dev/null > data/m/${name}.SA" >> script
