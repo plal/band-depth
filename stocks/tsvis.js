@@ -436,19 +436,47 @@ function update()
 
 var global = {}
 
-function prepare_ui()
-{
-	// main_div
-	let left_div = document.createElement('div')
-	global.ui.left_div = left_div
-	left_div.id = 'left_div'
-	left_div.style = 'width:100%; height:100%'
-}
+// function prepare_ui()
+// {
+// 	// main_div
+// 	let left_div = document.createElement('div')
+// 	global.ui.left_div = left_div
+// 	left_div.id = 'left_div'
+// 	left_div.style = 'width:100%; height:100%'
+// }
 
-function main()
+// function start()
+// {
+// 	console.log(global.symbols)
+// }
+
+async function main()
 {
+	let result
+	try {
+		result = await fetch('http://localhost:8888/desc')
+		global.symbols = await result.json()
+		//
+		// change this with prepare_ui
+		// you can now fill in the symbols
+		//
+		console.log(global.symbols)
+	} catch (e) {
+		console.log("Fatal Error: couldn't download data")
+		return
+	}
+	// then(response => {
+	// 	global.symbols = response.json()
+	// 	setTimeout(start, 10)
+	// })
 	// prepare_data()
-	prepare_ui()
+	// prepare_ui()
 	// setTimeout(update, MSEC_PER_FRAME)
 }
+
+//
+// async function {
+// 	await get_desc();
+// }
+//
 
