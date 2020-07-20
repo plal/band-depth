@@ -32,7 +32,7 @@ function prepare_band(rank, coef) {
 	let m = Math.trunc(data.num_records * coef)
 	let a = n - m
 	let b = n
-	
+
 	let ymin = new Array(data.timesteps)
 	let ymax = new Array(data.timesteps)
 
@@ -89,7 +89,7 @@ function prepare_data() {
 	}
 	ed_rank.sort(function(a,b) {
 		// return 0.5 - Math.random()
-		return data.records[a].depths[DEPTH_ed] - data.records[b].depths[DEPTH_ed] 
+		return data.records[a].depths[DEPTH_ed] - data.records[b].depths[DEPTH_ed]
 	})
 
 	for (let i=0;i<data.num_records;i++) {
@@ -121,7 +121,7 @@ function prepare_data() {
 	// 	ed_rank[i] = i
 	// }
 	// ed_rank.sort(function(a,b) {
-	// 	return data.records[a].depths[DEPTH_EXTREMAL] - data.records[b].depths[DEPTH_EXTREMAL] 
+	// 	return data.records[a].depths[DEPTH_EXTREMAL] - data.records[b].depths[DEPTH_EXTREMAL]
 	// })
 }
 
@@ -222,7 +222,7 @@ function update_timeseries_canvas()
 
 
 
-	let num_records   = data.records.length	
+	let num_records   = data.records.length
 	let num_timesteps = data.records[0].values.length
 
 	// find ranges of the time series
@@ -417,7 +417,7 @@ function process_events()
 			} break
 		}
 
-		// if (e == 
+		// if (e ==
 		// // console.log('update from ' + global.mouse.current + ' to ' + [e.x, e.y])
 		// global.mouse.position      = [e.x, e.y]
 		// global.mouse.last_position = global.mouse.position
@@ -434,7 +434,7 @@ function update()
 }
 */
 
-var global = {}
+var global = {ui:{}}
 
 // function prepare_ui()
 // {
@@ -450,6 +450,46 @@ var global = {}
 // 	console.log(global.symbols)
 // }
 
+function prepare_ui()
+{
+
+	let top_left_input = document.createElement('input')
+	global.ui.top_left_input = top_left_input
+	top_left_input.setAttribute("type","text")
+	top_left_input.id = 'top_left_input'
+	top_left_input.style = 'position:absolute; top:10px; left:10px; margin:5; width:10%; height:4%; border-radius:2px;\
+							background-color:#b0eafe; font-family:Helvetica; font-size:14pt'
+
+	let left_div = document.createElement('div')
+	global.ui.left_div = left_div
+	left_div.id = 'left_div'
+	left_div.style = 'position:absolute; overflow:auto; top:44px; left:10px; margin:5; width:10%; height:75%; border-radius:2px;\
+	 				  background-color:#b0eafe'
+	
+	let table = left_div.appendChild(document.createElement('table'))
+	table.style = 'position:block; width:100%; heigth: 100% !important;' 
+	for (let i=0;i<global.symbols.length;i++) {
+		let row = table.appendChild(document.createElement('tr'))
+		let col = row.appendChild(document.createElement('td'))
+		col.innerText = global.symbols[i]
+	}
+
+	/*
+	// main_div
+	let main_div = document.createElement('div')
+	global.ui.main_div = main_div
+	main_div.id = 'main_div'
+	main_div.style = 'position:relative; top:10px; left:10px; margin:5; width:80%; height:100%; background-color:#b0eafe'
+	*/
+
+	var body = document.getElementsByTagName('body')[0]
+	global.ui.body = body
+	body.style = 'margin:5px; background-color:#6b6f71'
+	body.appendChild(top_left_input)
+	body.appendChild(left_div)
+	//body.appendChild(main_div)
+}
+
 async function main()
 {
 	let result
@@ -461,6 +501,7 @@ async function main()
 		// you can now fill in the symbols
 		//
 		console.log(global.symbols)
+		prepare_ui();
 	} catch (e) {
 		console.log("Fatal Error: couldn't download data")
 		return
@@ -473,10 +514,3 @@ async function main()
 	// prepare_ui()
 	// setTimeout(update, MSEC_PER_FRAME)
 }
-
-//
-// async function {
-// 	await get_desc();
-// }
-//
-

@@ -18,7 +18,7 @@ CRFB3 CCRO3 CVCB3 CMIG4 HGTX3 CIEL3 COGN3 CSAN3 CPFE3 CSNA3 CYRE3 ECOR3 ENBR3
 ELET3 ELET6 EMBR3 EGIE3 EQTL3 GGBR4 GOLL4 PCAR4 FLRY3 HAPV3 HYPE3 IGTA3 GNDI3
 IRBR3 ITUB4 ITSA4 JBSS3 KLBN11 RENT3 LAME4 LREN3 MGLU3 MRFG3 GOAU4 BEEF3 MRVE3
 MULT3 NTCO3 PETR3 PETR4 QUAL3 RADL3 RAIL3 SBSP3 SANB11 SULA11 SUZB3 TAEE11
-VIVT4 TIMP3 TOTS3 UGPA3 USIM5 VALE3 VVAR3 YDUQ3 WEGE3 
+VIVT4 TIMP3 TOTS3 UGPA3 USIM5 VALE3 VVAR3 YDUQ3 WEGE3
 EOF
 
 cat <<'EOF' | tr ' ' '\n' > tmp_snp500_symbols
@@ -70,18 +70,18 @@ BVSP Bovespa
 EOF
 
 for name in $(cat tmp_mutf | grep -v "^#" | cut -f 1 -d' ' | paste -d' ' -s -); do
-	echo "echo \"mutf:${name}\"; ./pull_symbol ${name} ${date_from} 2>/dev/null > data/m/${name}" >> script
+	echo "echo \"mutf:${name}\"; ./pull_symbol ${name} ${date_from} 2>/dev/null > data/${name}" >> script
 done
 
 for name in $(cat tmp_idx | grep -v "^#" | cut -f 1 -d' ' | paste -d' ' -s -); do
-	echo "echo \"idx:^${name}\"; ./pull_symbol ^${name} ${date_from} 2>/dev/null > data/i/${name}" >> script
+	echo "echo \"idx:^${name}\"; ./pull_symbol ^${name} ${date_from} 2>/dev/null > data/${name}" >> script
 done
 
-cat tmp_bvsp_symbols | awk '{ printf "echo \"bvsp:%s.SA\"; ./pull_symbol %s.SA '"${date_from}"' 2>/dev/null > data/s/%s.SA\n", $0, $0, $0 }' >> script
-cat tmp_snp500_symbols | awk '{ printf "echo \"snp500:%s\"; ./pull_symbol %s '"${date_from}"' 2>/dev/null > data/s/%s\n", $0, $0, $0 }' >> script
+cat tmp_bvsp_symbols | awk '{ printf "echo \"bvsp:%s.SA\"; ./pull_symbol %s.SA '"${date_from}"' 2>/dev/null > data/%s.SA\n", $0, $0, $0 }' >> script
+cat tmp_snp500_symbols | awk '{ printf "echo \"snp500:%s\"; ./pull_symbol %s '"${date_from}"' 2>/dev/null > data/%s\n", $0, $0, $0 }' >> script
 
 name="BOVA11"
-echo "echo \"mutf:^${name}\"; ./pull_symbol ${name}.SA ${date_from} 2>/dev/null > data/m/${name}.SA" >> script
+echo "echo \"mutf:^${name}\"; ./pull_symbol ${name}.SA ${date_from} 2>/dev/null > data/${name}.SA" >> script
 
 cat <<'EOF' > plot
 #!/usr/bin/env Rscript
@@ -164,9 +164,62 @@ dev.off()
 EOF
 chmod +x plot
 
+cat <<'EOF' > plot_all.R
+#!/usr/bin/env Rscript
+require(quantmod)
+args = commandArgs(trailingOnly=TRUE)
+# args <- c("2020-01-01", "2020-07-15", "2020-07-15", "GGBR4", "KLBN11", "AZUL4")
+date_start   = args[1]
+date_end     = args[2]
+date_norm    = args[3]
+pdf_name     = args[4]
+symbols_path = args[5]
+
+fnames <- list.files(path=symbols_path)
+symbols <- sapply(strsplit(fnames,"_"), function(x) x[2])
+#symbols = args[5:length(args)]
+
+filenames=sprintf("data/data_%s", symbols)
+
+time_bins = as.numeric(as.Date(date_end) - as.Date(date_start)) + 1
 
 
+value_range = c(1,1)
+tables = list()
+for (i in 1:length(symbols)) {
+	t <- read.table(filenames[i],sep="|",header=T)
+	names(t) <- c("symbol","date","open","high","low","close","volume","adjusted")
+	t$date <- as.character(t$date)
+	t <- t[t$date >= date_start  & t$date <= date_end,]
+	t <- data.frame(t, offset=as.numeric(as.Date(t$date) - as.Date(date_start)))
+	norm_row <- min(which(t$date >= date_norm))
+	t <- data.frame(t, value=t$close / t$close[norm_row])
+	t <- t[!is.na(t$value), ]
+	value_range <- range(c(value_range), t$value)
+	tables[[symbols[i]]] = t
+}
 
+pdf_name <- paste(pdf_name,".pdf",sep="")
+pdf(pdf_name,width=8,height=5.5,pointsize=12)
+par(mar=c(5,4,4,1))
+plot(0,type="n",ylab="",xlab="",xlim=c(0,time_bins-1),ylim=value_range,axes=F,main=sprintf("prices relative to date %s", date_norm))
+#
+# ,xaxs="i"
+# ,yaxs="i"
+#
+yticks = pretty(value_range,n=8)
+xticks = pretty(0:(time_bins-1),n=9)
+abline(v=xticks,col=gray(0.8))
+abline(h=yticks,col=gray(0.8))
+lapply(1:length(tables), function(i) {
+	t <- tables[[i]]
+	lines(t$offset, t$value, col=i, pch=16, cex=0.6)
+})
+axis(1,xticks,labels=(as.Date(date_start) + xticks),las=2,cex.axis=0.65)
+axis(2,yticks,labels=sprintf("%.2f",yticks),las=2,cex.axis=0.8)
+box()
+#legend("bottomleft",names(tables),col=1:length(tables),pch=16,cex=0.6)
+dev.off()
 
-
-
+EOF
+chmod +x plot_all.R
