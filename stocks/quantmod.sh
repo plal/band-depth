@@ -3,12 +3,24 @@ cat <<'EOF' > pull_symbol
 #!/usr/bin/env Rscript
 require(quantmod)
 args = commandArgs(trailingOnly=TRUE)
-input_symbol = args[1]
-input_from = as.Date(args[2])
-x <- as.data.frame(quantmod::getSymbols(input_symbol, src ="yahoo", from=input_from, auto.assign=F))
-colnames(x) <- c("open","high","low","close","volume","adj")
-x <- data.frame(symbol=input_symbol, date=rownames(x), x)
-write.table(x,sep="|",quote=F,row.names=F)
+prefix3 <- substr(args,1,3)
+suffix4 <- substr(args,4,10000)
+from_args <- which(prefix3 == "-f=" | prefix3 == "-f:")
+from = "2000-01-01"
+if (length(from_args) > 0) {
+	from = try(as.Date(suffix4[max(from_args)]),silent=TRUE)
+	stopifnot(class(from) != "try-error")
+}
+symbol_args <- 1:length(args)
+symbol_args <- setdiff(symbol_args, from_args)
+for (symbol in args[symbol_args]) {
+	filename <- sprintf("data/%s", symbol)
+	input_symbol = symbol
+	x <- as.data.frame(quantmod::getSymbols(input_symbol, src ="yahoo", from=from, auto.assign=F))
+	colnames(x) <- c("open","high","low","close","volume","adj")
+	x <- data.frame(symbol=input_symbol, date=rownames(x), x)
+	write.table(x,file=filename,sep="|",quote=F,row.names=F)
+}
 EOF
 chmod +x pull_symbol
 
@@ -70,18 +82,18 @@ BVSP Bovespa
 EOF
 
 for name in $(cat tmp_mutf | grep -v "^#" | cut -f 1 -d' ' | paste -d' ' -s -); do
-	echo "echo \"mutf:${name}\"; ./pull_symbol ${name} ${date_from} 2>/dev/null > data/${name}" >> script
+	echo "echo \"mutf:${name}\"; ./pull_symbol ${name} ${date_from} 2>/dev/null" >> script
 done
 
 for name in $(cat tmp_idx | grep -v "^#" | cut -f 1 -d' ' | paste -d' ' -s -); do
-	echo "echo \"idx:^${name}\"; ./pull_symbol ^${name} ${date_from} 2>/dev/null > data/${name}" >> script
+	echo "echo \"idx:^${name}\"; ./pull_symbol ^${name} ${date_from} 2>/dev/null" >> script
 done
 
-cat tmp_bvsp_symbols | awk '{ printf "echo \"bvsp:%s.SA\"; ./pull_symbol %s.SA '"${date_from}"' 2>/dev/null > data/%s.SA\n", $0, $0, $0 }' >> script
-cat tmp_snp500_symbols | awk '{ printf "echo \"snp500:%s\"; ./pull_symbol %s '"${date_from}"' 2>/dev/null > data/%s\n", $0, $0, $0 }' >> script
+cat tmp_bvsp_symbols | awk '{ printf "echo \"bvsp:%s.SA\"; ./pull_symbol %s.SA '"${date_from}"' 2>/dev/null \n", $0, $0 }' >> script
+cat tmp_snp500_symbols | awk '{ printf "echo \"snp500:%s\"; ./pull_symbol %s '"${date_from}"' 2>/dev/null \n", $0, $0 }' >> script
 
 name="BOVA11"
-echo "echo \"mutf:^${name}\"; ./pull_symbol ${name}.SA ${date_from} 2>/dev/null > data/${name}.SA" >> script
+echo "echo \"mutf:^${name}\"; ./pull_symbol ${name}.SA ${date_from} 2>/dev/null" >> script
 
 cat <<'EOF' > plot
 #!/usr/bin/env Rscript

@@ -1,507 +1,302 @@
-/*
-//------------------------------------------------------------------------------
-// MAIN
-//------------------------------------------------------------------------------
-
-const MSEC_PER_FRAME = 33
-
-//depth values order: original, fast, tdigest, original modified, fast modified, tdigest modified, sliding (wsize 15), extremal
-const DEPTH_od        = 0
-const DEPTH_od_time   = 1
-const DEPTH_fd        = 2
-const DEPTH_fd_time   = 3
-const DEPTH_td        = 4
-const DEPTH_td_time   = 5
-const DEPTH_omd       = 6
-const DEPTH_omd_time  = 7
-const DEPTH_fmd       = 8
-const DEPTH_fmd_time  = 9
-const DEPTH_tmd       = 10
-const DEPTH_tmd_time  = 11
-const DEPTH_sd        = 12
-const DEPTH_sd_time   = 13
-const DEPTH_ed        = 14
-
-global = { ui: {}, mouse: { position:[0,0], last_position:[0,0] }, events: [], draw_curves: true, draw_bands: true, coef: 1 }
-data   = { records: [], focused_timestep: null, focused_record: null }
+"use strict";
 
 
-
-function prepare_band(rank, coef) {
-	let n = data.num_records
-	let m = Math.trunc(data.num_records * coef)
-	let a = n - m
-	let b = n
-
-	let ymin = new Array(data.timesteps)
-	let ymax = new Array(data.timesteps)
-
-	for (let j=0;j<data.num_timesteps;j++) {
-		let y = data.records[rank[a]].values[j]
-		ymin[j] = y
-		ymax[j] = y
-		for (let k=a+1;k<b;++k) {
-			y = data.records[rank[k]].values[j]
-			ymin[j] = Math.min(y,ymin[j])
-			ymax[j] = Math.max(y,ymax[j])
-		}
-	}
-
-	return [ymin, ymax]
-
+const EVENT= {
+	FILTER: "event_filter",
+	TOGGLE_SYMBOL: "event_toggle_symbol"
 }
 
 
-function prepare_data() {
-	//console.log(outputs.rows, outputs.columns)
-
-	// read the two tables
-	let inputs  = u_parse_tables(data_input, '|', '\n', String.fromCharCode(1))[0]
-	let outputs = u_parse_tables(data_output, '|', '\n', String.fromCharCode(1))[0]
-
-	if (inputs.rows != outputs.rows) { throw Exception("SizeMismatch") }
-
-	let rows     = inputs.rows
-	let in_cols  = inputs.columns
-	let out_cols = outputs.columns
-	let records = []
-	for(let i=0; i<rows; i++) {
-		let tseries = {values:[], depths: []}
-		for(let j=0; j<in_cols;j++) {
-			tseries.values.push(parseFloat(inputs.column_values[j][i]))
-		}
-		//depth values order: original, fast, tdigest, original modified, fast modified, tdigest modified, sliding (wsize 15), extremal
-		for(let j=0; j<out_cols;j++) {
-			//console.log(j)
-			tseries.depths.push(parseFloat(outputs.column_values[j][i]));
-		}
-		records.push(tseries)
-	}
-	data.records =  records
-	data.num_timesteps = in_cols
-	data.num_records = rows
-
-	// create permutation for each depth we care
-	let ed_rank = new Array(data.num_records)
-	let ed_inverse_rank = new Array(data.num_records)
-	for (let i=0;i<data.num_records;i++) {
-		ed_rank[i] = i
-	}
-	ed_rank.sort(function(a,b) {
-		// return 0.5 - Math.random()
-		return data.records[a].depths[DEPTH_ed] - data.records[b].depths[DEPTH_ed]
-	})
-
-	for (let i=0;i<data.num_records;i++) {
-		ed_inverse_rank[ed_rank[i]] = i
-	}
-	data.ed_rank = ed_rank
-	data.ed_inverse_rank = ed_inverse_rank
-
-	// ed_bands
-	let ed_bands = { coef: [], ymin: [], ymax: []}
-	let delta = 1.0/12
-	for (let i=0;i<11;++i) {
-		let coef = 1 - delta - delta * i
-		x = prepare_band(data.ed_rank, coef)
-		ed_bands.coef.push(coef)
-		ed_bands.ymin.push(x[0])
-		ed_bands.ymax.push(x[1])
-	}
-
-	data.ed_bands = ed_bands
-
-	console.log("bands")
-
-
-
-	// // create permutation for each depth we care
-	// let ed_rank = new Array(data.num_records)
-	// for (let i=0;i<data.num_records;i++) {
-	// 	ed_rank[i] = i
-	// }
-	// ed_rank.sort(function(a,b) {
-	// 	return data.records[a].depths[DEPTH_EXTREMAL] - data.records[b].depths[DEPTH_EXTREMAL]
-	// })
+var global = { 
+	ui:{},
+	symbols: [],
+	chart_symbols: [],
+	events: []
 }
 
-
-
-function event_loop()
+function install_event_listener(component, raw_event_type, context, event_type) 
 {
-	// for (;;) {
-	// 	events = get_events()
-	// 	update(events)
-	// 	render()
-	// }
+	component.addEventListener(raw_event_type, function(e) {
+		console.log(event_type)
+		global.events.push({ event_type: event_type, context: context, raw: e })
+	});
 }
 
 
-//
-// [ ]      |
-//          |
-// AAPL     |          /\____/
-// AMZN     | --------/
-// ...      |
-//
-function prepare_ui()
+const REFERENCE_DATE = new Date(1900,0,1)
+const MSEC_PER_DAY   = 1000 * 60 * 60 * 24
+
+// expecting data in the form "YYYY-MM-DD"
+function date_offset(date_string)
 {
-
-
-
-
-
-
-
-
-
-
-	// main_div
-	let main_div = document.createElement('div')
-	global.ui.main_div = main_div
-	main_div.id = 'main_div'
-	main_div.style = 'width:100%; height:100%'
-
-	// main_canvas
-	let main_canvas = main_div.appendChild(document.createElement('canvas'))
-	global.ui.main_canvas = main_canvas
-	main_canvas.style='position: absolute; left:0px; top:0px; z-index:1;'
-	main_canvas.id = 'main_canvas'
-	main_canvas.tabindex = '1'
-
-	var body = document.getElementsByTagName('body')[0]
-	global.ui.body = body
-	body.style.margin='0px'
-	body.appendChild(main_div)
-	// main_div.appendChild(main_canvas)
-
-
-	global.ui.main_div.onmousemove = function(e){
-		global.events.push(e)
-	}
-
-	global.ui.main_div.onmouseup= function(e){
-		global.events.push(e)
-	}
-
-	global.ui.main_div.onmousedown = function(e){
-		global.events.push(e)
-	}
-
-	window.onkeydown = function(e) {
-		global.events.push(e)
-	}
-
+	let year  = parseInt(date_string.substr(0,4))
+	let month = parseInt(date_string.substr(5,2))
+	let day   = parseInt(date_string.substr(8,2))
+	return Math.trunc(((new Date(year,month-1,day)) - REFERENCE_DATE)/MSEC_PER_DAY)
 }
 
-function update_timeseries_canvas()
+// expecting data in the form "yyyy-mm-dd"
+function date_offset_to_string(date_offset)
 {
-	let canvas = global.ui.main_canvas
-	let ctx = canvas.getContext('2d')
-	canvas.width  = window.innerWidth;
-	canvas.height = window.innerHeight;
-	// console.log('canvas w,h: ',canvas.width,canvas.height)
-
-	let rect = [0, 0, canvas.width, canvas.height]
-
-	//
-	// @todo let user rescale the tseries from the bottom by dragging the plot
-	// make this rect global
-	// general area of the plot
-	//
-	// let w = global.settings.tseries_panel[2]
-	// let h = global.settings.tseries_panel[3]
-	// let pos = [canvas.width-w,canvas.height-h-LAYOUT_STATUS_BAR_HEIGHT-2]
-	// let rect = [pos[0], pos[1], w, h]
-	// update the tseries_panel so that the position is adjusted
-	// global.settings.tseries_panel = rect.slice()
-
-	// console.log('version updated: '+global.version)
-	ctx.clearRect(0,0,canvas.width, canvas.height)
-
-
-
-
-	let num_records   = data.records.length
-	let num_timesteps = data.records[0].values.length
-
-	// find ranges of the time series
-	let x_min_value = 0
-	let x_max_value = num_timesteps-1
-	let y_min_value = data.records[0].values[0]
-	let y_max_value = y_min_value
-	for (let i=0;i<num_records;i++) {
-		let values = data.records[i].values
-		for (let j=0;j<num_timesteps;j++) {
-			let v = values[j]
-			y_min_value = Math.min(v, y_min_value)
-			y_max_value = Math.max(v, y_max_value)
-		}
-	}
-
-	let margin = 10
-	let tseries_rect = [ rect[0] + margin, rect[1] + margin, rect[2] - 2*margin, rect[3] - 2*margin]
-
-	function map(x, y) {
-		let px = tseries_rect[0] + (1.0 * (x - x_min_value) / (x_max_value - x_min_value)) * tseries_rect[2]
-		let py = tseries_rect[1] + (tseries_rect[3] - 1 - (1.0 * (y - y_min_value) / (y_max_value - y_min_value)) * tseries_rect[3])
-		return [px,py]
-	}
-
-	if (global.draw_bands) {
-		// draw bands
-		// let colors = ['#fff5f0','#fee0d2','#fcbba1','#fc9272','#fb6a4a','#ef3b2c','#cb181d','#a50f15','#67000d']
-		let colors = ['#67001f','#b2182b','#d6604d','#f4a582','#fddbc7','#f7f7f7','#d1e5f0','#92c5de','#4393c3','#2166ac','#053061']
-		for (let i=0;i<colors.length;i++) {
-			let r = parseInt(colors[i].slice(1,3),16)
-			let g = parseInt(colors[i].slice(3,5),16)
-			let b = parseInt(colors[i].slice(5,7),16)
-			let o = 0.7
-			r = Math.trunc(r * o + 255 * (1-o)).toString(16)
-			g = Math.trunc(g * o + 255 * (1-o)).toString(16)
-			b = Math.trunc(b * o + 255 * (1-o)).toString(16)
-			r = r.length == 2 ? r : ("0"+r)
-			g = g.length == 2 ? g : ("0"+g)
-			b = b.length == 2 ? b : ("0"+b)
-			let color = "#" + r + g + b
-			colors[i] = color
-			// colors[i] = colors[i] + '4f'
-		}
-		let bands = data.ed_bands
-		let num_bands = bands.coef.length
-		for (let i=0;i<num_bands;i++) {
-			let coef = bands.coef[i]
-			let ymin = bands.ymin[i]
-			let ymax = bands.ymax[i]
-			ctx.save()
-			ctx.beginPath()
-			let p = map(0,ymin[0])
-			ctx.moveTo(p[0],p[1])
-			for (let j=1;j<data.num_timesteps;j++) {
-				p = map(j,ymin[j])
-				ctx.lineTo(p[0],p[1])
-			}
-			for (let j=data.num_timesteps-1;j>=0;j--) {
-				p = map(j,ymax[j])
-				ctx.lineTo(p[0],p[1])
-			}
-			ctx.closePath()
-			ctx.fillStyle=colors[i]
-			ctx.fill()
-			ctx.restore()
-		}
-	}
-
-
-	let closest_timestep = null
-	let closest_record  = null
-	let min_distance_threshold = 5 * 5
-	let closest_distance = 100000
-	function update_closest_point(record, timestep, px, py) {
-		let dx = global.mouse.position[0] - px
-		let dy = global.mouse.position[1] - py
-		let dist = dx * dx + dy * dy
-		if (dist <= min_distance_threshold && dist < closest_distance) {
-			closest_record = record
-			closest_timestep = timestep
-		}
-	}
-
-	//
-	// render timeseries
-	//
-
-	function draw_timeseries(i) {
-		let values = data.records[i].values
-		ctx.beginPath()
-		let y0 = values[0]
-		let p = map(0,y0)
-		update_closest_point(i, 0, p[0], p[1])
-		ctx.moveTo(p[0],p[1])
-		for (let j=1;j<num_timesteps;j++) {
-			let yi = values[j]
-			p = map(j,yi)
-			update_closest_point(i, j, p[0], p[1])
-			ctx.lineTo(p[0],p[1])
-		}
-		ctx.stroke()
-	}
-
-	function draw_point(i, j, r) {
-		let values = data.records[i].values
-		let yi = values[j]
-		p = map(j,yi)
-		update_closest_point(i, j, p[0], p[1])
-		ctx.beginPath()
-		ctx.arc(p[0],p[1],r,0,Math.PI*2,true)
-		ctx.stroke()
-	}
-
-	if (global.draw_curves) {
-		ctx.strokeStyle = '#0000005f'
-		ctx.lineWidth  = 1
-
-		let n = num_records
-		let k = Math.trunc(global.coef * n)
-		let a = n - k
-		let b = n
-
-		for (let i=a;i<b;i++) {
-			let curve_i = data.ed_rank[i]
-			if (data.focused_record == null || (curve_i != data.focused_record)) {
-				draw_timeseries(curve_i)
-			}
-		}
-
-		if (data.focused_record != null) {
-			ctx.strokeStyle = '#8800005f'
-			ctx.lineWidth  = 3
-			draw_timeseries(data.focused_record)
-
-			ctx.strokeStyle = '#880000ff'
-			draw_point(data.focused_record, data.focused_timestep, 3)
-
-			// print the details of the focused timeseries
-			let record = data.records[data.focused_record]
-			let value = record.values[data.focused_timestep]
-			let date = new Date(new Date(2018,0,1).getTime() + (1000 * 24 * 60 * 60 * data.focused_record))
-			let rank = data.ed_inverse_rank[data.focused_record] + 1
-			let text = `coef: ${global.coef}  ID: ${data.focused_record} ${date.toDateString()} ${data.focused_timestep}h  #trips: ${value}  ED: ${record.depths[DEPTH_ed]} r${rank}`
-			ctx.font = '24px Monospace';
-			ctx.textAlign = 'right';
-			ctx.fillText(text, rect[0] + rect[2] - 10, rect[1] + rect[3] - 12);
-		}
-	}
-
-	// update focused record
-	data.focused_record   = closest_record
-	data.focused_timestep = closest_timestep
+	let x = REFERENCE_DATE + date_offset * MSEC_PER_DAY
+	return ((x.getYear())+1900).toString().padStart(4,'0') + "-" 
+		(x.getMonth()+1).toString().padStart(2,'0') + "-" 
+		(x.getDate()).toString().padStart(2,'0')
 }
 
-const KEY_0=48
-const KEY_1=49
-const KEY_2=50
-const KEY_3=51
-const KEY_4=52
-
-function process_events()
+async function download_symbol_data(symbol)
 {
-	for (let i=0;i<global.events.length;++i) {
-		let e = global.events[i]
-		console.log(e.type)
-
-		switch(e.type) {
-			case "mousemove": {
-				global.mouse.position      = [e.x, e.y]
-				global.mouse.last_position = global.mouse.position
-				// console.log(e.type)
-			} break
-			case "mousedown": {
-				// console.log(e.type)
-			} break
-			case "mouseup": {
-				// console.log(e.type)
-			} break
-			case "keydown": {
-				if (e.keyCode == KEY_1) {
-					global.draw_curves = !global.draw_curves
-				} else if (e.keyCode == KEY_2) {
-					global.draw_bands= !global.draw_bands
-				} else if (e.keyCode == KEY_3) {
-					global.coef = global.coef - 0.01
-					if (global.coef < 0) global.coef = 0
-				} else if (e.keyCode == KEY_4) {
-					global.coef = global.coef + 0.01
-					if (global.coef > 1) global.coef = 1
-				}
-			} break
+	let result
+	try {
+		let result = await fetch('http://localhost:8888/get?p='+symbol.name)
+		let data   = await result.json()
+		let dict = {}
+		for (let i=0;i<data.data[0].close.length;i++) {
+			let offset = date_offset(data.data[0].date[i])
+			let price = parseFloat(data.data[0].close[i])
+			dict[offset] = price
 		}
-
-		// if (e ==
-		// // console.log('update from ' + global.mouse.current + ' to ' + [e.x, e.y])
-		// global.mouse.position      = [e.x, e.y]
-		// global.mouse.last_position = global.mouse.position
+		symbol.data = dict
+	} catch (e) {
+		console.log("Fatal Error: couldn't download symbol data" + symbol.name)
+		return
 	}
-	global.events.length = 0
 }
-
-function update()
-{
-	// event processing
-	process_events()
-	update_timeseries_canvas()
-	setTimeout(update, MSEC_PER_FRAME)
-}
-*/
-
-var global = {ui:{}}
-
-// function prepare_ui()
-// {
-// 	// main_div
-// 	let left_div = document.createElement('div')
-// 	global.ui.left_div = left_div
-// 	left_div.id = 'left_div'
-// 	left_div.style = 'width:100%; height:100%'
-// }
-
-// function start()
-// {
-// 	console.log(global.symbols)
-// }
 
 function prepare_ui()
 {
-
-	let top_left_input = document.createElement('input')
-	global.ui.top_left_input = top_left_input
-	top_left_input.setAttribute("type","text")
-	top_left_input.id = 'top_left_input'
-	top_left_input.style = 'position:absolute; top:10px; left:10px; margin:5; width:10%; height:4%; border-radius:2px;\
+	let filter_input = document.createElement('input')
+	global.ui.filter_input = filter_input
+	filter_input.setAttribute("type","text")
+	filter_input.id = 'filter_input'
+	filter_input.style = 'position:absolute; top:5px; left:5px; margin:5; width:200px; height:24px; border-radius:2px;\
 							background-color:#b0eafe; font-family:Helvetica; font-size:14pt'
+	install_event_listener(filter_input, 'change', filter_input, EVENT.FILTER)
 
-	let left_div = document.createElement('div')
-	global.ui.left_div = left_div
-	left_div.id = 'left_div'
-	left_div.style = 'position:absolute; overflow:auto; top:44px; left:10px; margin:5; width:10%; height:75%; border-radius:2px;\
+
+	let symbols_table_div = document.createElement('div')
+	global.ui.symbols_table_div = symbols_table_div
+	symbols_table_div.id = 'symbols_table_div'
+	symbols_table_div.style = 'position:absolute; overflow:auto; top:44px; left:10px; margin:5; width:200px; height:500px; border-radius:2px;\
 	 				  background-color:#b0eafe'
-	
-	let table = left_div.appendChild(document.createElement('table'))
+	let table = symbols_table_div.appendChild(document.createElement('table'))
+	global.ui.symbols_table = table
 	table.style = 'position:block; width:100%; heigth: 100% !important;' 
 	for (let i=0;i<global.symbols.length;i++) {
+		let symbol = global.symbols[i]
 		let row = table.appendChild(document.createElement('tr'))
 		let col = row.appendChild(document.createElement('td'))
-		col.innerText = global.symbols[i]
+		col.innerText = symbol.name
+		col.style = "cursor: pointer"
+		symbol.ui_row = row
+		symbol.ui_col = col
+		install_event_listener(symbol.ui_col, 'click', symbol, EVENT.TOGGLE_SYMBOL)
 	}
 
-	/*
 	// main_div
-	let main_div = document.createElement('div')
-	global.ui.main_div = main_div
-	main_div.id = 'main_div'
-	main_div.style = 'position:relative; top:10px; left:10px; margin:5; width:80%; height:100%; background-color:#b0eafe'
-	*/
+	let ts_div = document.createElement('div')
+	global.ui.ts_div = ts_div
+	ts_div.id = 'ts_div'
+	ts_div.style = 'position:absolute; top:5px; left:220px; margin:5; width:800; height:600px; background-color:#aaaaaa'
+
+	let ts_canvas = ts_div.appendChild(document.createElement('canvas'))
+	global.ui.ts_canvas = ts_canvas
+	ts_canvas.style='position: absolute; left:0px; top:0px; z-index:1;'
+	ts_canvas.id = 'ts_canvas'
+	ts_canvas.tabindex = '1'
+
+
 
 	var body = document.getElementsByTagName('body')[0]
 	global.ui.body = body
 	body.style = 'margin:5px; background-color:#6b6f71'
-	body.appendChild(top_left_input)
-	body.appendChild(left_div)
-	//body.appendChild(main_div)
+	body.appendChild(filter_input)
+	body.appendChild(symbols_table_div)
+	body.appendChild(ts_div)
+}
+
+function process_event_queue()
+{
+	// process events
+	for (let i=0;i<global.events.length;i++) {
+		let e = global.events[i]
+		if (e.event_type == EVENT.FILTER) {
+			let filter_input = e.context
+			let pattern = filter_input.value
+			let re = new RegExp('')
+			try {
+				re = new RegExp(pattern);
+			} catch (e) {
+				console.log("invalid regular expression")
+			}
+			for (let i=0;i<global.symbols.length;i++) {
+				let symbol = global.symbols[i]
+				let found = symbol.name.search(re) >= 0
+				if (found && !symbol.on_table) {
+					global.ui.symbols_table.appendChild(symbol.ui_row)
+					symbol.on_table = true
+				} else if (!found && symbol.on_table) {
+					global.ui.symbols_table.removeChild(symbol.ui_row)
+					symbol.on_table = false
+				}
+			}
+			console.log(pattern)
+		} else if (e.event_type == EVENT.TOGGLE_SYMBOL) {
+			let symbol = e.context
+			if (!symbol.on_chart) {
+				// add symbol to chart
+				symbol.on_chart = true
+				global.chart_symbols.push(symbol)
+				download_symbol_data(symbol)
+			} 
+		}
+	}
+	global.events.length = 0
+}
+
+// draw the time series charts
+function update_ts()
+{
+	let canvas = global.ui.ts_canvas
+	let ctx = canvas.getContext('2d')
+	canvas.width  = global.ui.ts_div.clientWidth;
+	canvas.height = global.ui.ts_div.clientHeight;
+	// console.log('canvas w,h: ',canvas.width,canvas.height)
+
+	let rect = [0, 0, canvas.width, canvas.height]
+
+	const SIDE = {
+		BOTTOM: 0,
+		LEFT:1,
+		TOP:2,
+		RIGHT:3
+	}
+
+	const RECT= {
+		LEFT: 0,
+		TOP:1,
+		WIDTH:2,
+		HEIGHT:3
+	}
+
+	let margin = [ 100, 50, 5, 5 ]
+	let ts_rect = [ rect[0] + margin[SIDE.LEFT], 
+		        rect[1] + margin[SIDE.TOP],
+		        rect[2] - margin[SIDE.LEFT] - margin[SIDE.RIGHT],
+		        rect[3] - margin[SIDE.BOTTOM] - margin[SIDE.TOP] ]
+
+	// console.log('version updated: '+global.version)
+	ctx.clearRect(0,0,canvas.width, canvas.height)
+
+	ctx.fillStyle="#ff0000"
+	ctx.moveTo(0,0)
+	ctx.rect(ts_rect[RECT.LEFT],ts_rect[RECT.TOP],ts_rect[RECT.WIDTH],ts_rect[RECT.HEIGHT])
+	ctx.fill()
+
+	// for s with data do
+	//     find date range in the data <--
+
+	// 1970-01-01 
+
+
+	// symbol.data = { 0: 123.4, 
+	let date_0 = date_offset("2020-01-01")        // 0 1 2 3 4 5 ...
+	let date_1 = date_offset("2020-07-18")        //
+	let date_norm = date_offset("2020-07-15")
+
+	let y_min = 1.0
+	let y_max = 1.0
+
+	for (let i=0;i<global.chart_symbols.length;i++) {
+		let symbol = global.chart_symbols[i]
+		if (symbol.data == null) {
+			continue
+		}
+		let norm_value = symbol.data[date_norm]
+		if (norm_value == undefined) {
+			console.log("no price for symbol " + symbol.name + " on norm date")
+			continue
+		}
+		for (let j=date_0;j<=date_1;j++) {
+			let value = symbol.data[j]
+			if (value == undefined) { continue }
+			value = value / norm_value
+			y_min = Math.min(y_min, value)
+			y_max = Math.max(y_max, value)
+		}
+	}
+
+	let x_min = 0
+	let x_max = date_1 - date_0
+	function map(x, y) {
+		let px = ts_rect[RECT.LEFT] + (1.0 * (x - x_min) / (x_max - x_min)) * ts_rect[RECT.WIDTH]
+		let py = ts_rect[RECT.TOP] + (ts_rect[RECT.HEIGHT] - 1 - (1.0 * (y - y_min) / (y_max - y_min)) * ts_rect[RECT.HEIGHT])
+		return [px,py]
+	}
+
+	for (let i=0;i<global.chart_symbols.length;i++) {
+		let symbol = global.chart_symbols[i]
+		if (symbol.data == null) {
+			continue
+		}
+		let norm_value = symbol.data[date_norm]
+		if (norm_value == undefined) {
+			console.log("no price for symbol " + symbol.name + " on norm date")
+			continue
+		}
+
+		let first_point_drawn = false
+		ctx.strokeStyle="#000000"
+		ctx.beginPath()
+		for (let j=x_min;j<=x_max;j++) {
+			let yi = symbol.data[date_0 + j]
+			if (yi == undefined) {
+				continue
+			}
+			yi = yi/norm_value
+			let p = map(j,yi)
+			if (!first_point_drawn) {
+				ctx.moveTo(p[0],p[1])
+				first_point_drawn = true
+			} else {
+				ctx.lineTo(p[0],p[1])
+			}
+		}
+		ctx.stroke()
+	}
+}
+
+function update()
+{
+	process_event_queue()
+
+	update_ts(); // draw ts
+
+	// schedule update to process events
+	setTimeout(update, 32)
 }
 
 async function main()
 {
 	let result
 	try {
-		result = await fetch('http://localhost:8888/desc')
-		global.symbols = await result.json()
+		let result = await fetch('http://localhost:8888/desc')
+		let symbol_names = await result.json()
+		let symbols = []
+		for (let i=0;i<symbol_names.length;i++) {
+			symbols.push({ name:symbol_names[i], ui_row:null, ui_col:null, on_table:true, on_chart:false, data: null})
+		}
+		global.symbols = symbols
 		//
 		// change this with prepare_ui
 		// you can now fill in the symbols
 		//
 		console.log(global.symbols)
 		prepare_ui();
+
+		// schedule update to process events
+		setTimeout(update, 32)
+
 	} catch (e) {
 		console.log("Fatal Error: couldn't download data")
 		return
