@@ -7,14 +7,14 @@ const EVENT= {
 }
 
 
-var global = { 
+var global = {
 	ui:{},
 	symbols: [],
 	chart_symbols: [],
 	events: []
 }
 
-function install_event_listener(component, raw_event_type, context, event_type) 
+function install_event_listener(component, raw_event_type, context, event_type)
 {
 	component.addEventListener(raw_event_type, function(e) {
 		console.log(event_type)
@@ -39,8 +39,8 @@ function date_offset(date_string)
 function date_offset_to_string(date_offset)
 {
 	let x = REFERENCE_DATE + date_offset * MSEC_PER_DAY
-	return ((x.getYear())+1900).toString().padStart(4,'0') + "-" 
-		(x.getMonth()+1).toString().padStart(2,'0') + "-" 
+	return ((x.getYear())+1900).toString().padStart(4,'0') + "-"
+		(x.getMonth()+1).toString().padStart(2,'0') + "-"
 		(x.getDate()).toString().padStart(2,'0')
 }
 
@@ -69,8 +69,8 @@ function prepare_ui()
 	global.ui.filter_input = filter_input
 	filter_input.setAttribute("type","text")
 	filter_input.id = 'filter_input'
-	filter_input.style = 'position:absolute; top:5px; left:5px; margin:5; width:200px; height:24px; border-radius:2px;\
-							background-color:#b0eafe; font-family:Helvetica; font-size:14pt'
+	filter_input.style = 'position:absolute; top:5px; left:10px; margin:5; width:200px; height:24px; border-radius:2px;\
+						  background-color:#b0eafe; font-family:Helvetica; font-size:14pt'
 	install_event_listener(filter_input, 'change', filter_input, EVENT.FILTER)
 
 
@@ -78,10 +78,10 @@ function prepare_ui()
 	global.ui.symbols_table_div = symbols_table_div
 	symbols_table_div.id = 'symbols_table_div'
 	symbols_table_div.style = 'position:absolute; overflow:auto; top:44px; left:10px; margin:5; width:200px; height:500px; border-radius:2px;\
-	 				  background-color:#b0eafe'
+	 				  		   background-color:#b0eafe'
 	let table = symbols_table_div.appendChild(document.createElement('table'))
 	global.ui.symbols_table = table
-	table.style = 'position:block; width:100%; heigth: 100% !important;' 
+	table.style = 'position:block; width:100%; heigth: 100% !important;'
 	for (let i=0;i<global.symbols.length;i++) {
 		let symbol = global.symbols[i]
 		let row = table.appendChild(document.createElement('tr'))
@@ -97,7 +97,7 @@ function prepare_ui()
 	let ts_div = document.createElement('div')
 	global.ui.ts_div = ts_div
 	ts_div.id = 'ts_div'
-	ts_div.style = 'position:absolute; top:5px; left:220px; margin:5; width:800; height:600px; background-color:#aaaaaa'
+	ts_div.style = 'position:absolute; top:5px; left:220px; margin:5; width:1000; height:539px; background-color:#aaaaaa'
 
 	let ts_canvas = ts_div.appendChild(document.createElement('canvas'))
 	global.ui.ts_canvas = ts_canvas
@@ -148,7 +148,13 @@ function process_event_queue()
 				symbol.on_chart = true
 				global.chart_symbols.push(symbol)
 				download_symbol_data(symbol)
-			} 
+			} else {
+				let to_remove = global.chart_symbols.indexOf(symbol)
+				if (to_remove > -1) {
+				  global.chart_symbols.splice(to_remove, 1);
+				}
+				symbol.on_chart = false
+			}
 		}
 	}
 	global.events.length = 0
@@ -180,7 +186,7 @@ function update_ts()
 	}
 
 	let margin = [ 100, 50, 5, 5 ]
-	let ts_rect = [ rect[0] + margin[SIDE.LEFT], 
+	let ts_rect = [ rect[0] + margin[SIDE.LEFT],
 		        rect[1] + margin[SIDE.TOP],
 		        rect[2] - margin[SIDE.LEFT] - margin[SIDE.RIGHT],
 		        rect[3] - margin[SIDE.BOTTOM] - margin[SIDE.TOP] ]
@@ -188,7 +194,7 @@ function update_ts()
 	// console.log('version updated: '+global.version)
 	ctx.clearRect(0,0,canvas.width, canvas.height)
 
-	ctx.fillStyle="#ff0000"
+	ctx.fillStyle="#6b6f71"
 	ctx.moveTo(0,0)
 	ctx.rect(ts_rect[RECT.LEFT],ts_rect[RECT.TOP],ts_rect[RECT.WIDTH],ts_rect[RECT.HEIGHT])
 	ctx.fill()
@@ -196,10 +202,10 @@ function update_ts()
 	// for s with data do
 	//     find date range in the data <--
 
-	// 1970-01-01 
+	// 1970-01-01
 
 
-	// symbol.data = { 0: 123.4, 
+	// symbol.data = { 0: 123.4,
 	let date_0 = date_offset("2020-01-01")        // 0 1 2 3 4 5 ...
 	let date_1 = date_offset("2020-07-18")        //
 	let date_norm = date_offset("2020-07-15")
@@ -246,7 +252,7 @@ function update_ts()
 		}
 
 		let first_point_drawn = false
-		ctx.strokeStyle="#000000"
+		ctx.strokeStyle="#FFFFFF"
 		ctx.beginPath()
 		for (let j=x_min;j<=x_max;j++) {
 			let yi = symbol.data[date_0 + j]
