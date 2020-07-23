@@ -108,7 +108,7 @@ to_args   <- which(prefix3 == "-t=" | prefix3 == "-t:")
 ref_args  <- which(prefix3 == "-r=" | prefix3 == "-r:")
 to   = Sys.Date()
 from = to - 365
-ref  = from
+ref  = to-1
 if (length(from_args) > 0) {
 	from = try(as.Date(suffix4[max(from_args)]),silent=TRUE)
 	stopifnot(class(from) != "try-error")

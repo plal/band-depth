@@ -93,7 +93,7 @@ class TSServer:
 
 if __name__ == "__main__":
     ts_server = TSServer()
-    port = 8888 
+    port = 8888
     server = http.server.HTTPServer(('', port), CustomHTTPHandler)
     print ('Started httpserver on port ' , port)
     server.serve_forever()
