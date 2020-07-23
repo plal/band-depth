@@ -79,6 +79,7 @@ function prepare_ui()
 	symbols_table_div.id = 'symbols_table_div'
 	symbols_table_div.style = 'position:absolute; overflow:auto; top:44px; left:10px; margin:5; width:200px; height:500px; border-radius:2px;\
 	 				  		   background-color:#b0eafe'
+
 	let table = symbols_table_div.appendChild(document.createElement('table'))
 	global.ui.symbols_table = table
 	table.style = 'position:block; width:100%; heigth: 100% !important;'
@@ -88,6 +89,7 @@ function prepare_ui()
 		let col = row.appendChild(document.createElement('td'))
 		col.innerText = symbol.name
 		col.style = "cursor: pointer"
+		col.style.color ="#888888"
 		symbol.ui_row = row
 		symbol.ui_col = col
 		install_event_listener(symbol.ui_col, 'click', symbol, EVENT.TOGGLE_SYMBOL)
@@ -146,6 +148,8 @@ function process_event_queue()
 			if (!symbol.on_chart) {
 				// add symbol to chart
 				symbol.on_chart = true
+				symbol.ui_col.style.color = "#000000"
+				symbol.ui_col.style.fontWeight = 'bold'
 				global.chart_symbols.push(symbol)
 				download_symbol_data(symbol)
 			} else {
@@ -154,6 +158,8 @@ function process_event_queue()
 				  global.chart_symbols.splice(to_remove, 1);
 				}
 				symbol.on_chart = false
+				symbol.ui_col.style.color = "#888888"
+				symbol.ui_col.style.fontWeight = 'initial'
 			}
 		}
 	}
