@@ -69,16 +69,23 @@ function prepare_ui()
 	global.ui.filter_input = filter_input
 	filter_input.setAttribute("type","text")
 	filter_input.id = 'filter_input'
-	filter_input.style = 'position:absolute; top:5px; left:10px; margin:5; width:200px; height:24px; border-radius:2px;\
-						  background-color:#b0eafe; font-family:Helvetica; font-size:14pt'
+	filter_input.style = 'position:absolute; padding:5; width:100%; height:5%; border-radius:2px;\
+						  background-color:#91D4D6; font-family:Helvetica; font-size:13pt; display: grid; grid-row-gap: 10%;'
 	install_event_listener(filter_input, 'change', filter_input, EVENT.FILTER)
 
 
 	let symbols_table_div = document.createElement('div')
 	global.ui.symbols_table_div = symbols_table_div
 	symbols_table_div.id = 'symbols_table_div'
-	symbols_table_div.style = 'position:absolute; overflow:auto; top:44px; left:10px; margin:5; width:200px; height:500px; border-radius:2px;\
-	 				  		   background-color:#b0eafe'
+	symbols_table_div.style = 'position:absolute; overflow:auto; top:5%; width:100%; height:95%; border-radius:2px;\
+	 				  		   background-color:#91D4D6'
+
+	let left_div = document.createElement('div')
+   	global.ui.left_div = left_div
+   	left_div.id = 'left_div'
+   	left_div.style = 'position:absolute; width:10%; height:100%'
+   	left_div.appendChild(filter_input)
+   	left_div.appendChild(symbols_table_div)
 
 	let table = symbols_table_div.appendChild(document.createElement('table'))
 	global.ui.symbols_table = table
@@ -89,7 +96,9 @@ function prepare_ui()
 		let col = row.appendChild(document.createElement('td'))
 		col.innerText = symbol.name
 		col.style = "cursor: pointer"
-		col.style.color ="#888888"
+		col.style.fontFamily = 'Helvetica'
+		col.style.fontSize = '13pt'
+		col.style.color ="#44748C"
 		symbol.ui_row = row
 		symbol.ui_col = col
 		install_event_listener(symbol.ui_col, 'click', symbol, EVENT.TOGGLE_SYMBOL)
@@ -99,7 +108,7 @@ function prepare_ui()
 	let ts_div = document.createElement('div')
 	global.ui.ts_div = ts_div
 	ts_div.id = 'ts_div'
-	ts_div.style = 'position:absolute; top:5px; left:220px; margin:5; width:1000; height:539px; background-color:#aaaaaa'
+	ts_div.style = 'position:absolute; left:10%; width:90%; height:100%; background-color:#44748C'
 
 	let ts_canvas = ts_div.appendChild(document.createElement('canvas'))
 	global.ui.ts_canvas = ts_canvas
@@ -111,10 +120,13 @@ function prepare_ui()
 
 	var body = document.getElementsByTagName('body')[0]
 	global.ui.body = body
-	body.style = 'margin:5px; background-color:#6b6f71'
-	body.appendChild(filter_input)
-	body.appendChild(symbols_table_div)
+	body.style = 'margin:0px; background-color:#04142C'
+	//body.appendChild(filter_input)
+	//body.appendChild(symbols_table_div)
+	body.appendChild(left_div)
 	body.appendChild(ts_div)
+
+	//draw_axis()
 }
 
 function process_event_queue()
@@ -148,7 +160,7 @@ function process_event_queue()
 			if (!symbol.on_chart) {
 				// add symbol to chart
 				symbol.on_chart = true
-				symbol.ui_col.style.color = "#000000"
+				symbol.ui_col.style.color = "#04142C"
 				symbol.ui_col.style.fontWeight = 'bold'
 				global.chart_symbols.push(symbol)
 				download_symbol_data(symbol)
@@ -158,7 +170,7 @@ function process_event_queue()
 				  global.chart_symbols.splice(to_remove, 1);
 				}
 				symbol.on_chart = false
-				symbol.ui_col.style.color = "#888888"
+				symbol.ui_col.style.color = "#44748C"
 				symbol.ui_col.style.fontWeight = 'initial'
 			}
 		}
@@ -200,21 +212,16 @@ function update_ts()
 	// console.log('version updated: '+global.version)
 	ctx.clearRect(0,0,canvas.width, canvas.height)
 
-	ctx.fillStyle="#6b6f71"
+	ctx.fillStyle="#04142C"
 	ctx.moveTo(0,0)
 	ctx.rect(ts_rect[RECT.LEFT],ts_rect[RECT.TOP],ts_rect[RECT.WIDTH],ts_rect[RECT.HEIGHT])
 	ctx.fill()
 
-	// for s with data do
-	//     find date range in the data <--
-
-	// 1970-01-01
-
-
-	// symbol.data = { 0: 123.4,
-	let date_0 = date_offset("2020-01-01")        // 0 1 2 3 4 5 ...
-	let date_1 = date_offset("2020-07-18")        //
+	let date_0 = date_offset("2020-01-01")
+	let date_1 = date_offset("2020-07-18")
 	let date_norm = date_offset("2020-07-15")
+
+	console.log(date_0, date_1)
 
 	let y_min = 1.0
 	let y_max = 1.0
@@ -275,6 +282,47 @@ function update_ts()
 			}
 		}
 		ctx.stroke()
+	}
+}
+
+function draw_axis(date0, date1) {
+	let canvas = global.ui.ts_canvas
+	let ctx = canvas.getContext('2d')
+	canvas.width  = global.ui.ts_div.clientWidth;
+	canvas.height = global.ui.ts_div.clientHeight;
+
+	var grid_size = 25;
+	var x_axis_distance_grid_lines = 5;
+	var y_axis_distance_grid_lines = 5;
+	var x_axis_starting_point = { number: 1, suffix: '\u03a0' };
+	var y_axis_starting_point = { number: 1, suffix: '' };
+
+	// no of vertical grid lines
+	var num_lines_x = Math.floor(canvas_height/grid_size);
+
+	// no of horizontal grid lines
+	var num_lines_y = Math.floor(canvas_width/grid_size);
+
+	// Draw grid lines along X-axis
+	for(var i=0; i<=num_lines_x; i++) {
+	    ctx.beginPath();
+	    ctx.lineWidth = 1;
+
+	    // If line represents X-axis draw in different color
+	    if(i == x_axis_distance_grid_lines)
+	        ctx.strokeStyle = "#000000";
+	    else
+	        ctx.strokeStyle = "#e9e9e9";
+
+	    if(i == num_lines_x) {
+	        ctx.moveTo(0, grid_size*i);
+	        ctx.lineTo(canvas_width, grid_size*i);
+	    }
+	    else {
+	        ctx.moveTo(0, grid_size*i+0.5);
+	        ctx.lineTo(canvas_width, grid_size*i+0.5);
+	    }
+	    ctx.stroke();
 	}
 }
 
