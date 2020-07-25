@@ -69,7 +69,7 @@ function prepare_ui()
 	global.ui.filter_input = filter_input
 	filter_input.setAttribute("type","text")
 	filter_input.id = 'filter_input'
-	filter_input.style = 'position:relative; width:100%; margin:2px; border-radius:2px; background-color:#91D4D6; font-family:Helvetica; font-size:13pt;'
+	filter_input.style = 'position:relative; width:100%; margin:2px; border-radius:2px; background-color:#91D4D6; font-family:Courier; font-size:14pt;'
 	install_event_listener(filter_input, 'change', filter_input, EVENT.FILTER)
 
 
@@ -94,8 +94,8 @@ function prepare_ui()
 		let col = row.appendChild(document.createElement('td'))
 		col.innerText = symbol.name
 		col.style = "cursor: pointer"
-		col.style.fontFamily = 'Helvetica'
-		col.style.fontSize = '13pt'
+		col.style.fontFamily = 'Courier'
+		col.style.fontSize = '14pt'
 		col.style.color ="#44748C"
 		symbol.ui_row = row
 		symbol.ui_col = col
@@ -220,7 +220,7 @@ function update_ts()
 	let date_1 = date_offset("2020-07-18")
 	let date_norm = date_offset("2020-07-15")
 //
-	ctx.font = "16px Comic Sans MS"
+	ctx.font = "bold 14pt Courier"
 	ctx.fillStyle = "#91D4D6";
 	ctx.textAlign = "center";
 
@@ -238,11 +238,13 @@ function update_ts()
 	ctx.save()
 	ctx.strokeStyle = "#91D4D6";
 	ctx.lineWidth   = 2;
+
+	ctx.beginPath()
 	//y axis
-	ctx.moveTo(margin[SIDE.LEFT]-5, margin[SIDE.TOP])
-	ctx.lineTo(margin[SIDE.LEFT]-5, canvas.height-margin[SIDE.BOTTOM]+5)
+	ctx.moveTo(margin[SIDE.LEFT], margin[SIDE.TOP])
+	ctx.lineTo(margin[SIDE.LEFT], canvas.height-margin[SIDE.BOTTOM])
 	//x axis
-	ctx.lineTo(canvas.width-margin[SIDE.RIGHT], canvas.height-margin[SIDE.BOTTOM]+5)
+	ctx.lineTo(canvas.width-margin[SIDE.RIGHT], canvas.height-margin[SIDE.BOTTOM])
 	ctx.stroke()
 
 	ctx.restore()
