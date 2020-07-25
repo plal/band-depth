@@ -69,23 +69,21 @@ function prepare_ui()
 	global.ui.filter_input = filter_input
 	filter_input.setAttribute("type","text")
 	filter_input.id = 'filter_input'
-	filter_input.style = 'position:absolute; padding:5; width:100%; height:5%; border-radius:2px;\
-						  background-color:#91D4D6; font-family:Helvetica; font-size:13pt; display: grid; grid-row-gap: 10%;'
+	filter_input.style = 'position:relative; width:100%; margin:2px; border-radius:2px; background-color:#91D4D6; font-family:Helvetica; font-size:13pt;'
 	install_event_listener(filter_input, 'change', filter_input, EVENT.FILTER)
 
 
 	let symbols_table_div = document.createElement('div')
 	global.ui.symbols_table_div = symbols_table_div
 	symbols_table_div.id = 'symbols_table_div'
-	symbols_table_div.style = 'position:absolute; overflow:auto; top:5%; width:100%; height:95%; border-radius:2px;\
-	 				  		   background-color:#91D4D6'
+	symbols_table_div.style = 'position:relative; width:100%; height:100%; margin:2px; overflow:auto; border-radius:2px; background-color:#91D4D6'
 
-	let left_div = document.createElement('div')
-   	global.ui.left_div = left_div
-   	left_div.id = 'left_div'
-   	left_div.style = 'position:absolute; width:10%; height:100%'
-   	left_div.appendChild(filter_input)
-   	left_div.appendChild(symbols_table_div)
+	let left_panel = document.createElement('div')
+   	global.ui.left_panel = left_panel
+   	left_panel.id = 'left_panel'
+   	left_panel.style = 'display:flex; flex-direction:column; background-color:#04142C; align-content:space-around;'
+   	left_panel.appendChild(filter_input)
+   	left_panel.appendChild(symbols_table_div)
 
 	let table = symbols_table_div.appendChild(document.createElement('table'))
 	global.ui.symbols_table = table
@@ -104,29 +102,30 @@ function prepare_ui()
 		install_event_listener(symbol.ui_col, 'click', symbol, EVENT.TOGGLE_SYMBOL)
 	}
 
-	// main_div
 	let ts_div = document.createElement('div')
 	global.ui.ts_div = ts_div
 	ts_div.id = 'ts_div'
-	ts_div.style = 'position:absolute; left:10%; width:90%; height:100%; background-color:#44748C'
+	ts_div.style = 'background-color:#44748C'
 
 	let ts_canvas = ts_div.appendChild(document.createElement('canvas'))
 	global.ui.ts_canvas = ts_canvas
-	ts_canvas.style='position: absolute; left:0px; top:0px; z-index:1;'
+	ts_canvas.style='position:relative; left:0px; top:0px; z-index:1;'
 	ts_canvas.id = 'ts_canvas'
 	ts_canvas.tabindex = '1'
 
+	let main_div = document.createElement('div')
+	global.ui.main_div = main_div
+	main_div.id = 'main_div'
+	main_div.style = 'position:absolute; width:100%; height:100%; display:grid; grid-template-columns:10% auto; grid-template-rows:100%; grid-column-gap:10px;'
+	main_div.appendChild(left_panel)
+	main_div.appendChild(ts_div)
 
 
 	var body = document.getElementsByTagName('body')[0]
 	global.ui.body = body
 	body.style = 'margin:0px; background-color:#04142C'
-	//body.appendChild(filter_input)
-	//body.appendChild(symbols_table_div)
-	body.appendChild(left_div)
-	body.appendChild(ts_div)
+	body.appendChild(main_div)
 
-	//draw_axis()
 }
 
 function process_event_queue()
@@ -220,8 +219,34 @@ function update_ts()
 	let date_0 = date_offset("2020-01-01")
 	let date_1 = date_offset("2020-07-18")
 	let date_norm = date_offset("2020-07-15")
+//
+	ctx.font = "16px Comic Sans MS"
+	ctx.fillStyle = "#91D4D6";
+	ctx.textAlign = "center";
 
-	console.log(date_0, date_1)
+	//drawing axis labels
+	let newx = 30, newy = canvas.height/2
+	ctx.save();
+	ctx.translate(newx, newy);
+	ctx.rotate(-Math.PI/2);
+	ctx.fillText("LABEL-Y", 0, 0);
+	ctx.restore();
+
+	ctx.fillText("LABEL-X", canvas.width/2, canvas.height-50)
+
+	//drawing axis strokes
+	ctx.save()
+	ctx.strokeStyle = "#91D4D6";
+	ctx.lineWidth   = 2;
+	//y axis
+	ctx.moveTo(margin[SIDE.LEFT]-5, margin[SIDE.TOP])
+	ctx.lineTo(margin[SIDE.LEFT]-5, canvas.height-margin[SIDE.BOTTOM]+5)
+	//x axis
+	ctx.lineTo(canvas.width-margin[SIDE.RIGHT], canvas.height-margin[SIDE.BOTTOM]+5)
+	ctx.stroke()
+
+	ctx.restore()
+
 
 	let y_min = 1.0
 	let y_max = 1.0
@@ -285,23 +310,27 @@ function update_ts()
 	}
 }
 
-function draw_axis(date0, date1) {
-	let canvas = global.ui.ts_canvas
+function draw_axis(date0, date1, canvas) {
 	let ctx = canvas.getContext('2d')
-	canvas.width  = global.ui.ts_div.clientWidth;
-	canvas.height = global.ui.ts_div.clientHeight;
 
+	ctx.strokeStyle='#FFFFFF'
+	ctx.beginPath()
+	ctx.moveTo(10,10)
+	ctx.lineTo(20,20)
+	ctx.stroke()
+
+	/*
 	var grid_size = 25;
 	var x_axis_distance_grid_lines = 5;
 	var y_axis_distance_grid_lines = 5;
-	var x_axis_starting_point = { number: 1, suffix: '\u03a0' };
-	var y_axis_starting_point = { number: 1, suffix: '' };
+	var x_axis_starting_point = date_offset(date0);
+	var y_axis_starting_point = date_offset(date1);
 
 	// no of vertical grid lines
-	var num_lines_x = Math.floor(canvas_height/grid_size);
+	var num_lines_x = Math.floor(canvas.height/grid_size);
 
 	// no of horizontal grid lines
-	var num_lines_y = Math.floor(canvas_width/grid_size);
+	var num_lines_y = Math.floor(canvas.width/grid_size);
 
 	// Draw grid lines along X-axis
 	for(var i=0; i<=num_lines_x; i++) {
@@ -310,9 +339,9 @@ function draw_axis(date0, date1) {
 
 	    // If line represents X-axis draw in different color
 	    if(i == x_axis_distance_grid_lines)
-	        ctx.strokeStyle = "#000000";
+	        ctx.strokeStyle = "#FFFFFF";
 	    else
-	        ctx.strokeStyle = "#e9e9e9";
+	        ctx.strokeStyle = "#888888";
 
 	    if(i == num_lines_x) {
 	        ctx.moveTo(0, grid_size*i);
@@ -324,6 +353,7 @@ function draw_axis(date0, date1) {
 	    }
 	    ctx.stroke();
 	}
+	*/
 }
 
 function update()
