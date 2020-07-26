@@ -3,7 +3,10 @@
 
 const EVENT= {
 	FILTER: "event_filter",
-	TOGGLE_SYMBOL: "event_toggle_symbol"
+	TOGGLE_SYMBOL: "event_toggle_symbol",
+	UPDATE_START_DATE: "event_update_start_date",
+	UPDATE_END_DATE: "event_update_end_date",
+	UPDATE_NORM_DATE: "event_update_norm_date"
 }
 
 
@@ -11,7 +14,10 @@ var global = {
 	ui:{},
 	symbols: [],
 	chart_symbols: [],
-	events: []
+	events: [],
+	date_start: "2020-01-01",
+	date_end: "2020-07-18",
+	date_norm: "2020-07-15"
 }
 
 function install_event_listener(component, raw_event_type, context, event_type)
@@ -21,7 +27,6 @@ function install_event_listener(component, raw_event_type, context, event_type)
 		global.events.push({ event_type: event_type, context: context, raw: e })
 	});
 }
-
 
 const REFERENCE_DATE = new Date(1900,0,1)
 const MSEC_PER_DAY   = 1000 * 60 * 60 * 24
@@ -38,9 +43,9 @@ function date_offset(date_string)
 // expecting data in the form "yyyy-mm-dd"
 function date_offset_to_string(date_offset)
 {
-	let x = REFERENCE_DATE + date_offset * MSEC_PER_DAY
-	return ((x.getYear())+1900).toString().padStart(4,'0') + "-"
-		(x.getMonth()+1).toString().padStart(2,'0') + "-"
+	let x = new Date(REFERENCE_DATE.getTime() + date_offset * MSEC_PER_DAY)
+	return ((x.getYear())+1900).toString().padStart(4,'0') + "-" +
+		(x.getMonth()+1).toString().padStart(2,'0') + "-" +
 		(x.getDate()).toString().padStart(2,'0')
 }
 
@@ -65,13 +70,81 @@ async function download_symbol_data(symbol)
 
 function prepare_ui()
 {
+
+	let start_date_input = document.createElement('input')
+	global.ui.start_date_input = start_date_input
+	start_date_input.setAttribute("type","date")
+	//start_date_input.placeholder = "dd-mm-yyyy"
+	start_date_input.defaultValue = "2020-01-01"
+	start_date_input.classList.add('date_input')
+	start_date_input.id = start_date_input
+	install_event_listener(start_date_input, 'change', start_date_input, EVENT.UPDATE_START_DATE)
+
+
+	let start_date_label = document.createElement('label')
+	global.ui.start_date_label = start_date_label
+	start_date_label.classList.add('date_input_label')
+	start_date_label.setAttribute("for", start_date_input)
+	start_date_label.innerHTML = "start"
+
+	let start_date_grid = document.createElement('div')
+	global.ui.start_date_grid = start_date_grid
+	start_date_grid.id = start_date_grid
+	start_date_grid.style = 'display:flex; flex-direction:row; background-color:#04142C; align-content:space-around'
+	start_date_grid.appendChild(start_date_label)
+	start_date_grid.appendChild(start_date_input)
+
+	let end_date_input = document.createElement('input')
+	global.ui.end_date_input = end_date_input
+	end_date_input.setAttribute("type","date")
+	//end_date_input.placeholder = "dd-mm-yyyy"
+	end_date_input.defaultValue = "2020-07-18"
+	end_date_input.classList.add('date_input')
+	end_date_input.id = end_date_input
+	install_event_listener(end_date_input, 'change', end_date_input, EVENT.UPDATE_END_DATE)
+
+	let end_date_label = document.createElement('label')
+	global.ui.end_date_label = end_date_label
+	end_date_label.setAttribute("for", end_date_input)
+	end_date_label.classList.add('date_input_label')
+	end_date_label.innerHTML = "end"
+
+	let end_date_grid = document.createElement('div')
+	global.ui.end_date_grid = end_date_grid
+	end_date_grid.id = end_date_grid
+	end_date_grid.style = 'display:flex; flex-direction:row; background-color:#04142C; align-content:space-around'
+	end_date_grid.appendChild(end_date_label)
+	end_date_grid.appendChild(end_date_input)
+
+	let norm_date_input = document.createElement('input')
+	global.ui.norm_date_input = norm_date_input
+	norm_date_input.setAttribute("type","date")
+	//norm_date_input.placeholder = "dd-mm-yyyy"
+	norm_date_input.defaultValue = "2020-07-15"
+	norm_date_input.classList.add('date_input')
+	norm_date_input.id = norm_date_input
+	install_event_listener(norm_date_input, 'change', norm_date_input, EVENT.UPDATE_NORM_DATE)
+
+	let norm_date_label = document.createElement('label')
+	global.ui.norm_date_label = norm_date_label
+	norm_date_label.setAttribute("for", norm_date_input)
+	norm_date_label.classList.add('date_input_label')
+	norm_date_label.innerHTML = "norm"
+
+	let norm_date_grid = document.createElement('div')
+	global.ui.norm_date_grid = norm_date_grid
+	norm_date_grid.id = norm_date_grid
+	norm_date_grid.style = 'display:flex; flex-direction:row; background-color:#04142C; align-content:space-around'
+	norm_date_grid.appendChild(norm_date_label)
+	norm_date_grid.appendChild(norm_date_input)
+
+
 	let filter_input = document.createElement('input')
 	global.ui.filter_input = filter_input
 	filter_input.setAttribute("type","text")
 	filter_input.id = 'filter_input'
 	filter_input.style = 'position:relative; width:100%; margin:2px; border-radius:2px; background-color:#91D4D6; font-family:Courier; font-size:14pt;'
 	install_event_listener(filter_input, 'change', filter_input, EVENT.FILTER)
-
 
 	let symbols_table_div = document.createElement('div')
 	global.ui.symbols_table_div = symbols_table_div
@@ -82,6 +155,9 @@ function prepare_ui()
    	global.ui.left_panel = left_panel
    	left_panel.id = 'left_panel'
    	left_panel.style = 'display:flex; flex-direction:column; background-color:#04142C; align-content:space-around;'
+	left_panel.appendChild(start_date_grid)
+	left_panel.appendChild(end_date_grid)
+	left_panel.appendChild(norm_date_grid)
    	left_panel.appendChild(filter_input)
    	left_panel.appendChild(symbols_table_div)
 
@@ -116,7 +192,7 @@ function prepare_ui()
 	let main_div = document.createElement('div')
 	global.ui.main_div = main_div
 	main_div.id = 'main_div'
-	main_div.style = 'position:absolute; width:100%; height:100%; display:grid; grid-template-columns:10% auto; grid-template-rows:100%; grid-column-gap:10px;'
+	main_div.style = 'position:absolute; width:100%; height:100%; display:grid; grid-template-columns:11% auto; grid-template-rows:100%; grid-column-gap:10px;'
 	main_div.appendChild(left_panel)
 	main_div.appendChild(ts_div)
 
@@ -172,6 +248,15 @@ function process_event_queue()
 				symbol.ui_col.style.color = "#44748C"
 				symbol.ui_col.style.fontWeight = 'initial'
 			}
+		} else if (e.event_type == EVENT.UPDATE_START_DATE) {
+			let date = e.context.value
+			global.date_start = date
+		} else if (e.event_type == EVENT.UPDATE_END_DATE) {
+			let date = e.context.value
+			global.date_end = date
+		} else if (e.event_type == EVENT.UPDATE_NORM_DATE) {
+			let date = e.context.value
+			global.date_norm = date
 		}
 	}
 	global.events.length = 0
@@ -216,23 +301,16 @@ function update_ts()
 	ctx.rect(ts_rect[RECT.LEFT],ts_rect[RECT.TOP],ts_rect[RECT.WIDTH],ts_rect[RECT.HEIGHT])
 	ctx.fill()
 
-	let date_0 = date_offset("2020-01-01")
-	let date_1 = date_offset("2020-07-18")
-	let date_norm = date_offset("2020-07-15")
+	let date_start = date_offset(global.date_start)
+	let date_end = date_offset(global.date_end)
+	let date_norm = date_offset(global.date_norm)
 //
 	ctx.font = "bold 14pt Courier"
 	ctx.fillStyle = "#91D4D6";
 	ctx.textAlign = "center";
 
 	//drawing axis labels
-	let newx = 30, newy = canvas.height/2
-	ctx.save();
-	ctx.translate(newx, newy);
-	ctx.rotate(-Math.PI/2);
-	ctx.fillText("LABEL-Y", 0, 0);
-	ctx.restore();
-
-	ctx.fillText("LABEL-X", canvas.width/2, canvas.height-50)
+	//ctx.fillText("LABEL-X", canvas.width/2, canvas.height-50)
 
 	//drawing axis strokes
 	ctx.save()
@@ -242,13 +320,13 @@ function update_ts()
 	ctx.beginPath()
 	//y axis
 	ctx.moveTo(margin[SIDE.LEFT], margin[SIDE.TOP])
-	ctx.lineTo(margin[SIDE.LEFT], canvas.height-margin[SIDE.BOTTOM])
+	ctx.lineTo(margin[SIDE.LEFT], canvas.height-margin[SIDE.BOTTOM]+6)
 	//x axis
+	ctx.moveTo(margin[SIDE.LEFT]-6, canvas.height-margin[SIDE.BOTTOM])
 	ctx.lineTo(canvas.width-margin[SIDE.RIGHT], canvas.height-margin[SIDE.BOTTOM])
 	ctx.stroke()
 
 	ctx.restore()
-
 
 	let y_min = 1.0
 	let y_max = 1.0
@@ -263,7 +341,7 @@ function update_ts()
 			console.log("no price for symbol " + symbol.name + " on norm date")
 			continue
 		}
-		for (let j=date_0;j<=date_1;j++) {
+		for (let j=date_start;j<=date_end;j++) {
 			let value = symbol.data[j]
 			if (value == undefined) { continue }
 			value = value / norm_value
@@ -272,14 +350,83 @@ function update_ts()
 		}
 	}
 
+	if(y_min == y_max) {
+		y_min = y_max-1
+	}
+
 	let x_min = 0
-	let x_max = date_1 - date_0
+	let x_max = date_end - date_start
 	function map(x, y) {
 		let px = ts_rect[RECT.LEFT] + (1.0 * (x - x_min) / (x_max - x_min)) * ts_rect[RECT.WIDTH]
 		let py = ts_rect[RECT.TOP] + (ts_rect[RECT.HEIGHT] - 1 - (1.0 * (y - y_min) / (y_max - y_min)) * ts_rect[RECT.HEIGHT])
 		return [px,py]
 	}
 
+	//grid lines
+	let grid_cell_distance = 80
+
+	let x_num_ticks = 8
+	let x_ticks = []
+	for(let i=0; i<x_num_ticks; i++) {
+		let x_tick = Math.floor(x_min+(i*((x_max-x_min)/(x_num_ticks-1))))
+		x_ticks.push(x_tick)
+	}
+
+	for(let i=0; i<x_ticks.length; i++) {
+		ctx.strokeStyle = "#91D4D6";
+		ctx.lineWidth   = 1;
+
+		let p0 = map(x_ticks[i], y_min)
+		let p1 = map(x_ticks[i], y_max)
+
+		ctx.beginPath()
+		ctx.moveTo(p0[0], p0[1])
+		ctx.lineTo(p1[0], p1[1])
+		ctx.stroke()
+
+
+		ctx.save();
+		ctx.font = "bold 12pt Courier"
+		ctx.fillStyle = "#91D4D6"
+		ctx.translate(p0[0], p0[1]+42);
+		ctx.rotate(-Math.PI/4);
+		ctx.fillText(date_offset_to_string(date_start + (x_ticks[i])), 0, 0);
+		ctx.restore();
+
+
+	}
+
+	//y
+	let y_num_ticks = 10
+	let y_ticks = []
+	for(let i=0; i<y_num_ticks; i++) {
+		let y_tick = y_min+((1.0*i*(y_max-y_min))/(y_num_ticks-1))
+		y_ticks.push(y_tick)
+	}
+
+	for(let i=0; i<y_ticks.length; i++) {
+		ctx.strokeStyle = "#91D4D6";
+		ctx.lineWidth   = 1;
+
+		let p0 = map(x_min, y_ticks[i])
+		let p1 = map(x_max, y_ticks[i])
+
+		ctx.beginPath()
+		ctx.moveTo(p0[0], p0[1])
+		ctx.lineTo(p1[0], p1[1])
+		ctx.stroke()
+
+		ctx.font = "bold 12pt Courier"
+		ctx.fillStyle = "#91D4D6"
+		if(i==(y_ticks.length-1)) {
+			ctx.fillText(y_ticks[i].toFixed(2), p0[0]-23, p0[1]+8);
+		} else {
+			ctx.fillText(y_ticks[i].toFixed(2), p0[0]-23, p0[1]+5);
+		}
+
+	}
+
+	//drawing time series
 	for (let i=0;i<global.chart_symbols.length;i++) {
 		let symbol = global.chart_symbols[i]
 		if (symbol.data == null) {
@@ -295,7 +442,7 @@ function update_ts()
 		ctx.strokeStyle="#FFFFFF"
 		ctx.beginPath()
 		for (let j=x_min;j<=x_max;j++) {
-			let yi = symbol.data[date_0 + j]
+			let yi = symbol.data[date_start + j]
 			if (yi == undefined) {
 				continue
 			}
@@ -310,52 +457,6 @@ function update_ts()
 		}
 		ctx.stroke()
 	}
-}
-
-function draw_axis(date0, date1, canvas) {
-	let ctx = canvas.getContext('2d')
-
-	ctx.strokeStyle='#FFFFFF'
-	ctx.beginPath()
-	ctx.moveTo(10,10)
-	ctx.lineTo(20,20)
-	ctx.stroke()
-
-	/*
-	var grid_size = 25;
-	var x_axis_distance_grid_lines = 5;
-	var y_axis_distance_grid_lines = 5;
-	var x_axis_starting_point = date_offset(date0);
-	var y_axis_starting_point = date_offset(date1);
-
-	// no of vertical grid lines
-	var num_lines_x = Math.floor(canvas.height/grid_size);
-
-	// no of horizontal grid lines
-	var num_lines_y = Math.floor(canvas.width/grid_size);
-
-	// Draw grid lines along X-axis
-	for(var i=0; i<=num_lines_x; i++) {
-	    ctx.beginPath();
-	    ctx.lineWidth = 1;
-
-	    // If line represents X-axis draw in different color
-	    if(i == x_axis_distance_grid_lines)
-	        ctx.strokeStyle = "#FFFFFF";
-	    else
-	        ctx.strokeStyle = "#888888";
-
-	    if(i == num_lines_x) {
-	        ctx.moveTo(0, grid_size*i);
-	        ctx.lineTo(canvas_width, grid_size*i);
-	    }
-	    else {
-	        ctx.moveTo(0, grid_size*i+0.5);
-	        ctx.lineTo(canvas_width, grid_size*i+0.5);
-	    }
-	    ctx.stroke();
-	}
-	*/
 }
 
 function update()
@@ -393,11 +494,4 @@ async function main()
 		console.log("Fatal Error: couldn't download data")
 		return
 	}
-	// then(response => {
-	// 	global.symbols = response.json()
-	// 	setTimeout(start, 10)
-	// })
-	// prepare_data()
-	// prepare_ui()
-	// setTimeout(update, MSEC_PER_FRAME)
 }
