@@ -14,10 +14,13 @@ var global = {
 	ui:{},
 	symbols: [],
 	chart_symbols: [],
+	chart_colors: [],
 	events: [],
 	date_start: "2020-01-01",
 	date_end: "2020-07-18",
-	date_norm: "2020-07-15"
+	date_norm: "2020-07-15",
+	mouse: { position:[0,0], last_position:[0,0] },
+	color: { colors:['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628'], counter:0 }
 }
 
 function install_event_listener(component, raw_event_type, context, event_type)
@@ -47,6 +50,19 @@ function date_offset_to_string(date_offset)
 	return ((x.getYear())+1900).toString().padStart(4,'0') + "-" +
 		(x.getMonth()+1).toString().padStart(2,'0') + "-" +
 		(x.getDate()).toString().padStart(2,'0')
+}
+
+// console.log(global.color.colors)
+// console.log(global.color.counter)
+// console.log(pick_color())
+// console.log(global.color.counter)
+
+function pick_color() {
+	let idx = global.color.counter%global.color.colors.length
+	let color 	= global.color.colors[idx]
+	global.color.counter = global.color.counter + 1
+
+	return color
 }
 
 async function download_symbol_data(symbol)
@@ -90,7 +106,7 @@ function prepare_ui()
 	let start_date_grid = document.createElement('div')
 	global.ui.start_date_grid = start_date_grid
 	start_date_grid.id = start_date_grid
-	start_date_grid.style = 'display:flex; flex-direction:row; background-color:#04142C; align-content:space-around'
+	start_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
 	start_date_grid.appendChild(start_date_label)
 	start_date_grid.appendChild(start_date_input)
 
@@ -112,7 +128,7 @@ function prepare_ui()
 	let end_date_grid = document.createElement('div')
 	global.ui.end_date_grid = end_date_grid
 	end_date_grid.id = end_date_grid
-	end_date_grid.style = 'display:flex; flex-direction:row; background-color:#04142C; align-content:space-around'
+	end_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
 	end_date_grid.appendChild(end_date_label)
 	end_date_grid.appendChild(end_date_input)
 
@@ -134,7 +150,7 @@ function prepare_ui()
 	let norm_date_grid = document.createElement('div')
 	global.ui.norm_date_grid = norm_date_grid
 	norm_date_grid.id = norm_date_grid
-	norm_date_grid.style = 'display:flex; flex-direction:row; background-color:#04142C; align-content:space-around'
+	norm_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
 	norm_date_grid.appendChild(norm_date_label)
 	norm_date_grid.appendChild(norm_date_input)
 
@@ -143,18 +159,18 @@ function prepare_ui()
 	global.ui.filter_input = filter_input
 	filter_input.setAttribute("type","text")
 	filter_input.id = 'filter_input'
-	filter_input.style = 'position:relative; width:100%; margin:2px; border-radius:2px; background-color:#91D4D6; font-family:Courier; font-size:14pt;'
+	filter_input.style = 'position:relative; width:100%; margin:2px; border-radius:2px; background-color:#FFFFFF; font-family:Courier; font-size:14pt;'
 	install_event_listener(filter_input, 'change', filter_input, EVENT.FILTER)
 
 	let symbols_table_div = document.createElement('div')
 	global.ui.symbols_table_div = symbols_table_div
 	symbols_table_div.id = 'symbols_table_div'
-	symbols_table_div.style = 'position:relative; width:100%; height:100%; margin:2px; overflow:auto; border-radius:2px; background-color:#91D4D6'
+	symbols_table_div.style = 'position:relative; width:100%; height:100%; margin:2px; overflow:auto; border-radius:2px; background-color:#FFFFFF'
 
 	let left_panel = document.createElement('div')
    	global.ui.left_panel = left_panel
    	left_panel.id = 'left_panel'
-   	left_panel.style = 'display:flex; flex-direction:column; background-color:#04142C; align-content:space-around;'
+   	left_panel.style = 'display:flex; flex-direction:column; background-color:#2f3233; align-content:space-around;'
 	left_panel.appendChild(start_date_grid)
 	left_panel.appendChild(end_date_grid)
 	left_panel.appendChild(norm_date_grid)
@@ -172,7 +188,7 @@ function prepare_ui()
 		col.style = "cursor: pointer"
 		col.style.fontFamily = 'Courier'
 		col.style.fontSize = '14pt'
-		col.style.color ="#44748C"
+		col.style.color ="#6b6f71"
 		symbol.ui_row = row
 		symbol.ui_col = col
 		install_event_listener(symbol.ui_col, 'click', symbol, EVENT.TOGGLE_SYMBOL)
@@ -181,7 +197,7 @@ function prepare_ui()
 	let ts_div = document.createElement('div')
 	global.ui.ts_div = ts_div
 	ts_div.id = 'ts_div'
-	ts_div.style = 'background-color:#44748C'
+	ts_div.style = 'background-color:#6b6f71'
 
 	let ts_canvas = ts_div.appendChild(document.createElement('canvas'))
 	global.ui.ts_canvas = ts_canvas
@@ -199,7 +215,7 @@ function prepare_ui()
 
 	var body = document.getElementsByTagName('body')[0]
 	global.ui.body = body
-	body.style = 'margin:0px; background-color:#04142C'
+	body.style = 'margin:0px; background-color:#2f3233'
 	body.appendChild(main_div)
 
 }
@@ -232,20 +248,24 @@ function process_event_queue()
 			console.log(pattern)
 		} else if (e.event_type == EVENT.TOGGLE_SYMBOL) {
 			let symbol = e.context
+			let color  = pick_color()
 			if (!symbol.on_chart) {
 				// add symbol to chart
 				symbol.on_chart = true
-				symbol.ui_col.style.color = "#04142C"
-				symbol.ui_col.style.fontWeight = 'bold'
 				global.chart_symbols.push(symbol)
+				global.chart_colors.push(color)
+				let idx = global.chart_symbols.indexOf(symbol)
+				symbol.ui_col.style.color = global.chart_colors[idx]
+				symbol.ui_col.style.fontWeight = 'bold'
 				download_symbol_data(symbol)
 			} else {
 				let to_remove = global.chart_symbols.indexOf(symbol)
 				if (to_remove > -1) {
 				  global.chart_symbols.splice(to_remove, 1);
+				  global.chart_colors.splice(to_remove, 1);
 				}
 				symbol.on_chart = false
-				symbol.ui_col.style.color = "#44748C"
+				symbol.ui_col.style.color = "#6b6f71"
 				symbol.ui_col.style.fontWeight = 'initial'
 			}
 		} else if (e.event_type == EVENT.UPDATE_START_DATE) {
@@ -296,7 +316,7 @@ function update_ts()
 	// console.log('version updated: '+global.version)
 	ctx.clearRect(0,0,canvas.width, canvas.height)
 
-	ctx.fillStyle="#04142C"
+	ctx.fillStyle="#2f3233"
 	ctx.moveTo(0,0)
 	ctx.rect(ts_rect[RECT.LEFT],ts_rect[RECT.TOP],ts_rect[RECT.WIDTH],ts_rect[RECT.HEIGHT])
 	ctx.fill()
@@ -306,7 +326,7 @@ function update_ts()
 	let date_norm = date_offset(global.date_norm)
 //
 	ctx.font = "bold 14pt Courier"
-	ctx.fillStyle = "#91D4D6";
+	ctx.fillStyle = "#FFFFFF";
 	ctx.textAlign = "center";
 
 	//drawing axis labels
@@ -314,7 +334,7 @@ function update_ts()
 
 	//drawing axis strokes
 	ctx.save()
-	ctx.strokeStyle = "#91D4D6";
+	ctx.strokeStyle = "#FFFFFF";
 	ctx.lineWidth   = 2;
 
 	ctx.beginPath()
@@ -373,7 +393,7 @@ function update_ts()
 	}
 
 	for(let i=0; i<x_ticks.length; i++) {
-		ctx.strokeStyle = "#91D4D6";
+		ctx.strokeStyle = "#FFFFFF";
 		ctx.lineWidth   = 1;
 
 		let p0 = map(x_ticks[i], y_min)
@@ -387,7 +407,7 @@ function update_ts()
 
 		ctx.save();
 		ctx.font = "bold 12pt Courier"
-		ctx.fillStyle = "#91D4D6"
+		ctx.fillStyle = "#FFFFFF"
 		ctx.translate(p0[0], p0[1]+42);
 		ctx.rotate(-Math.PI/4);
 		ctx.fillText(date_offset_to_string(date_start + (x_ticks[i])), 0, 0);
@@ -405,7 +425,7 @@ function update_ts()
 	}
 
 	for(let i=0; i<y_ticks.length; i++) {
-		ctx.strokeStyle = "#91D4D6";
+		ctx.strokeStyle = "#FFFFFF";
 		ctx.lineWidth   = 1;
 
 		let p0 = map(x_min, y_ticks[i])
@@ -417,7 +437,7 @@ function update_ts()
 		ctx.stroke()
 
 		ctx.font = "bold 12pt Courier"
-		ctx.fillStyle = "#91D4D6"
+		ctx.fillStyle = "#FFFFFF"
 		if(i==(y_ticks.length-1)) {
 			ctx.fillText(y_ticks[i].toFixed(2), p0[0]-23, p0[1]+8);
 		} else {
@@ -439,7 +459,7 @@ function update_ts()
 		}
 
 		let first_point_drawn = false
-		ctx.strokeStyle="#FFFFFF"
+		ctx.strokeStyle=global.chart_colors[i] //'#FFFFFF'
 		ctx.beginPath()
 		for (let j=x_min;j<=x_max;j++) {
 			let yi = symbol.data[date_start + j]

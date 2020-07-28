@@ -8,7 +8,7 @@ html,body,#root{
 .date_input_label {
     font-family:Courier;
     font-size:14pt;
-    color:#91D4D6;
+    color:#FFFFFF;
     width:90px;
 }
 
@@ -17,7 +17,7 @@ html,body,#root{
     width:100%;
     margin:2px;
     border-radius:2px;
-    background-color:#91D4D6;
+    background-color:#FFFFFF;
     font-family:Courier;
     font-size:12pt;
 }
@@ -25,6 +25,6 @@ html,body,#root{
 .date_grid {
     display:flex;
     flex-direction:row;
-    background-color:#04142C;
+    background-color:#6b6f71;
     align-content:space-around;
 }
