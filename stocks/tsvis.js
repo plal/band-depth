@@ -6,7 +6,8 @@ const EVENT= {
 	TOGGLE_SYMBOL: "event_toggle_symbol",
 	UPDATE_START_DATE: "event_update_start_date",
 	UPDATE_END_DATE: "event_update_end_date",
-	UPDATE_NORM_DATE: "event_update_norm_date"
+	UPDATE_NORM_DATE: "event_update_norm_date",
+	MOUSEMOVE: "event_mousemove"
 }
 
 
@@ -20,13 +21,15 @@ var global = {
 	date_end: "2020-07-18",
 	date_norm: "2020-07-15",
 	mouse: { position:[0,0], last_position:[0,0] },
-	color: { colors:['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628'], counter:0 }
+	color: { colors:['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628'], counter:0 },
+	focused_symbol: null,
+	focused_date: null
 }
 
 function install_event_listener(component, raw_event_type, context, event_type)
 {
 	component.addEventListener(raw_event_type, function(e) {
-		console.log(event_type)
+		//console.log(e.x, e.y)
 		global.events.push({ event_type: event_type, context: context, raw: e })
 	});
 }
@@ -49,13 +52,8 @@ function date_offset_to_string(date_offset)
 	let x = new Date(REFERENCE_DATE.getTime() + date_offset * MSEC_PER_DAY)
 	return ((x.getYear())+1900).toString().padStart(4,'0') + "-" +
 		(x.getMonth()+1).toString().padStart(2,'0') + "-" +
-		(x.getDate()).toString().padStart(2,'0')
+		(x.getUTCDate()).toString().padStart(2,'0')
 }
-
-// console.log(global.color.colors)
-// console.log(global.color.counter)
-// console.log(pick_color())
-// console.log(global.color.counter)
 
 function pick_color() {
 	let idx = global.color.counter%global.color.colors.length
@@ -63,6 +61,12 @@ function pick_color() {
 	global.color.counter = global.color.counter + 1
 
 	return color
+}
+
+function get_local_mouse_pos(component) {
+	var rect = component.getBoundingClientRect();
+
+	return [(global.mouse.position[0] - rect.left), (global.mouse.position[1] - rect.top)]
 }
 
 async function download_symbol_data(symbol)
@@ -90,7 +94,6 @@ function prepare_ui()
 	let start_date_input = document.createElement('input')
 	global.ui.start_date_input = start_date_input
 	start_date_input.setAttribute("type","date")
-	//start_date_input.placeholder = "dd-mm-yyyy"
 	start_date_input.defaultValue = "2020-01-01"
 	start_date_input.classList.add('date_input')
 	start_date_input.id = start_date_input
@@ -113,7 +116,6 @@ function prepare_ui()
 	let end_date_input = document.createElement('input')
 	global.ui.end_date_input = end_date_input
 	end_date_input.setAttribute("type","date")
-	//end_date_input.placeholder = "dd-mm-yyyy"
 	end_date_input.defaultValue = "2020-07-18"
 	end_date_input.classList.add('date_input')
 	end_date_input.id = end_date_input
@@ -135,7 +137,6 @@ function prepare_ui()
 	let norm_date_input = document.createElement('input')
 	global.ui.norm_date_input = norm_date_input
 	norm_date_input.setAttribute("type","date")
-	//norm_date_input.placeholder = "dd-mm-yyyy"
 	norm_date_input.defaultValue = "2020-07-15"
 	norm_date_input.classList.add('date_input')
 	norm_date_input.id = norm_date_input
@@ -204,6 +205,7 @@ function prepare_ui()
 	ts_canvas.style='position:relative; left:0px; top:0px; z-index:1;'
 	ts_canvas.id = 'ts_canvas'
 	ts_canvas.tabindex = '1'
+	install_event_listener(ts_canvas, "mousemove", ts_canvas, EVENT.MOUSEMOVE)
 
 	let main_div = document.createElement('div')
 	global.ui.main_div = main_div
@@ -225,6 +227,8 @@ function process_event_queue()
 	// process events
 	for (let i=0;i<global.events.length;i++) {
 		let e = global.events[i]
+		//console.log(e.event_type)
+
 		if (e.event_type == EVENT.FILTER) {
 			let filter_input = e.context
 			let pattern = filter_input.value
@@ -254,8 +258,7 @@ function process_event_queue()
 				symbol.on_chart = true
 				global.chart_symbols.push(symbol)
 				global.chart_colors.push(color)
-				let idx = global.chart_symbols.indexOf(symbol)
-				symbol.ui_col.style.color = global.chart_colors[idx]
+				symbol.ui_col.style.color = color
 				symbol.ui_col.style.fontWeight = 'bold'
 				download_symbol_data(symbol)
 			} else {
@@ -277,6 +280,10 @@ function process_event_queue()
 		} else if (e.event_type == EVENT.UPDATE_NORM_DATE) {
 			let date = e.context.value
 			global.date_norm = date
+		} else if (e.event_type == EVENT.MOUSEMOVE) {
+			global.mouse.position      = [e.raw.x, e.raw.y]
+			global.mouse.last_position = global.mouse.position
+			//console.log(global.mouse.position)
 		}
 	}
 	global.events.length = 0
@@ -290,6 +297,8 @@ function update_ts()
 	canvas.width  = global.ui.ts_div.clientWidth;
 	canvas.height = global.ui.ts_div.clientHeight;
 	// console.log('canvas w,h: ',canvas.width,canvas.height)
+
+	let local_mouse_pos = get_local_mouse_pos(canvas)
 
 	let rect = [0, 0, canvas.width, canvas.height]
 
@@ -376,15 +385,20 @@ function update_ts()
 
 	let x_min = 0
 	let x_max = date_end - date_start
+
 	function map(x, y) {
 		let px = ts_rect[RECT.LEFT] + (1.0 * (x - x_min) / (x_max - x_min)) * ts_rect[RECT.WIDTH]
 		let py = ts_rect[RECT.TOP] + (ts_rect[RECT.HEIGHT] - 1 - (1.0 * (y - y_min) / (y_max - y_min)) * ts_rect[RECT.HEIGHT])
 		return [px,py]
 	}
 
-	//grid lines
-	let grid_cell_distance = 80
+	function inverse_map(px, py) {
+		let x = (((px - ts_rect[RECT.LEFT]) / ts_rect[RECT.TOP]) * (x_max - x_min) - x_min)
+		let y = -((((py - ts_rect[RECT.TOP] - ts_rect[RECT.HEIGHT] + 1) * (y_max - y_min)) / ts_rect[RECT.HEIGHT]) - y_min)
+		return [x,y]
+	}
 
+	//grid lines
 	let x_num_ticks = 8
 	let x_ticks = []
 	for(let i=0; i<x_num_ticks; i++) {
@@ -393,7 +407,7 @@ function update_ts()
 	}
 
 	for(let i=0; i<x_ticks.length; i++) {
-		ctx.strokeStyle = "#FFFFFF";
+		ctx.strokeStyle = "#555555";
 		ctx.lineWidth   = 1;
 
 		let p0 = map(x_ticks[i], y_min)
@@ -425,7 +439,7 @@ function update_ts()
 	}
 
 	for(let i=0; i<y_ticks.length; i++) {
-		ctx.strokeStyle = "#FFFFFF";
+		ctx.strokeStyle = "#555555";
 		ctx.lineWidth   = 1;
 
 		let p0 = map(x_min, y_ticks[i])
@@ -446,28 +460,76 @@ function update_ts()
 
 	}
 
-	//drawing time series
-	for (let i=0;i<global.chart_symbols.length;i++) {
-		let symbol = global.chart_symbols[i]
+	//VERTICAL LINE ON NORM_DATE
+	let x_norm = date_norm - date_start
+
+	ctx.strokeStyle = "#FFFFFFFF";
+	ctx.lineWidth   = 1;
+
+	let p0 = map(x_norm, y_min)
+	let p1 = map(x_norm, y_max)
+
+	ctx.beginPath()
+	ctx.moveTo(p0[0], p0[1])
+	ctx.lineTo(p1[0], p1[1])
+	ctx.stroke()
+
+	ctx.save();
+	ctx.font = "bold 12pt Courier"
+	ctx.fillStyle = "#FFFFFFFF"
+	ctx.translate(p1[0]+10, p1[1]+50);
+	ctx.rotate(Math.PI/2);
+	ctx.fillText(date_offset_to_string(date_start+x_norm), 0, 0);
+	ctx.restore();
+
+
+	//HIGHLIGHTING UTILS
+	let closest_date = null
+	let closest_symbol  = null
+	let min_distance_threshold = 5 * 5
+	let closest_distance = 100000
+
+	//console.log(closest_symbol, closest_date)
+
+	function update_closest_point(symbol, date, px, py) {
+		let dx = local_mouse_pos[0] - px
+		let dy = local_mouse_pos[1] - py
+		let dist = dx * dx + dy * dy
+		if (dist <= min_distance_threshold && dist < closest_distance) {
+			closest_symbol = symbol
+			closest_date = date
+		}
+	}
+
+	function draw_timeseries(symbol, focused) {
+		if (focused) {
+			ctx.lineWidth = 4
+		} else {
+			ctx.lineWidth = 2
+		}
+
+		let i = global.chart_symbols.indexOf(symbol)
 		if (symbol.data == null) {
-			continue
+			return
 		}
 		let norm_value = symbol.data[date_norm]
 		if (norm_value == undefined) {
 			console.log("no price for symbol " + symbol.name + " on norm date")
-			continue
+			return
 		}
 
 		let first_point_drawn = false
-		ctx.strokeStyle=global.chart_colors[i] //'#FFFFFF'
+		ctx.strokeStyle = global.chart_colors[i]
 		ctx.beginPath()
 		for (let j=x_min;j<=x_max;j++) {
+			let date_offset = date_start+j
 			let yi = symbol.data[date_start + j]
 			if (yi == undefined) {
 				continue
 			}
 			yi = yi/norm_value
 			let p = map(j,yi)
+			update_closest_point(symbol, j, p[0], p[1])
 			if (!first_point_drawn) {
 				ctx.moveTo(p[0],p[1])
 				first_point_drawn = true
@@ -476,7 +538,58 @@ function update_ts()
 			}
 		}
 		ctx.stroke()
+
+
 	}
+
+	function draw_point(i, j, r) {
+		let values = global.focused_symbol.data
+		let yi = values[j]
+		let p = map(j,yi)
+		update_closest_point(i, j, p[0], p[1])
+		ctx.beginPath()
+		ctx.arc(p[0],p[1],r,0,Math.PI*2,true)
+		ctx.stroke()
+	}
+
+	//DRAWING TIME SERIES
+	for (let i=0;i<global.chart_symbols.length;i++) {
+
+		let symbol = global.chart_symbols[i]
+
+		if(global.focused_symbol == null || global.chart_symbols[i] != global.focused_symbol) {
+			draw_timeseries(symbol, false)
+		}
+	}
+
+	if (global.focused_symbol != null) {
+		draw_timeseries(global.focused_symbol, true)
+
+		// ctx.strokeStyle = '#880000ff'
+		// draw_point(global.focused_symbol, global.focused_date, 3)
+
+		// print the details of the focused timeseries
+		let record = global.focused_symbol
+		let value = global.focused_symbol.data[global.focused_date]
+		let date = date_offset_to_string(date_start+global.focused_date)
+		let text = `symbol: ${global.focused_symbol.name} // date: ${date}`
+		ctx.font = '24px Monospace';
+		ctx.textAlign = 'center';
+		ctx.fillText(text, canvas.width/2, 40);
+	}
+
+	// update focused record
+	global.focused_symbol = closest_symbol
+	console.log(global.focused_symbol)
+
+	if (get_local_mouse_pos[0] == get_local_mouse_pos[0] && get_local_mouse_pos[1] == get_local_mouse_pos[1]) {
+		console.log(get_local_mouse_pos)
+	}
+
+	global.focused_date = closest_date
+
+
+
 }
 
 function update()
