@@ -69,6 +69,36 @@ function get_local_mouse_pos(component) {
 	return [(global.mouse.position[0] - rect.left), (global.mouse.position[1] - rect.top)]
 }
 
+function drawTextBG(ctx, txt, x, y) {
+
+    ctx.save();
+
+    // set font
+    ctx.font = "12pt Courier";
+
+    // draw text from top - makes life easier at the moment
+    ctx.textBaseline = 'top';
+	ctx.textAlign = 'left'
+
+    /// color for background
+    ctx.fillStyle = '#000000';
+
+    /// get width of text
+    var width = ctx.measureText(txt).width;
+
+    /// draw background rect assuming height of font
+    ctx.fillRect(x, y, width, parseInt(ctx.font, 12));
+
+    /// text color
+    ctx.fillStyle = '#FFFFFF';
+
+    /// draw text on top
+    ctx.fillText(txt, x, y);
+
+    /// restore original state
+    ctx.restore();
+}
+
 async function download_symbol_data(symbol)
 {
 	let result
@@ -227,7 +257,6 @@ function process_event_queue()
 	// process events
 	for (let i=0;i<global.events.length;i++) {
 		let e = global.events[i]
-		//console.log(e.event_type)
 
 		if (e.event_type == EVENT.FILTER) {
 			let filter_input = e.context
@@ -283,7 +312,6 @@ function process_event_queue()
 		} else if (e.event_type == EVENT.MOUSEMOVE) {
 			global.mouse.position      = [e.raw.x, e.raw.y]
 			global.mouse.last_position = global.mouse.position
-			//console.log(global.mouse.position)
 		}
 	}
 	global.events.length = 0
@@ -296,7 +324,6 @@ function update_ts()
 	let ctx = canvas.getContext('2d')
 	canvas.width  = global.ui.ts_div.clientWidth;
 	canvas.height = global.ui.ts_div.clientHeight;
-	// console.log('canvas w,h: ',canvas.width,canvas.height)
 
 	let local_mouse_pos = get_local_mouse_pos(canvas)
 
@@ -322,7 +349,6 @@ function update_ts()
 		        rect[2] - margin[SIDE.LEFT] - margin[SIDE.RIGHT],
 		        rect[3] - margin[SIDE.BOTTOM] - margin[SIDE.TOP] ]
 
-	// console.log('version updated: '+global.version)
 	ctx.clearRect(0,0,canvas.width, canvas.height)
 
 	ctx.fillStyle="#2f3233"
@@ -393,8 +419,8 @@ function update_ts()
 	}
 
 	function inverse_map(px, py) {
-		let x = (((px - ts_rect[RECT.LEFT]) / ts_rect[RECT.TOP]) * (x_max - x_min) - x_min)
-		let y = -((((py - ts_rect[RECT.TOP] - ts_rect[RECT.HEIGHT] + 1) * (y_max - y_min)) / ts_rect[RECT.HEIGHT]) - y_min)
+		let x = (px - ts_rect[RECT.LEFT]) / ts_rect[RECT.WIDTH] * (1.0*(x_max - x_min)) + x_min
+		let y = -((((py - ts_rect[RECT.TOP] - ts_rect[RECT.HEIGHT] + 1) * (1.0 * (y_max - y_min))) / ts_rect[RECT.HEIGHT]) - y_min)
 		return [x,y]
 	}
 
@@ -482,14 +508,33 @@ function update_ts()
 	ctx.fillText(date_offset_to_string(date_start+x_norm), 0, 0);
 	ctx.restore();
 
+	//LINES ON MOUSE POSITION
+	let pt = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
+
+	let y_p0 = map(pt[0],y_min)
+	let y_p1 = map(pt[0],y_max)
+
+	ctx.beginPath()
+	ctx.moveTo(y_p0[0], y_p0[1])
+	ctx.lineTo(y_p1[0], y_p1[1])
+	ctx.stroke()
+	drawTextBG(ctx, date_offset_to_string(date_start+pt[0]), y_p0[0], y_p0[1])
+
+	let x_p0 = map(x_min, pt[1])
+	let x_p1 = map(x_max, pt[1])
+
+	ctx.beginPath()
+	ctx.moveTo(x_p0[0], x_p0[1])
+	ctx.lineTo(x_p1[0], x_p1[1])
+	ctx.stroke()
+	drawTextBG(ctx, pt[1].toFixed(2), x_p0[0], x_p0[1])
+
 
 	//HIGHLIGHTING UTILS
 	let closest_date = null
 	let closest_symbol  = null
 	let min_distance_threshold = 5 * 5
 	let closest_distance = 100000
-
-	//console.log(closest_symbol, closest_date)
 
 	function update_closest_point(symbol, date, px, py) {
 		let dx = local_mouse_pos[0] - px
@@ -580,11 +625,7 @@ function update_ts()
 
 	// update focused record
 	global.focused_symbol = closest_symbol
-	console.log(global.focused_symbol)
-
-	if (get_local_mouse_pos[0] == get_local_mouse_pos[0] && get_local_mouse_pos[1] == get_local_mouse_pos[1]) {
-		console.log(get_local_mouse_pos)
-	}
+	//console.log(global.focused_symbol)
 
 	global.focused_date = closest_date
 
