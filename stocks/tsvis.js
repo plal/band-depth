@@ -7,7 +7,8 @@ const EVENT= {
 	UPDATE_START_DATE: "event_update_start_date",
 	UPDATE_END_DATE: "event_update_end_date",
 	UPDATE_NORM_DATE: "event_update_norm_date",
-	MOUSEMOVE: "event_mousemove"
+	MOUSEMOVE: "event_mousemove",
+	KEYDOWN: "event_keydown"
 }
 
 
@@ -23,7 +24,10 @@ var global = {
 	mouse: { position:[0,0], last_position:[0,0] },
 	color: { colors:['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628'], counter:0 },
 	focused_symbol: null,
-	focused_date: null
+	focused_date: null,
+	key_update_norm: false,
+	key_update_start: false,
+	key_update_end: false
 }
 
 function install_event_listener(component, raw_event_type, context, event_type)
@@ -126,7 +130,7 @@ function prepare_ui()
 	start_date_input.setAttribute("type","date")
 	start_date_input.defaultValue = "2020-01-01"
 	start_date_input.classList.add('date_input')
-	start_date_input.id = start_date_input
+	start_date_input.id = 'start_date_input'
 	install_event_listener(start_date_input, 'change', start_date_input, EVENT.UPDATE_START_DATE)
 
 
@@ -148,7 +152,7 @@ function prepare_ui()
 	end_date_input.setAttribute("type","date")
 	end_date_input.defaultValue = "2020-07-18"
 	end_date_input.classList.add('date_input')
-	end_date_input.id = end_date_input
+	end_date_input.id = 'end_date_input'
 	install_event_listener(end_date_input, 'change', end_date_input, EVENT.UPDATE_END_DATE)
 
 	let end_date_label = document.createElement('label')
@@ -169,7 +173,7 @@ function prepare_ui()
 	norm_date_input.setAttribute("type","date")
 	norm_date_input.defaultValue = "2020-07-15"
 	norm_date_input.classList.add('date_input')
-	norm_date_input.id = norm_date_input
+	norm_date_input.id = 'norm_date_input'
 	install_event_listener(norm_date_input, 'change', norm_date_input, EVENT.UPDATE_NORM_DATE)
 
 	let norm_date_label = document.createElement('label')
@@ -244,13 +248,22 @@ function prepare_ui()
 	main_div.appendChild(left_panel)
 	main_div.appendChild(ts_div)
 
-
 	var body = document.getElementsByTagName('body')[0]
 	global.ui.body = body
 	body.style = 'margin:0px; background-color:#2f3233'
 	body.appendChild(main_div)
 
+	install_event_listener(window, "keydown", window, EVENT.KEYDOWN)
+
+	// window.onkeydown = function(e) {
+	// 	global.
+	// }
+
 }
+
+const KEY_S = 83
+const KEY_E = 69
+const KEY_N = 78
 
 function process_event_queue()
 {
@@ -312,6 +325,14 @@ function process_event_queue()
 		} else if (e.event_type == EVENT.MOUSEMOVE) {
 			global.mouse.position      = [e.raw.x, e.raw.y]
 			global.mouse.last_position = global.mouse.position
+		} else if (e.event_type == EVENT.KEYDOWN) {
+			if (e.raw.keyCode == KEY_N) {
+				global.key_update_norm = true
+			} else if (e.raw.keyCode == KEY_S) {
+				global.key_update_start = true
+			} else if (e.raw.keyCode == KEY_E) {
+				global.key_update_end = true
+			}
 		}
 	}
 	global.events.length = 0
@@ -359,7 +380,7 @@ function update_ts()
 	let date_start = date_offset(global.date_start)
 	let date_end = date_offset(global.date_end)
 	let date_norm = date_offset(global.date_norm)
-//
+
 	ctx.font = "bold 14pt Courier"
 	ctx.fillStyle = "#FFFFFF";
 	ctx.textAlign = "center";
@@ -452,8 +473,6 @@ function update_ts()
 		ctx.rotate(-Math.PI/4);
 		ctx.fillText(date_offset_to_string(date_start + (x_ticks[i])), 0, 0);
 		ctx.restore();
-
-
 	}
 
 	//y
@@ -625,11 +644,32 @@ function update_ts()
 
 	// update focused record
 	global.focused_symbol = closest_symbol
-	//console.log(global.focused_symbol)
-
 	global.focused_date = closest_date
 
+	if (global.key_update_norm) {
+		let pt_n = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
+		let new_date_norm = date_offset_to_string(Math.floor(date_start+pt_n[0]))
 
+		document.getElementById('norm_date_input').value = new_date_norm
+		global.date_norm = new_date_norm
+		global.key_update_norm = false
+	}
+	if (global.key_update_start) {
+		let pt_s = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
+		let new_date_start = date_offset_to_string(Math.floor(date_start+pt_s[0]))
+
+		document.getElementById('start_date_input').value = new_date_start
+		global.date_start = new_date_start
+		global.key_update_start = false
+	}
+	if (global.key_update_end) {
+		let pt_e = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
+		let new_date_end = date_offset_to_string(Math.floor(date_start+pt_e[0]))
+
+		document.getElementById('end_date_input').value = new_date_end
+		global.date_end = new_date_end
+		global.key_update_end = false
+	}
 
 }
 
