@@ -407,16 +407,27 @@ function update_ts()
 	let y_min = 1.0
 	let y_max = 1.0
 
+	let actual_norm_values = []
 	for (let i=0;i<global.chart_symbols.length;i++) {
 		let symbol = global.chart_symbols[i]
 		if (symbol.data == null) {
 			continue
 		}
-		let norm_value = symbol.data[date_norm]
+		let norm_value = undefined
+		let k = date_end - date_start
+		let offset = date_norm - date_start
+		for (let j=0;j<k;j++) {
+			// 0 1 2 3 4 5 * 7 8
+			norm_value = symbol.data[date_start + ((offset + j) % k)]
+			if (norm_value != undefined) {
+				break;
+			}
+		}
 		if (norm_value == undefined) {
 			console.log("no price for symbol " + symbol.name + " on norm date")
 			continue
 		}
+		actual_norm_values.push(norm_value)
 		for (let j=date_start;j<=date_end;j++) {
 			let value = symbol.data[j]
 			if (value == undefined) { continue }
@@ -576,7 +587,7 @@ function update_ts()
 		if (symbol.data == null) {
 			return
 		}
-		let norm_value = symbol.data[date_norm]
+		let norm_value = actual_norm_values[i] // symbol.data[date_norm]
 		if (norm_value == undefined) {
 			console.log("no price for symbol " + symbol.name + " on norm date")
 			return
