@@ -1,6 +1,5 @@
 "use strict";
 
-
 const EVENT= {
 	FILTER: "event_filter",
 	TOGGLE_SYMBOL: "event_toggle_symbol",
