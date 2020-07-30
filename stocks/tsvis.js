@@ -6,6 +6,7 @@ const EVENT= {
 	UPDATE_START_DATE: "event_update_start_date",
 	UPDATE_END_DATE: "event_update_end_date",
 	UPDATE_NORM_DATE: "event_update_norm_date",
+	RUN_EXTREMAL_DEPTH_ALGORITHM: "even_run_extremal_depth_algorithm",
 	MOUSEMOVE: "event_mousemove",
 	KEYDOWN: "event_keydown"
 }
@@ -187,13 +188,24 @@ function prepare_ui()
 	norm_date_grid.appendChild(norm_date_label)
 	norm_date_grid.appendChild(norm_date_input)
 
-
 	let filter_input = document.createElement('input')
 	global.ui.filter_input = filter_input
 	filter_input.setAttribute("type","text")
 	filter_input.id = 'filter_input'
 	filter_input.style = 'position:relative; width:100%; margin:2px; border-radius:2px; background-color:#FFFFFF; font-family:Courier; font-size:14pt;'
 	install_event_listener(filter_input, 'change', filter_input, EVENT.FILTER)
+
+	let extremal_depth_btn = document.createElement('input')
+	extremal_depth_btn.type = "button"
+	extremal_depth_btn.value = "ED"
+	install_event_listener(extremal_depth_btn, 'click', extremal_depth_btn, EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM)
+
+	let filter_btns_grid = document.createElement('div')
+	global.ui.filter_btns_grid = filter_btns_grid
+	filter_btns_grid.id = filter_btns_grid
+	filter_btns_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
+	filter_btns_grid.appendChild(filter_input)
+	filter_btns_grid.appendChild(extremal_depth_btn)
 
 	let symbols_table_div = document.createElement('div')
 	global.ui.symbols_table_div = symbols_table_div
@@ -207,7 +219,7 @@ function prepare_ui()
 	left_panel.appendChild(start_date_grid)
 	left_panel.appendChild(end_date_grid)
 	left_panel.appendChild(norm_date_grid)
-   	left_panel.appendChild(filter_input)
+   	left_panel.appendChild(filter_btns_grid)
    	left_panel.appendChild(symbols_table_div)
 
 	let table = symbols_table_div.appendChild(document.createElement('table'))
@@ -242,7 +254,7 @@ function prepare_ui()
 	let main_div = document.createElement('div')
 	global.ui.main_div = main_div
 	main_div.id = 'main_div'
-	main_div.style = 'position:absolute; width:100%; height:100%; display:grid; grid-template-columns:11% auto; grid-template-rows:100%; grid-column-gap:10px;'
+	main_div.style = 'position:absolute; width:100%; height:100%; display:grid; grid-template-columns:250px auto; grid-template-rows:100%; grid-column-gap:10px;'
 	main_div.appendChild(left_panel)
 	main_div.appendChild(ts_div)
 
@@ -256,6 +268,45 @@ function prepare_ui()
 	// window.onkeydown = function(e) {
 	// 	global.
 	// }
+
+}
+
+function run_extremal_depth_algorithm()
+{
+	// get curves on the chart and creates the envelope for them
+	let n = global.chart_symbols.length
+
+	let symbols_ed = []
+
+	let mem_checpoint_raw_p = global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint()
+
+	let curve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_CurveList_new(n)
+
+	for (let i=0;i<n;i++) {
+		let symbol = global.chart_symbols[i]
+		let ts_current_values = symbol.ts_current_values
+		if (ts_current_values == null) {
+			console.log("Discarding symbol ", symbol.name, " on extremal depth computation")
+		}
+		symbols_ed.push(symbol)
+
+		let m = ts_current_values.length
+		let curve_raw_p  = global.tsvis_wasm_module.exports.tsvis_Curve_new(m)
+		console.log("curve_raw_p",curve_raw_p)
+		let values_raw_p = global.tsvis_wasm_module.exports.tsvis_Curve_values(curve_raw_p)
+		console.log("values_raw_p",values_raw_p)
+		const c_curve_values = new Float64Array(global.tsvis_wasm_module.exports.memory.buffer, values_raw_p, m);
+
+		let ok = global.tsvis_wasm_module.exports.tsvis_CurveList_append(curve_list_raw_p, curve_raw_p)
+	}
+
+	let ed_raw_p = global.tsvis_wasm_module.exports.ed_extremal_depth_run(curve_list_raw_p)
+
+	console.log(ed_raw_p)
+
+	global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p)
+
+	console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 
 }
 
@@ -331,6 +382,9 @@ function process_event_queue()
 			} else if (e.raw.keyCode == KEY_E) {
 				global.key_update_end = true
 			}
+		} else if (e.event_type == EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM) {
+			console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
+			run_extremal_depth_algorithm()
 		}
 	}
 	global.events.length = 0
@@ -408,9 +462,10 @@ function update_ts()
 	//--------------
 	let y_min = 1.0
 	let y_max = 1.0
-	let actual_norm_values = []
+	let last_valid_value = 1
 	for (let i=0;i<global.chart_symbols.length;i++) {
 		let symbol = global.chart_symbols[i]
+		symbol.ts_current_values = null
 		if (symbol.data == null) {
 			continue
 		}
@@ -426,16 +481,22 @@ function update_ts()
 		}
 		if (norm_value == undefined) {
 			console.log("no price for symbol " + symbol.name + " on norm date")
-			continue
+			ts_current_values = null
 		}
-		actual_norm_values.push(norm_value)
+		let ts_current_values = []
 		for (let j=date_start;j<=date_end;j++) {
 			let value = symbol.data[j]
-			if (value == undefined) { continue }
-			value = value / norm_value
+			if (value == undefined) {
+				value = last_valid_value
+			} else {
+				value = value / norm_value
+			}
+			ts_current_values.push(value)
+			last_valid_value = value
 			y_min = Math.min(y_min, value)
 			y_max = Math.max(y_max, value)
 		}
+		symbol.ts_current_values = ts_current_values
 	}
 	if(y_min == y_max) {
 		y_min = y_max-1
@@ -596,6 +657,14 @@ function update_ts()
 	}
 
 	function draw_timeseries(symbol, focused) {
+
+		let ts_current_values = symbol.ts_current_values
+		if (ts_current_values == null) {
+			console.log("Not drawing ts for symbol ", symbol.name);
+			return;
+		}
+
+
 		if (focused) {
 			ctx.lineWidth = 4
 		} else {
@@ -606,22 +675,19 @@ function update_ts()
 		if (symbol.data == null) {
 			return
 		}
-		let norm_value = actual_norm_values[i] // symbol.data[date_norm]
-		if (norm_value == undefined) {
-			console.log("no price for symbol " + symbol.name + " on norm date")
-			return
-		}
+
+		// let norm_value = actual_norm_values[i] // symbol.data[date_norm]
+		// if (norm_value == undefined) {
+		// 	console.log("no price for symbol " + symbol.name + " on norm date")
+		// 	return
+		// }
 
 		let first_point_drawn = false
 		ctx.strokeStyle = global.chart_colors[i]
 		ctx.beginPath()
 		for (let j=x_min;j<=x_max;j++) {
 			let date_offset = date_start+j
-			let yi = symbol.data[date_start + j]
-			if (yi == undefined) {
-				continue
-			}
-			yi = yi/norm_value
+			let yi = ts_current_values[j]
 			let p = map(j,yi)
 			update_closest_point(symbol, j, p[0], p[1])
 			if (!first_point_drawn) {
@@ -632,8 +698,6 @@ function update_ts()
 			}
 		}
 		ctx.stroke()
-
-
 	}
 
 	function draw_point(i, j, r) {
@@ -676,10 +740,6 @@ function update_ts()
 	global.focused_symbol = closest_symbol
 	global.focused_date = closest_date
 
-
-
-
-	/*
 	if (global.key_update_norm) {
 		let pt_n = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
 		let new_date_norm = date_offset_to_string(Math.floor(date_start+pt_n[0]))
@@ -688,12 +748,11 @@ function update_ts()
 		global.date_norm = new_date_norm
 		global.key_update_norm = false
 	}
-	*/
-	{
-		let pt_n = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
-		let new_date_norm = date_offset_to_string(Math.floor(0.5 + date_start + pt_n[0]))
-		global.date_norm = new_date_norm
-	}
+	// {
+	// 	let pt_n = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
+	// 	let new_date_norm = date_offset_to_string(Math.floor(0.5 + date_start + pt_n[0]))
+	// 	global.date_norm = new_date_norm
+	// }
 
 	if (global.key_update_start) {
 		let pt_s = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
@@ -774,8 +833,9 @@ async function main()
     		// const { tsvis_wasm_module } = await WebAssembly.instantiateStreaming( fetch("./tsvis.wasm") );
 		const { instance } = await WebAssembly.instantiateStreaming( fetch("tsvis.wasm") );
 		global.tsvis_wasm_module = instance
-
 		global.tsvis_wasm_module.exports.tsvis_init()
+
+		/*
 		let c_curve_raw_pointer = global.tsvis_wasm_module.exports.tsvis_new_curve(4)
 		console.log("pointer: " + c_curve_raw_pointer)
 		console.log("chkpt:   " + global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
@@ -784,12 +844,13 @@ async function main()
 		let c_curve_values_raw = global.tsvis_wasm_module.exports.tsvis_curve_values_array()
 		const c_curve_values = new Float64Array( instance.exports.memory.buffer, c_curve_values_raw, 4);
 		c_curve_values.set([1.0, 3.2, 4.5, 8.7])
+		*/
 
 		let result = await fetch('http://localhost:8888/desc')
 		let symbol_names = await result.json()
 		let symbols = []
 		for (let i=0;i<symbol_names.length;i++) {
-			symbols.push({ name:symbol_names[i], ui_row:null, ui_col:null, on_table:true, on_chart:false, data: null})
+			symbols.push({ name:symbol_names[i], ui_row:null, ui_col:null, on_table:true, on_chart:false, data: null, ts_current_values: null })
 		}
 		global.symbols = symbols
 		//

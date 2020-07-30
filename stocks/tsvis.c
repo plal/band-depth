@@ -90,7 +90,7 @@ static s8 *rans_free = 0;
 // this should be called before anything else
 void tsvis_init()
 {
-	rans_free = __heap_base + 4;
+	rans_free = __heap_base + 8;
 }
 
 void *tsvis_mem_get_checkpoint()
@@ -98,7 +98,7 @@ void *tsvis_mem_get_checkpoint()
 	return rans_free;
 }
 
-void tsvis_set_checkpoint(void *checkpoint)
+void tsvis_mem_set_checkpoint(void *checkpoint)
 {
 	rans_free = checkpoint;
 }
@@ -106,7 +106,7 @@ void tsvis_set_checkpoint(void *checkpoint)
 void *tsvis_malloc(int bytes)
 {
 	void *result = rans_free;
-	rans_free += RAlign(bytes,4);
+	rans_free += RAlign(bytes,8);
 	return result;
 }
 
@@ -127,27 +127,39 @@ typedef struct {
 	s32  num_bytes;
 	s32  max_rank;
 	s32  min_rank;
-	f64  original_depth;
-	f64  original_depth_time;
-	f64  fast_depth;
-	f64  fast_depth_time;
-	f64  original_modified_depth;
-	f64  original_modified_depth_time;
-	f64  fast_modified_depth;
-	f64  fast_modified_depth_time;
-	f64  t_digest_depth;
-	f64  t_digest_depth_time;
-	f64  t_digest_modified_depth;
-	f64  t_digest_modified_depth_time;
-	f64  sliding_depth;
-	f64  sliding_depth_time;
         f64  extremal_depth;
-	f64 *pointwise_depths;
 	f64  values[];
 } Curve;
 
+
+typedef struct {
+	s32 num_curves;
+	s32 max_curves;
+	Curve* curves[];
+} CurveList;
+
+CurveList*
+tsvis_CurveList_new(s32 max_curves)
+{
+	CurveList *curve_list = tsvis_malloc(sizeof(CurveList) + max_curves * sizeof(Curve*));
+	curve_list[0] = (CurveList) {
+		.num_curves = 0,
+		.max_curves = max_curves
+	};
+	return curve_list;
+}
+
+s32
+tsvis_CurveList_append(CurveList *self, Curve *curve)
+{
+	if (self->num_curves == self->max_curves) { return 0; }
+	self->curves[self->num_curves] = curve;
+	++self->num_curves;
+	return 1;
+}
+
 Curve*
-tsvis_new_curve(s32 num_points)
+tsvis_Curve_new(s32 num_points)
 {
 	Curve *curve = tsvis_malloc(sizeof(Curve) + sizeof(f64) * num_points);
 	for (s32 i=0;i<sizeof(Curve);++i) { ((u8*)curve)[i] = 0; }
@@ -155,13 +167,13 @@ tsvis_new_curve(s32 num_points)
 }
 
 s32
-tsvis_curve_num_points(Curve* self)
+tsvis_Curve_num_points(Curve* self)
 {
 	return self->num_points;
 }
 
 f64*
-tsvis_curve_values_array(Curve* self)
+tsvis_Curve_values(Curve* self)
 {
 	return self->values;
 }
@@ -172,7 +184,7 @@ typedef struct {
 } ed_Aux;
 
 typedef struct {
-	Curve* *curves;
+	CurveList *curve_list;
 	s32 n; // num curves
 	s32 p; // num points
 	s32 k; // num different pointwise-depth values possible (n/2?)
@@ -293,6 +305,8 @@ ed_sort_rank(ExtremalDepth *self, s32 timestep, s32 *rank, rnd_State *rnd) {
 	stack[1] = self->n;
 	s32 stack_count = 2;
 
+	Curve* *curves = self->curve_list->curves;
+
 	while (stack_count) {
 		Assert(stack_count % 2 == 0);
 		s32 r = stack[--stack_count];
@@ -300,9 +314,9 @@ ed_sort_rank(ExtremalDepth *self, s32 timestep, s32 *rank, rnd_State *rnd) {
 		if (r - l <= 4) {
 			// insertion sort if less than 4 elements
 			for (s32 i=l;i<r;++i) {
-				f64 xi = self->curves[rank[i]]->values[timestep];
+				f64 xi = curves[rank[i]]->values[timestep];
 				for (s32 j=i+1;j<r;++j) {
-					f64 xj = self->curves[rank[j]]->values[timestep];
+					f64 xj = curves[rank[j]]->values[timestep];
 					if (xi > xj) {
 						Swap(rank[i],rank[j]);
 						xi = xj;
@@ -319,9 +333,9 @@ ed_sort_rank(ExtremalDepth *self, s32 timestep, s32 *rank, rnd_State *rnd) {
 				l + rnd_next(rnd) % n
 			};
 			for (s32 i=0;i<3;++i) {
-				f64 xi = self->curves[rank[pp[i]]]->values[timestep];
+				f64 xi = curves[rank[pp[i]]]->values[timestep];
 				for (s32 j=i+1;j<3;++j) {
-					f64 xj = self->curves[rank[pp[j]]]->values[timestep];
+					f64 xj = curves[rank[pp[j]]]->values[timestep];
 					if (xi > xj) {
 						Swap(pp[i],pp[j]);
 						xi = xj;
@@ -329,7 +343,7 @@ ed_sort_rank(ExtremalDepth *self, s32 timestep, s32 *rank, rnd_State *rnd) {
 				}
 			}
 			Swap(rank[l], rank[pp[1]]);
-			f64 xp = self->curves[rank[l]]->values[timestep];
+			f64 xp = curves[rank[l]]->values[timestep];
 
 			s32 lt = l;
 			s32 gt = r;
@@ -337,7 +351,7 @@ ed_sort_rank(ExtremalDepth *self, s32 timestep, s32 *rank, rnd_State *rnd) {
 			// l ----------------------------> lt                          gt                          r
 			// [ elements that are less than ) [ elements that are equal ) [ elements that are great )
 			while (i < gt) {
-				f64 xi = self->curves[rank[i]]->values[timestep];
+				f64 xi = curves[rank[i]]->values[timestep];
 				if  (xi < xp) {
 					Swap(rank[i],rank[lt]);
 					++i;
@@ -438,8 +452,11 @@ x7   6    7-7  6-(7-7) =  6   6
 */
 
 ExtremalDepth*
-ed_extremal_depth_run(Curve* *curves, s32 num_curves)
+ed_extremal_depth_run(CurveList *curve_list)
 {
+	s32 num_curves = curve_list->num_curves;
+	Curve* *curves = curve_list->curves;
+
 	s32 n = num_curves;
 	s32 p = curves[0]->num_points;
 	s32 k = n+1; // 0, 1, ... n
@@ -455,7 +472,7 @@ ed_extremal_depth_run(Curve* *curves, s32 num_curves)
 	for (s32 i=0;i<storage;++i) ((u8*) ed)[i] = 0;
 
 	*ed = (ExtremalDepth) {
-		.curves = curves,
+		.curve_list = curve_list,
 		.n = n,
 		.p = p,
 		.k = k,
