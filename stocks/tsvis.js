@@ -11,7 +11,6 @@ const EVENT= {
 	KEYDOWN: "event_keydown"
 }
 
-
 var global = {
 	ui:{},
 	symbols: [],
@@ -378,8 +377,8 @@ function update_ts()
 	ctx.fill()
 
 	let date_start = date_offset(global.date_start)
-	let date_end = date_offset(global.date_end)
-	let date_norm = date_offset(global.date_norm)
+	let date_end   = date_offset(global.date_end)
+	let date_norm  = date_offset(global.date_norm)
 
 	ctx.font = "bold 14pt Courier"
 	ctx.fillStyle = "#FFFFFF";
@@ -404,9 +403,12 @@ function update_ts()
 
 	ctx.restore()
 
+
+	//--------------
+	// find y range
+	//--------------
 	let y_min = 1.0
 	let y_max = 1.0
-
 	let actual_norm_values = []
 	for (let i=0;i<global.chart_symbols.length;i++) {
 		let symbol = global.chart_symbols[i]
@@ -436,11 +438,13 @@ function update_ts()
 			y_max = Math.max(y_max, value)
 		}
 	}
-
 	if(y_min == y_max) {
 		y_min = y_max-1
 	}
 
+	//--------------
+	// x range
+	//--------------
 	let x_min = 0
 	let x_max = date_end - date_start
 
@@ -464,6 +468,21 @@ function update_ts()
 		x_ticks.push(x_tick)
 	}
 
+	for(let i=0; i<date_end-date_start; i+=2) {
+		ctx.fillStyle= "#ffff0011";
+
+		let p0 = map(i, y_min)
+		let p1 = map(i, y_max)
+
+		let next_p0 = map(i+1, y_min)
+		let dx = next_p0[0] - p0[0]
+
+		ctx.beginPath()
+		ctx.rect(p0[0]-dx/2.0, p1[1], dx, ts_rect[RECT.HEIGHT])
+		ctx.fill()
+	}
+
+
 	for(let i=0; i<x_ticks.length; i++) {
 		ctx.strokeStyle = "#555555";
 		ctx.lineWidth   = 1;
@@ -485,6 +504,7 @@ function update_ts()
 		ctx.fillText(date_offset_to_string(date_start + (x_ticks[i])), 0, 0);
 		ctx.restore();
 	}
+
 
 	//y
 	let y_num_ticks = 10
@@ -541,8 +561,8 @@ function update_ts()
 	//LINES ON MOUSE POSITION
 	let pt = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
 
-	let y_p0 = map(pt[0],y_min)
-	let y_p1 = map(pt[0],y_max)
+	let y_p0 = map(Math.floor(0.5+pt[0]),y_min)
+	let y_p1 = map(Math.floor(0.5+pt[0]),y_max)
 
 	ctx.beginPath()
 	ctx.moveTo(y_p0[0], y_p0[1])
@@ -657,6 +677,10 @@ function update_ts()
 	global.focused_symbol = closest_symbol
 	global.focused_date = closest_date
 
+
+
+
+	/*
 	if (global.key_update_norm) {
 		let pt_n = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
 		let new_date_norm = date_offset_to_string(Math.floor(date_start+pt_n[0]))
@@ -665,6 +689,13 @@ function update_ts()
 		global.date_norm = new_date_norm
 		global.key_update_norm = false
 	}
+	*/
+	{
+		let pt_n = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
+		let new_date_norm = date_offset_to_string(Math.floor(0.5 + date_start + pt_n[0]))
+		global.date_norm = new_date_norm
+	}
+
 	if (global.key_update_start) {
 		let pt_s = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
 		let new_date_start = date_offset_to_string(Math.floor(date_start+pt_s[0]))
@@ -694,10 +725,67 @@ function update()
 	setTimeout(update, 32)
 }
 
+
+
+
+// async function init() {
+//
+//     	const { instance } = await WebAssembly.instantiateStreaming( fetch("./add.wasm") );
+//
+// 	// initialize webassembly module
+// 	instance.exports.rans_init();
+//
+// 	const js_array = [1, 2, 3, 4, 5];
+//
+// 	const c_checkpoint = instance.exports.rans_mem_get_checkpoint();
+//
+// 	const c_array_pointer = instance.exports.rans_malloc(js_array.length * 4);
+//
+// 	console.log(instance.exports.rans_mem_get_checkpoint());
+//
+// 	// Turn that sequence of 32-bit integers
+// 	// into a Uint32Array, starting at that address.
+// 	const c_array = new Uint32Array( instance.exports.memory.buffer, c_array_pointer, js_array.length );
+//
+// 	// Copy the values from JS to C.
+// 	c_array.set(js_array);
+//
+// 	console.log(c_array_pointer)
+//
+// 	// Run the function, passing the starting address and length.
+// 	console.log(instance.exports.rans_sum(c_array_pointer, c_array.length));
+//
+// 	instance.exports.rans_mem_set_checkpoint(c_checkpoint);
+//
+// 	console.log(instance.exports.rans_mem_get_checkpoint());
+//
+// 	console.log(instance.exports.rans_log(2));
+// }
+//
+// init();
+
+
+
+
+
 async function main()
 {
 	let result
 	try {
+    		// const { tsvis_wasm_module } = await WebAssembly.instantiateStreaming( fetch("./tsvis.wasm") );
+		const { instance } = await WebAssembly.instantiateStreaming( fetch("tsvis.wasm") );
+		global.tsvis_wasm_module = instance
+
+		global.tsvis_wasm_module.exports.tsvis_init()
+		let c_curve_raw_pointer = global.tsvis_wasm_module.exports.tsvis_new_curve(4)
+		console.log("pointer: " + c_curve_raw_pointer)
+		console.log("chkpt:   " + global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
+		console.log("values:  " + global.tsvis_wasm_module.exports.tsvis_curve_values_array())
+
+		let c_curve_values_raw = global.tsvis_wasm_module.exports.tsvis_curve_values_array()
+		const c_curve_values = new Float64Array( instance.exports.memory.buffer, c_curve_values_raw, 4);
+		c_curve_values.set([1.0, 3.2, 4.5, 8.7])
+
 		let result = await fetch('http://localhost:8888/desc')
 		let symbol_names = await result.json()
 		let symbols = []

@@ -21,15 +21,15 @@ typedef unsigned char u8;
 #define RAlign(a,b) (b*((a+b-1)/b))
 #define LAlign(a,b) (b*(a/b))
 
-// #define Clamp(x,a,b) (((x)<(a)) ? (a) : (((x)>(b)) ? (b) : (x)))
-// https://stackoverflow.com/questions/3982348/implement-generic-swap-macro-in-c
-// #define Swap2(x, y, t) do { t SWAP = x; x = y; y = SWAP; } while (0)
-// #define Swap(x,y) do \
-// { unsigned char swap_temp[sizeof(x) == sizeof(y) ? (s32)sizeof(x) : -1]; \
-// 	memcpy(swap_temp,&y,sizeof(x)); \
-// 	memcpy(&y,&x,       sizeof(x)); \
-// 	memcpy(&x,swap_temp,sizeof(x)); \
-// } while(0)
+#define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
+
+#define PointerDifference(b,a) (((char*)(b))-((char*)(a)))
+#define OffsetedPointer(ptr,offset) ((void*) ((char*) ptr + offset))
+#define RightOffsetedPointer(ptr,size,offset) ((void*) ((char*) ptr + size - offset))
+#define Offset(a,b) (s64)((char*)(b) - (char*)(a))
+
+
+
 
 // this are 32-bit numbers offset
 extern s8  *__heap_base;
