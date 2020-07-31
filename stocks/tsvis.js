@@ -520,7 +520,7 @@ function update_ts()
 			if (value == undefined) {
 				value = last_valid_value
 			} else {
-				value = value / norm_value
+				value = value //  / norm_value
 			}
 			// value = i
 			ts_current_values.push(value)
