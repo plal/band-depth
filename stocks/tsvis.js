@@ -271,6 +271,14 @@ function prepare_ui()
 
 }
 
+function grow_heap() {
+	let old_heap_size = global.tsvis_wasm_module.exports.memory.buffer.byteLength
+	global.tsvis_wasm_module.exports.memory.grow(old_heap_size/65536)
+	let new_heap_size = global.tsvis_wasm_module.exports.memory.buffer.byteLength
+	global.tsvis_wasm_module.exports.tsvis_heap_grow(new_heap_size)
+	console.log(`heap grew from ${old_heap_size} to ${new_heap_size}`)
+}
+
 function run_extremal_depth_algorithm()
 {
 	// get curves on the chart and creates the envelope for them
@@ -281,6 +289,11 @@ function run_extremal_depth_algorithm()
 	let mem_checpoint_raw_p = global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint()
 
 	let curve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_CurveList_new(n)
+	while (curve_list_raw_p == 0) {
+		grow_heap()
+		curve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_CurveList_new(n)
+	}
+
 	console.log("CL ------------> ",global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 
 	for (let i=0;i<n;i++) {
@@ -294,6 +307,10 @@ function run_extremal_depth_algorithm()
 		let m = ts_current_values.length
 		console.log("time points", m)
 		let curve_raw_p  = global.tsvis_wasm_module.exports.tsvis_Curve_new(m)
+		while (curve_raw_p == 0) {
+			grow_heap()
+			curve_raw_p = global.tsvis_wasm_module.exports.tsvis_Curve_new(m)
+		}
 		console.log("CV ------------> ",global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 		console.log("curve_raw_p",curve_raw_p)
 		let values_raw_p = global.tsvis_wasm_module.exports.tsvis_Curve_values(curve_raw_p)
@@ -311,6 +328,10 @@ function run_extremal_depth_algorithm()
 	console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 
 	let ed_raw_p = global.tsvis_wasm_module.exports.ed_extremal_depth_run(curve_list_raw_p)
+	while (ed_raw_p == 0) {
+		grow_heap()
+		ed_raw_p = global.tsvis_wasm_module.exports.ed_extremal_depth_run(curve_list_raw_p)
+	}
 	console.log("ED ------------> ",global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 
 	console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
@@ -339,6 +360,27 @@ function run_extremal_depth_algorithm()
 	global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p)
 
 	console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
+
+	// sort symbols by ed_rank
+	global.symbols.sort((a,b) => {
+		if (a.ed_rank != null && b.ed_rank != null) {
+			return a.ed_rank - b.ed_rank
+		} else if (a.ed_rank != null) {
+			return -1
+		} else if (b.ed_rank != null ) {
+			return 1
+		} else {
+			return -1
+		}
+	})
+	let parent = global.ui.symbols_table
+	while (parent.firstChild) {
+	    parent.firstChild.remove();
+	}
+	for (let i=0;i<global.symbols.length;i++) {
+		let symbol = global.symbols[i]
+		global.ui.symbols_table.appendChild(symbol.ui_row)
+	}
 
 }
 
@@ -520,7 +562,7 @@ function update_ts()
 			if (value == undefined) {
 				value = last_valid_value
 			} else {
-				value = value //  / norm_value
+				value = value / norm_value
 			}
 			// value = i
 			ts_current_values.push(value)
@@ -866,9 +908,10 @@ async function main()
 
     		// const { tsvis_wasm_module } = await WebAssembly.instantiateStreaming( fetch("./tsvis.wasm") );
 		const { instance } = await WebAssembly.instantiateStreaming( fetch("tsvis.wasm") );
-		instance.exports.memory.grow(100)
+		instance.exports.memory.grow(1000)
+		let heap_size = instance.exports.memory.buffer.byteLength
 		global.tsvis_wasm_module = instance
-		global.tsvis_wasm_module.exports.tsvis_init()
+		global.tsvis_wasm_module.exports.tsvis_heap_init(heap_size)
 
 		// for (let i=0;i<400;i++) {
 		// 	let block = global.tsvis_wasm_module.exports.tsvis_malloc(8)

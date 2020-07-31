@@ -46,38 +46,68 @@ typedef unsigned char u8;
 extern s8  *__heap_base;
 extern s8  *__data_end;
 
+typedef struct {
+	u32 free;
+	u32 size;
+} Heap;
+
 // static s8  *memory_free = __heap_base; //  = __heap_base + 4; // avoid 0
 // s8 *tsvis_free = 0;
 
 // put a prefix on everything from this module
 
-// this should be called before anything else
-void tsvis_init()
+Heap* tsvis_heap()
 {
-	s8* *free = (s8**) __heap_base;
-	free[0] = __heap_base + 8;
-	// tsvis_free = __heap_base + 8;
+	return (Heap*) __heap_base;
+}
+
+void* tsvis_heap_at(u32 offset)
+{
+	return OffsetedPointer(__heap_base, offset);
+}
+
+u32 tsvis_heap_size()
+{
+	return tsvis_heap()->size;
+}
+
+// this should be called before anything else
+void tsvis_heap_init(u32 heap_size)
+{
+	Heap *heap = tsvis_heap();
+	heap[0] = (Heap) {
+		.free = 8,
+		.size = heap_size
+	};
+}
+
+void tsvis_heap_grow(u32 new_heap_size)
+{
+	Heap *heap = tsvis_heap();
+	heap->size = new_heap_size;
 }
 
 void *tsvis_mem_get_checkpoint()
 {
-	s8* *free = (s8**) __heap_base;
-	// free[0] = __heap_base + 8;
-	return free[0]; // tsvis_free;
+	Heap *heap = tsvis_heap();
+	return tsvis_heap_at(heap->free);
 }
 
 void tsvis_mem_set_checkpoint(void *checkpoint)
 {
-	s8* *free = (s8**) __heap_base;
-	// s8 *free = __heap_base;
-	free[0] = checkpoint;
+	Heap *heap = tsvis_heap();
+	heap->free = (u32) (((s8*) checkpoint) -  ((s8*) __heap_base));
 }
 
-void *tsvis_malloc(int bytes)
+void *tsvis_malloc(u32 bytes)
 {
-	s8* *free = (s8**) __heap_base;
-	void *result = free[0]; // tsvis_free;
-	free[0] += RAlign(bytes,8);
+	Heap *heap = tsvis_heap();
+	u32 storage = RAlign(bytes, 8);
+	if (heap->free + storage > heap->size) {
+		return 0;
+	}
+	void *result = tsvis_heap_at(heap->free);
+	heap->free += storage;
 	return result;
 }
 
@@ -123,15 +153,6 @@ void *tsvis_malloc(int bytes)
 }
 
 #endif
-
-
-
-
-
-
-
-
-
 
 //-- Simple Random Generator ---------------------------------------------------
 //
@@ -200,6 +221,7 @@ CurveList*
 tsvis_CurveList_new(s32 max_curves)
 {
 	CurveList *curve_list = tsvis_malloc(sizeof(CurveList) + max_curves * sizeof(Curve*));
+	if (!curve_list) { return 0; }
 	curve_list[0] = (CurveList) {
 		.num_curves = 0,
 		.max_curves = max_curves
@@ -220,6 +242,7 @@ Curve*
 tsvis_Curve_new(s32 num_points)
 {
 	Curve *curve = tsvis_malloc(sizeof(Curve) + sizeof(f64) * num_points);
+	if (!curve) { return 0; }
 	for (s32 i=0;i<sizeof(Curve);++i) { ((u8*)curve)[i] = 0; }
 	curve->num_points = num_points;
 	return curve;
@@ -528,6 +551,7 @@ ed_extremal_depth_run(CurveList *curve_list)
 	s32 storage = header_storage + rank_matrix_storage + ltgt_abs_diff_matrix_storage + cdf_matrix_storage;
 
 	ExtremalDepth *ed = tsvis_malloc(storage);
+	if (!ed) { return 0; }
 	for (s32 i=0;i<storage;++i) ((u8*) ed)[i] = 0;
 
 	*ed = (ExtremalDepth) {
@@ -690,7 +714,7 @@ main(int argc, char *argv[])
 		offset += p;
 	}
 #else
-	rnd_State rnd = rnd_new(); 
+	rnd_State rnd = rnd_new();
 
 	s32 n = 30;
 	s32 p = 30;
