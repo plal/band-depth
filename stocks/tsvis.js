@@ -281,6 +281,7 @@ function run_extremal_depth_algorithm()
 	let mem_checpoint_raw_p = global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint()
 
 	let curve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_CurveList_new(n)
+	console.log("CL ------------> ",global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 
 	for (let i=0;i<n;i++) {
 		let symbol = global.chart_symbols[i]
@@ -293,6 +294,7 @@ function run_extremal_depth_algorithm()
 		let m = ts_current_values.length
 		console.log("time points", m)
 		let curve_raw_p  = global.tsvis_wasm_module.exports.tsvis_Curve_new(m)
+		console.log("CV ------------> ",global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 		console.log("curve_raw_p",curve_raw_p)
 		let values_raw_p = global.tsvis_wasm_module.exports.tsvis_Curve_values(curve_raw_p)
 		console.log("values_raw_p",values_raw_p)
@@ -309,6 +311,7 @@ function run_extremal_depth_algorithm()
 	console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 
 	let ed_raw_p = global.tsvis_wasm_module.exports.ed_extremal_depth_run(curve_list_raw_p)
+	console.log("ED ------------> ",global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 
 	console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 
@@ -327,6 +330,7 @@ function run_extremal_depth_algorithm()
 	global.ed_ranked_symbols = []
 	for (let i=0;i<symbols_ed.length;i++) {
 		let symbol_rank_i = symbols_ed[rank[i]]
+		symbol_rank_i.ed_rank = i
 		global.ed_ranked_symbols.push(symbol_rank_i)
 		console.log(rank[i])
 		console.log(`Depth rank ${i} is symbol ${symbol_rank_i.name} (from most extremal smaller rank to deeper larger rank)`)
@@ -758,7 +762,7 @@ function update_ts()
 		let record = global.focused_symbol
 		let value = global.focused_symbol.data[global.focused_date]
 		let date = date_offset_to_string(date_start+global.focused_date)
-		let text = `symbol: ${global.focused_symbol.name} // date: ${date}`
+		let text = `symbol: ${global.focused_symbol.name} // date: ${date} // #${global.focused_symbol.ed_rank}`
 		ctx.font = '24px Monospace';
 		ctx.textAlign = 'center';
 		ctx.fillText(text, canvas.width/2, 40);
@@ -856,15 +860,22 @@ async function main()
 	let result
 	try {
 
-	 	let importObject = {
-	 	    env: { memory: new WebAssembly.Memory({initial:100}) }
-	 	    // imports: { imported_func: arg => console.log(arg) }
-	 	};
+		// var mem = new WebAssembly.Memory({initial:1000, maximum:1000});
+		// var imports = { env: { memory: mem } };
+		//, imports
 
     		// const { tsvis_wasm_module } = await WebAssembly.instantiateStreaming( fetch("./tsvis.wasm") );
-		const { instance } = await WebAssembly.instantiateStreaming( fetch("tsvis.wasm"), importObject );
+		const { instance } = await WebAssembly.instantiateStreaming( fetch("tsvis.wasm") );
+		instance.exports.memory.grow(100)
 		global.tsvis_wasm_module = instance
 		global.tsvis_wasm_module.exports.tsvis_init()
+
+		// for (let i=0;i<400;i++) {
+		// 	let block = global.tsvis_wasm_module.exports.tsvis_malloc(8)
+		// 	global.tsvis_wasm_module.exports.tsvis_zero_block(block,8)
+		// 	console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
+		// 	// console.log(global.tsvis_wasm_module.exports.tsvis_free.value)
+		// }
 
 		/*
 		let c_curve_raw_pointer = global.tsvis_wasm_module.exports.tsvis_new_curve(4)
@@ -881,7 +892,7 @@ async function main()
 		let symbol_names = await result.json()
 		let symbols = []
 		for (let i=0;i<symbol_names.length;i++) {
-			symbols.push({ name:symbol_names[i], ui_row:null, ui_col:null, on_table:true, on_chart:false, data: null, ts_current_values: null })
+			symbols.push({ name:symbol_names[i], ui_row:null, ui_col:null, on_table:true, on_chart:false, data: null, ts_current_values: null, ed_rank:null})
 		}
 		global.symbols = symbols
 		//

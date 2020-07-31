@@ -37,7 +37,6 @@ typedef unsigned char u8;
 	u8* xx=(u8*) &x; u8* yy=(u8*) &y; for (s32 i=0;i<sizeof(x);i++) { u8 tmp=xx[i]; xx[i]=yy[i]; yy[i]=tmp; } \
     } while(0)
 
-
 #ifdef WEBASSEMBLY
 
 #define printf(a,...)
@@ -48,34 +47,51 @@ extern s8  *__heap_base;
 extern s8  *__data_end;
 
 // static s8  *memory_free = __heap_base; //  = __heap_base + 4; // avoid 0
-static s8 *rans_free = 0;
+// s8 *tsvis_free = 0;
 
 // put a prefix on everything from this module
 
 // this should be called before anything else
 void tsvis_init()
 {
-	rans_free = __heap_base + 8;
+	s8* *free = (s8**) __heap_base;
+	free[0] = __heap_base + 8;
+	// tsvis_free = __heap_base + 8;
 }
 
 void *tsvis_mem_get_checkpoint()
 {
-	return rans_free;
+	s8* *free = (s8**) __heap_base;
+	// free[0] = __heap_base + 8;
+	return free[0]; // tsvis_free;
 }
 
 void tsvis_mem_set_checkpoint(void *checkpoint)
 {
-	rans_free = checkpoint;
+	s8* *free = (s8**) __heap_base;
+	// s8 *free = __heap_base;
+	free[0] = checkpoint;
 }
 
 void *tsvis_malloc(int bytes)
 {
-	void *result = rans_free;
-	rans_free += RAlign(bytes,8);
+	s8* *free = (s8**) __heap_base;
+	void *result = free[0]; // tsvis_free;
+	free[0] += RAlign(bytes,8);
 	return result;
 }
 
+void tsvis_zero_block(s8 *buffer, s32 length)
+{
+	for (s32 i=0;i<length;i++) {
+		buffer[i] = 0;
+	}
+}
+
 #else
+
+static s8  *__heap_base = 0;
+static s8  *__data_end = 0;
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -83,7 +99,7 @@ void *tsvis_malloc(int bytes)
 #define Assert(a)
 
 // static s8  *memory_free = __heap_base; //  = __heap_base + 4; // avoid 0
-static s8 *rans_free = 0;
+static s8 *tsvis_free = 0;
 
 // put a prefix on everything from this module
 
@@ -650,13 +666,14 @@ int
 main(int argc, char *argv[])
 {
 
+
+#if 0
 	// Example from Figure 1 of the Extremal Depth paper
 	f64 curves_data[] = {
 		0, 0, 0,
 		1, 1, 1,
 		2, 2, 2
 	};
-
 
 	s32 n = 3;
 	s32 p = 3;
@@ -672,6 +689,27 @@ main(int argc, char *argv[])
 		tsvis_CurveList_append(curve_list, curve);
 		offset += p;
 	}
+#else
+	rnd_State rnd = rnd_new(); 
+
+	s32 n = 30;
+	s32 p = 30;
+
+	CurveList *curve_list = tsvis_CurveList_new(n);
+
+	s32 offset = 0;
+	for (s32 i=0;i<n;++i) {
+		Curve *curve = tsvis_Curve_new(p);
+		for (s32 j=0;j<p;j++) {
+			curve->values[j] = rnd_next(&rnd); // curves_data[offset + j];
+		}
+		tsvis_CurveList_append(curve_list, curve);
+		offset += p;
+	}
+
+#endif
+
+
 
 	// compue extremal depth
 	ExtremalDepth *ed = ed_extremal_depth_run(curve_list);
