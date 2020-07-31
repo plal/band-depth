@@ -2,9 +2,6 @@
 Basic c functions used in the tsvis tool.
 */
 
-#define printf(a,...)
-#define Assert(a)
-
 //---------------------------------------------------------------
 //
 // Basic Definitions
@@ -39,6 +36,86 @@ typedef unsigned char u8;
 	u8 swap_temp[sizeof(x) == sizeof(y) ? (s32)sizeof(x) : -1]; \
 	u8* xx=(u8*) &x; u8* yy=(u8*) &y; for (s32 i=0;i<sizeof(x);i++) { u8 tmp=xx[i]; xx[i]=yy[i]; yy[i]=tmp; } \
     } while(0)
+
+
+#ifdef WEBASSEMBLY
+
+#define printf(a,...)
+#define Assert(a)
+
+// this are 32-bit numbers offset
+extern s8  *__heap_base;
+extern s8  *__data_end;
+
+// static s8  *memory_free = __heap_base; //  = __heap_base + 4; // avoid 0
+static s8 *rans_free = 0;
+
+// put a prefix on everything from this module
+
+// this should be called before anything else
+void tsvis_init()
+{
+	rans_free = __heap_base + 8;
+}
+
+void *tsvis_mem_get_checkpoint()
+{
+	return rans_free;
+}
+
+void tsvis_mem_set_checkpoint(void *checkpoint)
+{
+	rans_free = checkpoint;
+}
+
+void *tsvis_malloc(int bytes)
+{
+	void *result = rans_free;
+	rans_free += RAlign(bytes,8);
+	return result;
+}
+
+#else
+
+#include <stdlib.h>
+#include <stdio.h>
+
+#define Assert(a)
+
+// static s8  *memory_free = __heap_base; //  = __heap_base + 4; // avoid 0
+static s8 *rans_free = 0;
+
+// put a prefix on everything from this module
+
+// this should be called before anything else
+void tsvis_init()
+{
+}
+
+void *tsvis_mem_get_checkpoint()
+{
+	return 0;
+}
+
+void tsvis_mem_set_checkpoint(void *checkpoint)
+{
+}
+
+void *tsvis_malloc(int bytes)
+{
+	return malloc(bytes);
+}
+
+#endif
+
+
+
+
+
+
+
+
+
 
 //-- Simple Random Generator ---------------------------------------------------
 //
@@ -78,37 +155,6 @@ u32 rnd_next(rnd_State *state) {          //period 2^96-1
 //
 //---------------------------------------------------------------
 
-// this are 32-bit numbers offset
-extern s8  *__heap_base;
-extern s8  *__data_end;
-
-// static s8  *memory_free = __heap_base; //  = __heap_base + 4; // avoid 0
-static s8 *rans_free = 0;
-
-// put a prefix on everything from this module
-
-// this should be called before anything else
-void tsvis_init()
-{
-	rans_free = __heap_base + 8;
-}
-
-void *tsvis_mem_get_checkpoint()
-{
-	return rans_free;
-}
-
-void tsvis_mem_set_checkpoint(void *checkpoint)
-{
-	rans_free = checkpoint;
-}
-
-void *tsvis_malloc(int bytes)
-{
-	void *result = rans_free;
-	rans_free += RAlign(bytes,8);
-	return result;
-}
 
 //---------------------------------------------------------------
 //
@@ -124,10 +170,6 @@ void *tsvis_malloc(int bytes)
 //
 typedef struct {
 	s32  num_points;
-	s32  num_bytes;
-	s32  max_rank;
-	s32  min_rank;
-        f64  extremal_depth;
 	f64  values[];
 } Curve;
 
@@ -163,6 +205,7 @@ tsvis_Curve_new(s32 num_points)
 {
 	Curve *curve = tsvis_malloc(sizeof(Curve) + sizeof(f64) * num_points);
 	for (s32 i=0;i<sizeof(Curve);++i) { ((u8*)curve)[i] = 0; }
+	curve->num_points = num_points;
 	return curve;
 }
 
@@ -198,7 +241,7 @@ typedef struct {
 static s32*
 ed_get_rank_matrix(ExtremalDepth *self) { return OffsetedPointer(self,self->rank_matrix); }
 
-static s32*
+s32*
 ed_get_extremal_depth_rank(ExtremalDepth *self) { return ed_get_rank_matrix(self) + self->p * self->n; }
 
 static s32*
@@ -579,30 +622,59 @@ ed_extremal_depth_run(CurveList *curve_list)
 
 }
 
-/*
-static void
-ed_example()
+// sanity check
+f64 sum_f64(f64 *a, int len)
+{
+	f64 sum = 0;
+	for(int i = 0; i < len; i++) {
+		sum += a[i];
+	}
+	return sum;
+}
+
+// sanity check
+s32 checksum(s32 *a, int len)
+{
+	s32 sum = 0;
+	for(int i = 0; i < len; i++) {
+		sum = ((a[i] & 0x3) << (2 * i)) + sum;
+	}
+	return sum;
+	// 00 01 10
+}
+
+
+#ifndef WEBASSEMBLY
+
+int
+main(int argc, char *argv[])
 {
 
 	// Example from Figure 1 of the Extremal Depth paper
 	f64 curves_data[] = {
-		 2.00,  2.10,  1.80,  1.52,  0.60, -0.50,
-		 1.50,  1.50,  1.50,  1.51,  1.40,  1.40,
-		 1.10,  1.10,  1.30,  1.20,  1.20,  1.30,
-		 1.00,  0.90,  1.10,  1.50,  2.30,  3.50,
-		 0.60,  0.50,  0.11, -0.60, -1.50, -2.60,
-		 0.00,  0.40,  0.10,  0.20,  0.10, -0.30,
-		-0.80, -0.70, -0.30, -0.30, -0.60, -0.60,
-		-1.40, -1.10, -1.00, -1.10, -1.40, -1.60
+		0, 0, 0,
+		1, 1, 1,
+		2, 2, 2
 	};
 
-	Curve *curves[8];
-	for (s32 i=0;i<8;++i) {
-		curves[i] = curve_new_curve_from_array(6, curves_data + 6 * i);
+
+	s32 n = 3;
+	s32 p = 3;
+
+	CurveList *curve_list = tsvis_CurveList_new(n);
+
+	s32 offset = 0;
+	for (s32 i=0;i<n;++i) {
+		Curve *curve = tsvis_Curve_new(p);
+		for (s32 j=0;j<p;j++) {
+			curve->values[j] = curves_data[offset + j];
+		}
+		tsvis_CurveList_append(curve_list, curve);
+		offset += p;
 	}
 
 	// compue extremal depth
-	ExtremalDepth *ed = ed_extremal_depth_run(curves, 8);
+	ExtremalDepth *ed = ed_extremal_depth_run(curve_list);
 
 	// s32 *rank = ed_get_extremal_depth_rank(ed);
 	// for (s32 i=0;i<ed->n;++i) {
@@ -611,4 +683,4 @@ ed_example()
 	// }
 }
 
-*/
+#endif

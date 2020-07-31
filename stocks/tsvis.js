@@ -17,7 +17,7 @@ var global = {
 	chart_symbols: [],
 	chart_colors: [],
 	events: [],
-	date_start: "2020-01-01",
+	date_start: "2020-07-03",
 	date_end: "2020-07-18",
 	date_norm: "2020-07-15",
 	mouse: { position:[0,0], last_position:[0,0] },
@@ -127,7 +127,7 @@ function prepare_ui()
 	let start_date_input = document.createElement('input')
 	global.ui.start_date_input = start_date_input
 	start_date_input.setAttribute("type","date")
-	start_date_input.defaultValue = "2020-01-01"
+	start_date_input.defaultValue = global.date_start
 	start_date_input.classList.add('date_input')
 	start_date_input.id = 'start_date_input'
 	install_event_listener(start_date_input, 'change', start_date_input, EVENT.UPDATE_START_DATE)
@@ -149,7 +149,7 @@ function prepare_ui()
 	let end_date_input = document.createElement('input')
 	global.ui.end_date_input = end_date_input
 	end_date_input.setAttribute("type","date")
-	end_date_input.defaultValue = "2020-07-18"
+	end_date_input.defaultValue = global.date_end
 	end_date_input.classList.add('date_input')
 	end_date_input.id = 'end_date_input'
 	install_event_listener(end_date_input, 'change', end_date_input, EVENT.UPDATE_END_DATE)
@@ -170,7 +170,7 @@ function prepare_ui()
 	let norm_date_input = document.createElement('input')
 	global.ui.norm_date_input = norm_date_input
 	norm_date_input.setAttribute("type","date")
-	norm_date_input.defaultValue = "2020-07-15"
+	norm_date_input.defaultValue = global.date_norm
 	norm_date_input.classList.add('date_input')
 	norm_date_input.id = 'norm_date_input'
 	install_event_listener(norm_date_input, 'change', norm_date_input, EVENT.UPDATE_NORM_DATE)
@@ -291,18 +291,46 @@ function run_extremal_depth_algorithm()
 		symbols_ed.push(symbol)
 
 		let m = ts_current_values.length
+		console.log("time points", m)
 		let curve_raw_p  = global.tsvis_wasm_module.exports.tsvis_Curve_new(m)
 		console.log("curve_raw_p",curve_raw_p)
 		let values_raw_p = global.tsvis_wasm_module.exports.tsvis_Curve_values(curve_raw_p)
 		console.log("values_raw_p",values_raw_p)
+
 		const c_curve_values = new Float64Array(global.tsvis_wasm_module.exports.memory.buffer, values_raw_p, m);
+
+		c_curve_values.set(ts_current_values)
+
+		console.log("sum", global.tsvis_wasm_module.exports.sum_f64(values_raw_p,m))
 
 		let ok = global.tsvis_wasm_module.exports.tsvis_CurveList_append(curve_list_raw_p, curve_raw_p)
 	}
 
+	console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
+
 	let ed_raw_p = global.tsvis_wasm_module.exports.ed_extremal_depth_run(curve_list_raw_p)
 
+	console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
+
+	let rank_raw_p = global.tsvis_wasm_module.exports.ed_get_extremal_depth_rank(ed_raw_p)
+
+	console.log("rank_raw_p",rank_raw_p)
+
+	console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
+
+	const rank = new Int32Array(global.tsvis_wasm_module.exports.memory.buffer, rank_raw_p, symbols_ed.length);
+
 	console.log(ed_raw_p)
+
+	console.log("checksum", global.tsvis_wasm_module.exports.checksum(rank_raw_p,symbols_ed.length))
+
+	global.ed_ranked_symbols = []
+	for (let i=0;i<symbols_ed.length;i++) {
+		let symbol_rank_i = symbols_ed[rank[i]]
+		global.ed_ranked_symbols.push(symbol_rank_i)
+		console.log(rank[i])
+		console.log(`Depth rank ${i} is symbol ${symbol_rank_i.name} (from most extremal smaller rank to deeper larger rank)`)
+	}
 
 	global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p)
 
@@ -481,7 +509,6 @@ function update_ts()
 		}
 		if (norm_value == undefined) {
 			console.log("no price for symbol " + symbol.name + " on norm date")
-			ts_current_values = null
 		}
 		let ts_current_values = []
 		for (let j=date_start;j<=date_end;j++) {
@@ -491,6 +518,7 @@ function update_ts()
 			} else {
 				value = value / norm_value
 			}
+			// value = i
 			ts_current_values.push(value)
 			last_valid_value = value
 			y_min = Math.min(y_min, value)
@@ -823,15 +851,18 @@ function update()
 // init();
 
 
-
-
-
 async function main()
 {
 	let result
 	try {
+
+	 	let importObject = {
+	 	    env: { memory: new WebAssembly.Memory({initial:100}) }
+	 	    // imports: { imported_func: arg => console.log(arg) }
+	 	};
+
     		// const { tsvis_wasm_module } = await WebAssembly.instantiateStreaming( fetch("./tsvis.wasm") );
-		const { instance } = await WebAssembly.instantiateStreaming( fetch("tsvis.wasm") );
+		const { instance } = await WebAssembly.instantiateStreaming( fetch("tsvis.wasm"), importObject );
 		global.tsvis_wasm_module = instance
 		global.tsvis_wasm_module.exports.tsvis_init()
 

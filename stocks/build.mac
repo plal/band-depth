@@ -1,8 +1,31 @@
+option="$1"
+
+if [ $option == "c" ]; then
+
+echo "compiling to C"
+
+# https://mbebenita.github.io/WasmExplorer/
+# https://surma.dev/things/c-to-webassembly/
+export PATH=/usr/local/Cellar/llvm/10.0.0_3/bin:$PATH
+cat <<EOF | sed 's/#.*$//g' | paste -d' ' -s - | tr ';' '\n' | sed 's/  */ /g' | sed 's/^ *//g' > script_c
+clang
+-g -ggdb
+-o tsvis
+tsvis.c
+EOF
+cat script_c
+bash script_c
+
+else
+
+echo "compiling to WASM"
+
 # https://mbebenita.github.io/WasmExplorer/
 # https://surma.dev/things/c-to-webassembly/
 export PATH=/usr/local/Cellar/llvm/10.0.0_3/bin:$PATH
 cat <<EOF | sed 's/#.*$//g' | paste -d' ' -s - | tr ';' '\n' | sed 's/  */ /g' | sed 's/^ *//g' > script
 clang
+-DWEBASSEMBLY
 --target=wasm32
 -nostdlib              # Don’t try and link against a standard library
 # -O3                    # Agressive optimizations
@@ -18,3 +41,6 @@ wasm2wat tsvis.wasm > tsvis.wat
 EOF
 cat script
 bash script
+
+fi
+
