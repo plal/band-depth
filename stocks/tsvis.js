@@ -17,7 +17,7 @@ var global = {
 	chart_symbols: [],
 	chart_colors: [],
 	events: [],
-	date_start: "2020-07-03",
+	date_start: "2020-01-01",
 	date_end: "2020-07-18",
 	date_norm: "2020-07-15",
 	mouse: { position:[0,0], last_position:[0,0] },
@@ -26,7 +26,8 @@ var global = {
 	focused_date: null,
 	key_update_norm: false,
 	key_update_start: false,
-	key_update_end: false
+	key_update_end: false,
+	extremal_depth: {fbplot: {active: false, inner_band: {lower:[], upper:[]}, outer_band: {lower:[], upper:[]} }, ranked_symbols: [] }
 }
 
 function install_event_listener(component, raw_event_type, context, event_type)
@@ -121,6 +122,61 @@ async function download_symbol_data(symbol)
 	}
 }
 
+function prepare_ed_inner_band(rank) {
+	let n = global.extremal_depth.ranked_symbols.length
+	let n_timesteps = global.extremal_depth.ranked_symbols[0].ts_current_values.length //symbol.ts_current_values
+
+	let a = Math.floor(n/2)
+	let b = n
+
+	let ymin = new Array(n_timesteps)
+	let ymax = new Array(n_timesteps)
+
+	for (let j=0;j<n_timesteps;j++) {
+		let y = global.extremal_depth.ranked_symbols[a].ts_current_values[j]
+		ymin[j] = y
+		ymax[j] = y
+		for (let k=a+1;k<b;++k) {
+			y = global.extremal_depth.ranked_symbols[k].ts_current_values[j]
+			ymin[j] = Math.min(y,ymin[j])
+			ymax[j] = Math.max(y,ymax[j])
+		}
+	}
+
+	global.extremal_depth.fbplot.inner_band.lower = ymin
+	global.extremal_depth.fbplot.inner_band.upper = ymax
+
+}
+
+function prepare_ed_outer_band() {
+
+	let ymin = global.extremal_depth.fbplot.inner_band.lower
+	let ymax = global.extremal_depth.fbplot.inner_band.upper
+
+	let n_timesteps = ymin.length
+
+	let ymax_outer = new Array(n_timesteps)
+	let ymin_outer = new Array(n_timesteps)
+
+	for (let j=0;j<n_timesteps;j++) {
+
+		let iqr = ymax[j]-ymin[j]
+		let mid = ((ymax[j]+ymin[j])/2)
+
+		ymin_outer[j] = mid - (0.75*iqr)
+		ymax_outer[j] = mid + (0.75*iqr)
+
+	}
+
+	global.extremal_depth.fbplot.outer_band.lower = ymin_outer
+	global.extremal_depth.fbplot.outer_band.upper = ymax_outer
+
+}
+
+function draw_ed_inner_band() {
+
+}
+
 function prepare_ui()
 {
 
@@ -131,7 +187,6 @@ function prepare_ui()
 	start_date_input.classList.add('date_input')
 	start_date_input.id = 'start_date_input'
 	install_event_listener(start_date_input, 'change', start_date_input, EVENT.UPDATE_START_DATE)
-
 
 	let start_date_label = document.createElement('label')
 	global.ui.start_date_label = start_date_label
@@ -145,6 +200,7 @@ function prepare_ui()
 	start_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
 	start_date_grid.appendChild(start_date_label)
 	start_date_grid.appendChild(start_date_input)
+
 
 	let end_date_input = document.createElement('input')
 	global.ui.end_date_input = end_date_input
@@ -167,6 +223,7 @@ function prepare_ui()
 	end_date_grid.appendChild(end_date_label)
 	end_date_grid.appendChild(end_date_input)
 
+
 	let norm_date_input = document.createElement('input')
 	global.ui.norm_date_input = norm_date_input
 	norm_date_input.setAttribute("type","date")
@@ -188,6 +245,24 @@ function prepare_ui()
 	norm_date_grid.appendChild(norm_date_label)
 	norm_date_grid.appendChild(norm_date_input)
 
+	// let fbplot_ed_checkbox = document.createElement('input')
+	// fbplot_ed_checkbox.type = "checkbox"
+	// //fbplot_ed_checkbox.value = "ED"
+	// //install_event_listener(extremal_depth_btn, 'click', extremal_depth_btn, EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM)
+	//
+	// let fbplot_ed_label = document.createElement('label')
+	// global.ui.norm_date_label = fbplot_ed_label
+	// fbplot_ed_label.setAttribute("for", fbplot_ed_checkbox)
+	// fbplot_ed_label.classList.add('fbplot_ed_label')
+	// fbplot_ed_label.innerHTML = "FBplot ED"
+	//
+	// let fbplot_ed_grid = document.createElement('div')
+	// global.ui.norm_date_grid = fbplot_ed_grid
+	// fbplot_ed_grid.id = fbplot_ed_grid
+	// fbplot_ed_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
+	// fbplot_ed_grid.appendChild(fbplot_ed_label)
+	// fbplot_ed_grid.appendChild(fbplot_ed_checkbox)
+
 	let filter_input = document.createElement('input')
 	global.ui.filter_input = filter_input
 	filter_input.setAttribute("type","text")
@@ -196,7 +271,7 @@ function prepare_ui()
 	install_event_listener(filter_input, 'change', filter_input, EVENT.FILTER)
 
 	let extremal_depth_btn = document.createElement('input')
-	extremal_depth_btn.type = "button"
+	extremal_depth_btn.type = "checkbox"
 	extremal_depth_btn.value = "ED"
 	install_event_listener(extremal_depth_btn, 'click', extremal_depth_btn, EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM)
 
@@ -219,6 +294,7 @@ function prepare_ui()
 	left_panel.appendChild(start_date_grid)
 	left_panel.appendChild(end_date_grid)
 	left_panel.appendChild(norm_date_grid)
+	//left_pane.appendChild(fbplot_ed_grid)
    	left_panel.appendChild(filter_btns_grid)
    	left_panel.appendChild(symbols_table_div)
 
@@ -264,11 +340,6 @@ function prepare_ui()
 	body.appendChild(main_div)
 
 	install_event_listener(window, "keydown", window, EVENT.KEYDOWN)
-
-	// window.onkeydown = function(e) {
-	// 	global.
-	// }
-
 }
 
 function grow_heap() {
@@ -281,6 +352,8 @@ function grow_heap() {
 
 function run_extremal_depth_algorithm()
 {
+
+	global.extremal_depth.ranked_symbols = []
 	// get curves on the chart and creates the envelope for them
 	let n = global.chart_symbols.length
 
@@ -294,7 +367,7 @@ function run_extremal_depth_algorithm()
 		curve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_CurveList_new(n)
 	}
 
-	console.log("CL ------------> ",global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
+	//console.log("CL ------------> ",global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 
 	for (let i=0;i<n;i++) {
 		let symbol = global.chart_symbols[i]
@@ -305,61 +378,68 @@ function run_extremal_depth_algorithm()
 		symbols_ed.push(symbol)
 
 		let m = ts_current_values.length
-		console.log("time points", m)
+		//console.log("time points", m)
 		let curve_raw_p  = global.tsvis_wasm_module.exports.tsvis_Curve_new(m)
 		while (curve_raw_p == 0) {
 			grow_heap()
 			curve_raw_p = global.tsvis_wasm_module.exports.tsvis_Curve_new(m)
 		}
-		console.log("CV ------------> ",global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
-		console.log("curve_raw_p",curve_raw_p)
+		//console.log("CV ------------> ",global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
+		//console.log("curve_raw_p",curve_raw_p)
 		let values_raw_p = global.tsvis_wasm_module.exports.tsvis_Curve_values(curve_raw_p)
-		console.log("values_raw_p",values_raw_p)
+		//console.log("values_raw_p",values_raw_p)
 
 		const c_curve_values = new Float64Array(global.tsvis_wasm_module.exports.memory.buffer, values_raw_p, m);
 
 		c_curve_values.set(ts_current_values)
 
-		console.log("sum", global.tsvis_wasm_module.exports.sum_f64(values_raw_p,m))
+		//console.log("sum", global.tsvis_wasm_module.exports.sum_f64(values_raw_p,m))
 
 		let ok = global.tsvis_wasm_module.exports.tsvis_CurveList_append(curve_list_raw_p, curve_raw_p)
 	}
 
-	console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
+	//console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 
 	let ed_raw_p = global.tsvis_wasm_module.exports.ed_extremal_depth_run(curve_list_raw_p)
 	while (ed_raw_p == 0) {
 		grow_heap()
 		ed_raw_p = global.tsvis_wasm_module.exports.ed_extremal_depth_run(curve_list_raw_p)
 	}
-	console.log("ED ------------> ",global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
+	//console.log("ED ------------> ",global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 
-	console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
+	//console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 
 	let rank_raw_p = global.tsvis_wasm_module.exports.ed_get_extremal_depth_rank(ed_raw_p)
 
-	console.log("rank_raw_p",rank_raw_p)
+	//console.log("rank_raw_p",rank_raw_p)
 
-	console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
+	//console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 
 	const rank = new Int32Array(global.tsvis_wasm_module.exports.memory.buffer, rank_raw_p, symbols_ed.length);
 
-	console.log(ed_raw_p)
+	//console.log(ed_raw_p)
 
-	console.log("checksum", global.tsvis_wasm_module.exports.checksum(rank_raw_p,symbols_ed.length))
+	//console.log("checksum", global.tsvis_wasm_module.exports.checksum(rank_raw_p,symbols_ed.length))
 
-	global.ed_ranked_symbols = []
+	//global.extremal_depth.ranked_symbols = []
 	for (let i=0;i<symbols_ed.length;i++) {
 		let symbol_rank_i = symbols_ed[rank[i]]
 		symbol_rank_i.ed_rank = i
-		global.ed_ranked_symbols.push(symbol_rank_i)
-		console.log(rank[i])
-		console.log(`Depth rank ${i} is symbol ${symbol_rank_i.name} (from most extremal smaller rank to deeper larger rank)`)
+		global.extremal_depth.ranked_symbols.push(symbol_rank_i)
+		//console.log(rank[i])
+		//console.log(`Depth rank ${i} is symbol ${symbol_rank_i.name} (from most extremal smaller rank to deeper larger rank)`)
 	}
+
+	//console.log("RANK", rank)
+
+	//console.log(global.extremal_depth.ranked_symbols)
+
+	prepare_ed_inner_band(rank)
+	prepare_ed_outer_band()
 
 	global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p)
 
-	console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
+	//console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 
 	// sort symbols by ed_rank
 	global.symbols.sort((a,b) => {
@@ -457,8 +537,8 @@ function process_event_queue()
 				global.key_update_end = true
 			}
 		} else if (e.event_type == EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM) {
-			console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
-			run_extremal_depth_algorithm()
+			//console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
+			global.extremal_depth.fbplot.active = !global.extremal_depth.fbplot.active
 		}
 	}
 	global.events.length = 0
@@ -602,6 +682,7 @@ function update_ts()
 		x_ticks.push(x_tick)
 	}
 
+	/*
 	for(let i=0; i<date_end-date_start; i+=2) {
 		ctx.fillStyle= "#ffff0011";
 
@@ -615,7 +696,7 @@ function update_ts()
 		ctx.rect(p0[0]-dx/2.0, p1[1], dx, ts_rect[RECT.HEIGHT])
 		ctx.fill()
 	}
-
+	*/
 
 	for(let i=0; i<x_ticks.length; i++) {
 		ctx.strokeStyle = "#555555";
@@ -712,6 +793,61 @@ function update_ts()
 	ctx.lineTo(x_p1[0], x_p1[1])
 	ctx.stroke()
 	drawTextBG(ctx, pt[1].toFixed(2), x_p0[0], x_p0[1])
+
+
+
+	//DRAW BANDS
+
+	if (global.extremal_depth.fbplot.active) {
+
+		if(global.chart_symbols.length == 0) {
+			console.log("No symbols selected!")
+		} else {
+			run_extremal_depth_algorithm()
+
+			let ymin = global.extremal_depth.fbplot.inner_band.lower
+			let ymax = global.extremal_depth.fbplot.inner_band.upper
+			let num_timesteps = global.extremal_depth.ranked_symbols[0].ts_current_values.length
+
+			ctx.save()
+			ctx.beginPath()
+			let p = map(0,ymin[0])
+			ctx.moveTo(p[0],p[1])
+			for (let j=1;j<num_timesteps;j++) {
+				p = map(j,ymin[j])
+				ctx.lineTo(p[0],p[1])
+			}
+			for (let j=num_timesteps-1;j>=0;j--) {
+				p = map(j,ymax[j])
+				ctx.lineTo(p[0],p[1])
+			}
+			ctx.closePath()
+			ctx.fillStyle="#77777755"
+			ctx.fill()
+			ctx.restore()
+
+			let ymin_outer = global.extremal_depth.fbplot.outer_band.lower
+			let ymax_outer = global.extremal_depth.fbplot.outer_band.upper
+
+			ctx.save()
+			ctx.strokeStyle = "#FFFFFF"
+			ctx.setLineDash([5, 3])
+			ctx.beginPath()
+			p = map(0,ymin_outer[0])
+			ctx.moveTo(p[0],p[1])
+			for (let j=1;j<num_timesteps;j++) {
+				p = map(j,ymin_outer[j])
+				ctx.lineTo(p[0],p[1])
+			}
+			for (let j=num_timesteps-1;j>=0;j--) {
+				p = map(j,ymax_outer[j])
+				ctx.lineTo(p[0],p[1])
+			}
+			ctx.stroke()
+			ctx.restore()
+		}
+
+	}
 
 
 	//HIGHLIGHTING UTILS
