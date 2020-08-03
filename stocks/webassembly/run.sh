@@ -14,7 +14,7 @@ clang
 -o add.wasm
 add.c
 ;
-wasm2wat add.wasm > add.wat
+wat2wasm add.wat > add.wasm
 EOF
 cat script
 bash script

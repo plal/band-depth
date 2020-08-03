@@ -118,12 +118,12 @@ function prepare_band(rank, coef) {
 	let m = Math.trunc(data.num_records * coef)
 	let a = n - m
 	let b = n
-	
+
 	let ymin = new Array(data.timesteps)
 	let ymax = new Array(data.timesteps)
 
 	for (let j=0;j<data.num_timesteps;j++) {
-		let y = data.records[rank[a]].values[j]
+		let y = global.chart_symbols[rank[a]].data[j]
 		ymin[j] = y
 		ymax[j] = y
 		for (let k=a+1;k<b;++k) {
@@ -175,7 +175,7 @@ function prepare_data() {
 	}
 	ed_rank.sort(function(a,b) {
 		// return 0.5 - Math.random()
-		return data.records[a].depths[DEPTH_ed] - data.records[b].depths[DEPTH_ed] 
+		return data.records[a].depths[DEPTH_ed] - data.records[b].depths[DEPTH_ed]
 	})
 
 	for (let i=0;i<data.num_records;i++) {
@@ -207,7 +207,7 @@ function prepare_data() {
 	// 	ed_rank[i] = i
 	// }
 	// ed_rank.sort(function(a,b) {
-	// 	return data.records[a].depths[DEPTH_EXTREMAL] - data.records[b].depths[DEPTH_EXTREMAL] 
+	// 	return data.records[a].depths[DEPTH_EXTREMAL] - data.records[b].depths[DEPTH_EXTREMAL]
 	// })
 }
 
@@ -290,7 +290,7 @@ function update_timeseries_canvas()
 
 
 
-	let num_records   = data.records.length	
+	let num_records   = data.records.length
 	let num_timesteps = data.records[0].values.length
 
 	// find ranges of the time series
@@ -335,7 +335,7 @@ function update_timeseries_canvas()
 			colors[i] = color
 			// colors[i] = colors[i] + '4f'
 		}
-		let bands = data.ed_bands
+		let bands = prepare_band(data.ed_bands)
 		let num_bands = bands.coef.length
 		for (let i=0;i<num_bands;i++) {
 			let coef = bands.coef[i]
@@ -485,7 +485,7 @@ function process_events()
 			} break
 		}
 
-		// if (e == 
+		// if (e ==
 		// // console.log('update from ' + global.mouse.current + ' to ' + [e.x, e.y])
 		// global.mouse.position      = [e.x, e.y]
 		// global.mouse.last_position = global.mouse.position
@@ -511,4 +511,3 @@ function main()
 
 	setTimeout(update, MSEC_PER_FRAME)
 }
-

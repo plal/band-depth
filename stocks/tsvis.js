@@ -254,13 +254,13 @@ function prepare_ui()
 	let extremal_depth_btn = document.createElement('input')
 	global.ui.extremal_depth_btn = extremal_depth_btn
 	extremal_depth_btn.type = "checkbox"
-	extremal_depth_btn.classList.add('checkbox_input')
+	//extremal_depth_btn.classList.add('checkbox_input')
 	install_event_listener(extremal_depth_btn, 'click', extremal_depth_btn, EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM)
 
 	let extremal_depth_lbl = document.createElement('label')
 	global.ui.extremal_depth_lbl = extremal_depth_lbl
 	extremal_depth_lbl.setAttribute("for", extremal_depth_btn)
-	extremal_depth_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px;'
+	extremal_depth_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
 	//extremal_depth_lbl.classList.add('checkbox_input_label')
 	extremal_depth_lbl.innerHTML = 'Functional Boxplot ED'
 
@@ -270,6 +270,27 @@ function prepare_ui()
 	extremal_depth_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
 	extremal_depth_grid.appendChild(extremal_depth_lbl)
 	extremal_depth_grid.appendChild(extremal_depth_btn)
+
+	let draw_curves_btn = document.createElement('input')
+	global.ui.draw_curves_btn = draw_curves_btn
+	draw_curves_btn.checked = 'true'
+	draw_curves_btn.type = "checkbox"
+	//draw_curves_btn.classList.add('checkbox_input')
+	//install_event_listener(draw_curves_btn, 'click', draw_curves_btn, EVENT.DRAW_BANDS)
+
+	let draw_curves_lbl = document.createElement('label')
+	global.ui.draw_curves_lbl = draw_curves_lbl
+	draw_curves_lbl.setAttribute("for", draw_curves_btn)
+	draw_curves_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
+	//extremal_depth_lbl.classList.add('checkbox_input_label')
+	draw_curves_lbl.innerHTML = 'Draw curves'
+
+	let draw_curves_grid = document.createElement('div')
+	global.ui.draw_curves_grid = draw_curves_grid
+	draw_curves_grid.id = draw_curves_grid
+	draw_curves_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
+	draw_curves_grid.appendChild(draw_curves_lbl)
+	draw_curves_grid.appendChild(draw_curves_btn)
 
 	let symbols_table_div = document.createElement('div')
 	global.ui.symbols_table_div = symbols_table_div
@@ -284,6 +305,7 @@ function prepare_ui()
 	left_panel.appendChild(end_date_grid)
 	left_panel.appendChild(norm_date_grid)
    	left_panel.appendChild(extremal_depth_grid)
+	left_panel.appendChild(draw_curves_grid)
 	left_panel.appendChild(filter_input)
    	left_panel.appendChild(symbols_table_div)
 
@@ -671,22 +693,6 @@ function update_ts()
 		x_ticks.push(x_tick)
 	}
 
-	/*
-	for(let i=0; i<date_end-date_start; i+=2) {
-		ctx.fillStyle= "#ffff0011";
-
-		let p0 = map(i, y_min)
-		let p1 = map(i, y_max)
-
-		let next_p0 = map(i+1, y_min)
-		let dx = next_p0[0] - p0[0]
-
-		ctx.beginPath()
-		ctx.rect(p0[0]-dx/2.0, p1[1], dx, ts_rect[RECT.HEIGHT])
-		ctx.fill()
-	}
-	*/
-
 	for(let i=0; i<x_ticks.length; i++) {
 		ctx.strokeStyle = "#555555";
 		ctx.lineWidth   = 1;
@@ -783,63 +789,9 @@ function update_ts()
 	ctx.stroke()
 	drawTextBG(ctx, pt[1].toFixed(2), x_p0[0], x_p0[1])
 
-
-
-	//DRAW BANDS
-
-	if (global.extremal_depth.fbplot.active) {
-
-		if(global.chart_symbols.length == 0) {
-			console.log("No symbols selected!")
-		} else {
-			run_extremal_depth_algorithm()
-
-			let ymin = global.extremal_depth.fbplot.inner_band.lower
-			let ymax = global.extremal_depth.fbplot.inner_band.upper
-			let num_timesteps = global.extremal_depth.ranked_symbols[0].ts_current_values.length
-
-			ctx.save()
-			ctx.beginPath()
-			let p = map(0,ymin[0])
-			ctx.moveTo(p[0],p[1])
-			for (let j=1;j<num_timesteps;j++) {
-				p = map(j,ymin[j])
-				ctx.lineTo(p[0],p[1])
-			}
-			for (let j=num_timesteps-1;j>=0;j--) {
-				p = map(j,ymax[j])
-				ctx.lineTo(p[0],p[1])
-			}
-			ctx.closePath()
-			ctx.fillStyle="#77777755"
-			ctx.fill()
-			ctx.restore()
-
-			let ymin_outer = global.extremal_depth.fbplot.outer_band.lower
-			let ymax_outer = global.extremal_depth.fbplot.outer_band.upper
-
-			ctx.save()
-			ctx.strokeStyle = "#FFFFFF"
-			ctx.setLineDash([5, 3])
-			ctx.beginPath()
-			p = map(0,ymin_outer[0])
-			ctx.moveTo(p[0],p[1])
-			for (let j=1;j<num_timesteps;j++) {
-				p = map(j,ymin_outer[j])
-				ctx.lineTo(p[0],p[1])
-			}
-			for (let j=num_timesteps-1;j>=0;j--) {
-				p = map(j,ymax_outer[j])
-				ctx.lineTo(p[0],p[1])
-			}
-			ctx.stroke()
-			ctx.restore()
-		}
-
-	}
-
-
-	//HIGHLIGHTING UTILS
+	//--------------
+	// drawing and highlighting utils
+	//--------------
 	let closest_date = null
 	let closest_symbol  = null
 	let min_distance_threshold = 5 * 5
@@ -875,12 +827,6 @@ function update_ts()
 			return
 		}
 
-		// let norm_value = actual_norm_values[i] // symbol.data[date_norm]
-		// if (norm_value == undefined) {
-		// 	console.log("no price for symbol " + symbol.name + " on norm date")
-		// 	return
-		// }
-
 		let first_point_drawn = false
 		ctx.strokeStyle = global.chart_colors[i]
 		ctx.beginPath()
@@ -909,23 +855,95 @@ function update_ts()
 		ctx.stroke()
 	}
 
-	//DRAWING TIME SERIES
-	for (let i=0;i<global.chart_symbols.length;i++) {
 
-		let symbol = global.chart_symbols[i]
+	//--------------
+	// running extremal depth algorithm and drawing bands
+	//--------------
+	if (global.extremal_depth.fbplot.active) {
 
-		if(global.focused_symbol == null || global.chart_symbols[i] != global.focused_symbol) {
-			draw_timeseries(symbol, false)
+		if(global.chart_symbols.length == 0) {
+			console.log("No symbols selected!")
+		} else {
+			run_extremal_depth_algorithm()
+
+			//--------------
+			// drawing inner band
+			//--------------
+			let ymin = global.extremal_depth.fbplot.inner_band.lower
+			let ymax = global.extremal_depth.fbplot.inner_band.upper
+			let num_timesteps = global.extremal_depth.ranked_symbols[0].ts_current_values.length
+
+			ctx.save()
+			ctx.beginPath()
+			let p = map(0,ymin[0])
+			ctx.moveTo(p[0],p[1])
+			for (let j=1;j<num_timesteps;j++) {
+				p = map(j,ymin[j])
+				ctx.lineTo(p[0],p[1])
+			}
+			for (let j=num_timesteps-1;j>=0;j--) {
+				p = map(j,ymax[j])
+				ctx.lineTo(p[0],p[1])
+			}
+			ctx.closePath()
+			ctx.fillStyle="#77777755"
+			ctx.fill()
+			ctx.restore()
+
+			//--------------
+			// drawing outer band
+			//--------------
+			let ymin_outer = global.extremal_depth.fbplot.outer_band.lower
+			let ymax_outer = global.extremal_depth.fbplot.outer_band.upper
+
+			ctx.save()
+			ctx.strokeStyle = "#FFFFFF"
+			ctx.setLineDash([5, 3])
+			ctx.beginPath()
+			p = map(0,ymin_outer[0])
+			ctx.moveTo(p[0],p[1])
+			for (let j=1;j<num_timesteps;j++) {
+				p = map(j,ymin_outer[j])
+				ctx.lineTo(p[0],p[1])
+			}
+			for (let j=num_timesteps-1;j>=0;j--) {
+				p = map(j,ymax_outer[j])
+				ctx.lineTo(p[0],p[1])
+			}
+			ctx.stroke()
+			ctx.restore()
+
+			//--------------
+			// drawing median curve
+			//--------------
+			let median_symbol = global.extremal_depth.ranked_symbols.pop()
+			draw_timeseries(median_symbol, false)
 		}
+
 	}
 
+	//--------------
+	// drawing curves
+	//--------------
+	if (global.ui.draw_curves_btn.checked) {
+
+		for (let i=0;i<global.chart_symbols.length;i++) {
+
+			let symbol = global.chart_symbols[i]
+
+			if(global.focused_symbol == null || global.chart_symbols[i] != global.focused_symbol) {
+				draw_timeseries(symbol, false)
+			}
+		}
+
+	}
+
+	//--------------
+	// highlight on focused time series
+	//--------------
 	if (global.focused_symbol != null) {
 		draw_timeseries(global.focused_symbol, true)
 
-		// ctx.strokeStyle = '#880000ff'
-		// draw_point(global.focused_symbol, global.focused_date, 3)
-
-		// print the details of the focused timeseries
 		let record = global.focused_symbol
 		let value = global.focused_symbol.data[global.focused_date]
 		let date = date_offset_to_string(date_start+global.focused_date)
@@ -939,6 +957,9 @@ function update_ts()
 	global.focused_symbol = closest_symbol
 	global.focused_date = closest_date
 
+	//--------------
+	// update start, end and norm dates on keyboard controls
+	//--------------
 	if (global.key_update_norm) {
 		let pt_n = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
 		let new_date_norm = date_offset_to_string(Math.floor(date_start+pt_n[0]))
@@ -947,11 +968,6 @@ function update_ts()
 		global.date_norm = new_date_norm
 		global.key_update_norm = false
 	}
-	// {
-	// 	let pt_n = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
-	// 	let new_date_norm = date_offset_to_string(Math.floor(0.5 + date_start + pt_n[0]))
-	// 	global.date_norm = new_date_norm
-	// }
 
 	if (global.key_update_start) {
 		let pt_s = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
@@ -961,6 +977,7 @@ function update_ts()
 		global.date_start = new_date_start
 		global.key_update_start = false
 	}
+
 	if (global.key_update_end) {
 		let pt_e = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
 		let new_date_end = date_offset_to_string(Math.floor(date_start+pt_e[0]))
@@ -1069,7 +1086,7 @@ async function main()
 		//
 		console.log(global.symbols)
 		prepare_ui();
-
+		//console.log(global.ui.draw_curves_btn.checked)
 		// schedule update to process events
 		setTimeout(update, 32)
 
