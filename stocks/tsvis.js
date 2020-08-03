@@ -275,8 +275,6 @@ function prepare_ui()
 	global.ui.draw_curves_btn = draw_curves_btn
 	draw_curves_btn.checked = 'true'
 	draw_curves_btn.type = "checkbox"
-	//draw_curves_btn.classList.add('checkbox_input')
-	//install_event_listener(draw_curves_btn, 'click', draw_curves_btn, EVENT.DRAW_BANDS)
 
 	let draw_curves_lbl = document.createElement('label')
 	global.ui.draw_curves_lbl = draw_curves_lbl
@@ -441,18 +439,17 @@ function run_extremal_depth_algorithm()
 		//console.log(`Depth rank ${i} is symbol ${symbol_rank_i.name} (from most extremal smaller rank to deeper larger rank)`)
 	}
 
-	//console.log("RANK", rank)
-
-	//console.log(global.extremal_depth.ranked_symbols)
-
+	//--------------
+	//find values of each band (IQR and maximum non outlying envelope)
+	//--------------
 	prepare_ed_inner_band(rank)
 	prepare_ed_outer_band()
 
 	global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p)
 
-	//console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
-
+	//--------------
 	// sort symbols by ed_rank
+	//--------------
 	global.symbols.sort((a,b) => {
 		if (a.ed_rank != null && b.ed_rank != null) {
 			return a.ed_rank - b.ed_rank
@@ -479,6 +476,9 @@ const KEY_S = 83
 const KEY_E = 69
 const KEY_N = 78
 
+//--------------
+//processing events as they arrive
+//--------------
 function process_event_queue()
 {
 	// process events
@@ -555,7 +555,9 @@ function process_event_queue()
 	global.events.length = 0
 }
 
+//--------------
 // draw the time series charts
+//--------------
 function update_ts()
 {
 	let canvas = global.ui.ts_canvas
@@ -602,10 +604,9 @@ function update_ts()
 	ctx.fillStyle = "#FFFFFF";
 	ctx.textAlign = "center";
 
-	//drawing axis labels
-	//ctx.fillText("LABEL-X", canvas.width/2, canvas.height-50)
-
+	//--------------
 	//drawing axis strokes
+	//--------------
 	ctx.save()
 	ctx.strokeStyle = "#FFFFFF";
 	ctx.lineWidth   = 2;
@@ -685,7 +686,13 @@ function update_ts()
 		return [x,y]
 	}
 
+	//--------------
 	//grid lines
+	//--------------
+
+	//--------------
+	//x axis grid lines and ticks
+	//--------------
 	let x_num_ticks = 8
 	let x_ticks = []
 	for(let i=0; i<x_num_ticks; i++) {
@@ -716,7 +723,9 @@ function update_ts()
 	}
 
 
-	//y
+	//--------------
+	//y grid lines and ticks
+	//--------------
 	let y_num_ticks = 10
 	let y_ticks = []
 	for(let i=0; i<y_num_ticks; i++) {
@@ -746,7 +755,9 @@ function update_ts()
 
 	}
 
-	//VERTICAL LINE ON NORM_DATE
+	//--------------
+	//vertical line to track norm date
+	//--------------
 	let x_norm = date_norm - date_start
 
 	ctx.strokeStyle = "#FFFFFFFF";
@@ -768,7 +779,9 @@ function update_ts()
 	ctx.fillText(date_offset_to_string(date_start+x_norm), 0, 0);
 	ctx.restore();
 
-	//LINES ON MOUSE POSITION
+	//--------------
+	//aux lines on mouse position to track date and value
+	//--------------
 	let pt = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
 
 	let y_p0 = map(Math.floor(0.5+pt[0]),y_min)
@@ -953,7 +966,9 @@ function update_ts()
 		ctx.fillText(text, canvas.width/2, 40);
 	}
 
+	//--------------
 	// update focused record
+	//--------------
 	global.focused_symbol = closest_symbol
 	global.focused_date = closest_date
 
@@ -1080,14 +1095,9 @@ async function main()
 			symbols.push({ name:symbol_names[i], ui_row:null, ui_col:null, on_table:true, on_chart:false, data: null, ts_current_values: null, ed_rank:null})
 		}
 		global.symbols = symbols
-		//
-		// change this with prepare_ui
-		// you can now fill in the symbols
-		//
+
 		console.log(global.symbols)
 		prepare_ui();
-		//console.log(global.ui.draw_curves_btn.checked)
-		// schedule update to process events
 		setTimeout(update, 32)
 
 	} catch (e) {
