@@ -223,7 +223,6 @@ function prepare_ui()
 	end_date_grid.appendChild(end_date_label)
 	end_date_grid.appendChild(end_date_input)
 
-
 	let norm_date_input = document.createElement('input')
 	global.ui.norm_date_input = norm_date_input
 	norm_date_input.setAttribute("type","date")
@@ -245,24 +244,6 @@ function prepare_ui()
 	norm_date_grid.appendChild(norm_date_label)
 	norm_date_grid.appendChild(norm_date_input)
 
-	// let fbplot_ed_checkbox = document.createElement('input')
-	// fbplot_ed_checkbox.type = "checkbox"
-	// //fbplot_ed_checkbox.value = "ED"
-	// //install_event_listener(extremal_depth_btn, 'click', extremal_depth_btn, EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM)
-	//
-	// let fbplot_ed_label = document.createElement('label')
-	// global.ui.norm_date_label = fbplot_ed_label
-	// fbplot_ed_label.setAttribute("for", fbplot_ed_checkbox)
-	// fbplot_ed_label.classList.add('fbplot_ed_label')
-	// fbplot_ed_label.innerHTML = "FBplot ED"
-	//
-	// let fbplot_ed_grid = document.createElement('div')
-	// global.ui.norm_date_grid = fbplot_ed_grid
-	// fbplot_ed_grid.id = fbplot_ed_grid
-	// fbplot_ed_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
-	// fbplot_ed_grid.appendChild(fbplot_ed_label)
-	// fbplot_ed_grid.appendChild(fbplot_ed_checkbox)
-
 	let filter_input = document.createElement('input')
 	global.ui.filter_input = filter_input
 	filter_input.setAttribute("type","text")
@@ -271,16 +252,24 @@ function prepare_ui()
 	install_event_listener(filter_input, 'change', filter_input, EVENT.FILTER)
 
 	let extremal_depth_btn = document.createElement('input')
+	global.ui.extremal_depth_btn = extremal_depth_btn
 	extremal_depth_btn.type = "checkbox"
-	extremal_depth_btn.value = "ED"
+	extremal_depth_btn.classList.add('checkbox_input')
 	install_event_listener(extremal_depth_btn, 'click', extremal_depth_btn, EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM)
 
-	let filter_btns_grid = document.createElement('div')
-	global.ui.filter_btns_grid = filter_btns_grid
-	filter_btns_grid.id = filter_btns_grid
-	filter_btns_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
-	filter_btns_grid.appendChild(filter_input)
-	filter_btns_grid.appendChild(extremal_depth_btn)
+	let extremal_depth_lbl = document.createElement('label')
+	global.ui.extremal_depth_lbl = extremal_depth_lbl
+	extremal_depth_lbl.setAttribute("for", extremal_depth_btn)
+	extremal_depth_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px;'
+	//extremal_depth_lbl.classList.add('checkbox_input_label')
+	extremal_depth_lbl.innerHTML = 'Functional Boxplot ED'
+
+	let extremal_depth_grid = document.createElement('div')
+	global.ui.extremal_depth_grid = extremal_depth_grid
+	extremal_depth_grid.id = extremal_depth_grid
+	extremal_depth_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
+	extremal_depth_grid.appendChild(extremal_depth_lbl)
+	extremal_depth_grid.appendChild(extremal_depth_btn)
 
 	let symbols_table_div = document.createElement('div')
 	global.ui.symbols_table_div = symbols_table_div
@@ -294,8 +283,8 @@ function prepare_ui()
 	left_panel.appendChild(start_date_grid)
 	left_panel.appendChild(end_date_grid)
 	left_panel.appendChild(norm_date_grid)
-	//left_pane.appendChild(fbplot_ed_grid)
-   	left_panel.appendChild(filter_btns_grid)
+   	left_panel.appendChild(extremal_depth_grid)
+	left_panel.appendChild(filter_input)
    	left_panel.appendChild(symbols_table_div)
 
 	let table = symbols_table_div.appendChild(document.createElement('table'))
