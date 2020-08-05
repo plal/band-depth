@@ -27,13 +27,12 @@ var global = {
 	key_update_norm: false,
 	key_update_start: false,
 	key_update_end: false,
-	extremal_depth: {fbplot: {active: false, inner_band: {lower:[], upper:[]}, outer_band: {lower:[], upper:[]} }, ranked_symbols: [] }
+	extremal_depth: {fbplot: {active: false, inner_band: {lower:[], upper:[]}, outer_band: {lower:[], upper:[]}, outliers:[] }, ranked_symbols: [] }
 }
 
 function install_event_listener(component, raw_event_type, context, event_type)
 {
 	component.addEventListener(raw_event_type, function(e) {
-		//console.log(e.x, e.y)
 		global.events.push({ event_type: event_type, context: context, raw: e })
 	});
 }
@@ -173,8 +172,29 @@ function prepare_ed_outer_band() {
 
 }
 
-function draw_ed_inner_band() {
+function prepare_ed_outliers() {
+	let ranked_symbols = global.extremal_depth.ranked_symbols
+	let outer_band     = global.extremal_depth.fbplot.outer_band
 
+	let n_timesteps = ranked_symbols[0].ts_current_values.length
+	let n 		 	= ranked_symbols.length
+
+	let outliers = global.extremal_depth.fbplot.outliers
+	outliers = []
+
+	for(let i=0; i<n; i++) {
+		let curve = ranked_symbols[i]
+
+		for(let j=0; j<n_timesteps; j++) {
+			if ((curve.ts_current_values[j] > outer_band.upper[j]) || (curve.ts_current_values[j] <  outer_band.lower[j])) {
+				outliers.push(ranked_symbols[i])
+				break
+			}
+		}
+
+	}
+
+	global.extremal_depth.fbplot.outliers = outliers
 }
 
 function prepare_ui()
@@ -279,7 +299,7 @@ function prepare_ui()
 	let draw_curves_lbl = document.createElement('label')
 	global.ui.draw_curves_lbl = draw_curves_lbl
 	draw_curves_lbl.setAttribute("for", draw_curves_btn)
-	draw_curves_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
+	draw_curves_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:120px'
 	//extremal_depth_lbl.classList.add('checkbox_input_label')
 	draw_curves_lbl.innerHTML = 'Draw curves'
 
@@ -289,6 +309,26 @@ function prepare_ui()
 	draw_curves_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
 	draw_curves_grid.appendChild(draw_curves_lbl)
 	draw_curves_grid.appendChild(draw_curves_btn)
+
+	let draw_outliers_btn = document.createElement('input')
+	global.ui.draw_outliers_btn = draw_outliers_btn
+	//draw_outliers_btn.checked = 'true'
+	draw_outliers_btn.type = "checkbox"
+
+	let draw_outliers_lbl = document.createElement('label')
+	global.ui.draw_outliers_lbl = draw_outliers_lbl
+	draw_outliers_lbl.setAttribute("for", draw_outliers_btn)
+	draw_outliers_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
+	//extremal_depth_lbl.classList.add('checkbox_input_label')
+	draw_outliers_lbl.innerHTML = '- Draw outliers'
+
+	let draw_outliers_grid = document.createElement('div')
+	global.ui.draw_outliers_grid = draw_outliers_grid
+	draw_outliers_grid.id = draw_outliers_grid
+	draw_outliers_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around;' //justify-content:flex-end'
+	draw_outliers_grid.appendChild(draw_outliers_lbl)
+	draw_outliers_grid.appendChild(draw_outliers_btn)
+
 
 	let symbols_table_div = document.createElement('div')
 	global.ui.symbols_table_div = symbols_table_div
@@ -303,6 +343,7 @@ function prepare_ui()
 	left_panel.appendChild(end_date_grid)
 	left_panel.appendChild(norm_date_grid)
    	left_panel.appendChild(extremal_depth_grid)
+	left_panel.appendChild(draw_outliers_grid)
 	left_panel.appendChild(draw_curves_grid)
 	left_panel.appendChild(filter_input)
    	left_panel.appendChild(symbols_table_div)
@@ -444,6 +485,7 @@ function run_extremal_depth_algorithm()
 	//--------------
 	prepare_ed_inner_band(rank)
 	prepare_ed_outer_band()
+	prepare_ed_outliers()
 
 	global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p)
 
@@ -780,7 +822,7 @@ function update_ts()
 	ctx.restore();
 
 	//--------------
-	//aux lines on mouse position to track date and value
+	//auxiliar lines on mouse position to track date and value
 	//--------------
 	let pt = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
 
@@ -931,6 +973,18 @@ function update_ts()
 			//--------------
 			let median_symbol = global.extremal_depth.ranked_symbols.pop()
 			draw_timeseries(median_symbol, false)
+
+			if (global.ui.draw_outliers_btn.checked) {
+				//--------------
+				// drawing outliers
+				//--------------
+				for(let i=0; i<global.extremal_depth.fbplot.outliers.length; i++) {
+					let symbol = global.extremal_depth.fbplot.outliers[i]
+					draw_timeseries(symbol, false)
+				}
+
+			}
+
 		}
 
 	}
