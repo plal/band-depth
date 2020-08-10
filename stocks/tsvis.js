@@ -582,12 +582,14 @@ function process_event_queue()
 			global.mouse.position      = [e.raw.x, e.raw.y]
 			global.mouse.last_position = global.mouse.position
 		} else if (e.event_type == EVENT.KEYDOWN) {
-			if (e.raw.keyCode == KEY_N) {
-				global.key_update_norm = true
-			} else if (e.raw.keyCode == KEY_S) {
-				global.key_update_start = true
-			} else if (e.raw.keyCode == KEY_E) {
-				global.key_update_end = true
+			if(e.raw.target.id != "filter_input") {
+				if (e.raw.keyCode == KEY_N) {
+					global.key_update_norm = true
+				} else if (e.raw.keyCode == KEY_S) {
+					global.key_update_start = true
+				} else if (e.raw.keyCode == KEY_E) {
+					global.key_update_end = true
+				}				
 			}
 		} else if (e.event_type == EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM) {
 			//console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
