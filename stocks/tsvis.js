@@ -1121,7 +1121,7 @@ async function main()
 
     		// const { tsvis_wasm_module } = await WebAssembly.instantiateStreaming( fetch("./tsvis.wasm") );
 		const { instance } = await WebAssembly.instantiateStreaming( fetch("tsvis.wasm") );
-		instance.exports.memory.grow(1000)
+		// instance.exports.memory.grow(1000)
 		let heap_size = instance.exports.memory.buffer.byteLength
 		global.tsvis_wasm_module = instance
 		global.tsvis_wasm_module.exports.tsvis_heap_init(heap_size)

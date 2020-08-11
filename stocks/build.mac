@@ -9,6 +9,8 @@ echo "compiling to C"
 export PATH=/usr/local/Cellar/llvm/10.0.0_3/bin:$PATH
 cat <<EOF | sed 's/#.*$//g' | paste -d' ' -s - | tr ';' '\n' | sed 's/  */ /g' | sed 's/^ *//g' > script_c
 clang
+-O3
+-g
 -g -ggdb
 -o tsvis
 tsvis.c
@@ -34,6 +36,7 @@ clang
 -Wl,--export-all
 # -Wl,--lto-O3           # Aggressive link-time optimizations
 # -Wl,-z,stack-size=$[8 * 1024 * 1024]      # Set maximum stack size to 8MiB
+# -Wl,-z,stack-size=$[128 * 1024]      # Set maximum stack size to 8MiB
 -o tsvis.wasm
 tsvis.c
 ;

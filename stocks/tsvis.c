@@ -42,13 +42,14 @@ typedef unsigned char u8;
 #define printf(a,...)
 #define Assert(a)
 
-// this are 32-bit numbers offset
-extern s8  *__heap_base;
-extern s8  *__data_end;
+// thsese are 32-bit numbers offsets
+extern unsigned char __heap_base;
+extern unsigned char __data_end;
 
 typedef struct {
 	u32 free;
 	u32 size;
+	u8  data[];
 } Heap;
 
 // static s8  *memory_free = __heap_base; //  = __heap_base + 4; // avoid 0
@@ -58,12 +59,7 @@ typedef struct {
 
 Heap* tsvis_heap()
 {
-	return (Heap*) __heap_base;
-}
-
-void* tsvis_heap_at(u32 offset)
-{
-	return OffsetedPointer(__heap_base, offset);
+	return (Heap*) &__heap_base;
 }
 
 u32 tsvis_heap_size()
@@ -71,32 +67,63 @@ u32 tsvis_heap_size()
 	return tsvis_heap()->size;
 }
 
-// this should be called before anything else
-void tsvis_heap_init(u32 heap_size)
+u32 tsvis_heap_base_offset()
 {
-	Heap *heap = tsvis_heap();
-	heap[0] = (Heap) {
-		.free = 8,
-		.size = heap_size
-	};
+	return (u32) &__heap_base;
 }
 
-void tsvis_heap_grow(u32 new_heap_size)
+// this should be called before anything else
+u32 tsvis_heap_free()
 {
 	Heap *heap = tsvis_heap();
-	heap->size = new_heap_size;
+	return heap->size - heap->free;
+}
+
+
+// this should be called before anything else
+u32 tsvis_hb()
+{
+	return (u32) ((char*) &__heap_base);
+}
+
+// this should be called before anything else
+void tsvis_heap_init(u32 total_memory)
+{
+	u32 heap_base_offset = (u32) &__heap_base;
+	Heap *heap = tsvis_heap();
+	heap[0] = (Heap) {
+		.free = 0,
+		.size = total_memory - heap_base_offset - sizeof(Heap)
+	};
+	// cool - it clears the memory!!!
+	for (s32 i=heap->free;i<heap->size;++i) {
+		heap->data[i] = 0;
+	}
+}
+
+void tsvis_heap_grow(u32 new_total_memory)
+{
+	u32 heap_base_offset = (u32) &__heap_base;
+	Heap *heap = tsvis_heap();
+	heap->size = new_total_memory - heap_base_offset - sizeof(Heap);
+}
+
+void tsvis_heap_clear()
+{
+	Heap *heap = tsvis_heap();
+	heap->free = 0;
 }
 
 void *tsvis_mem_get_checkpoint()
 {
 	Heap *heap = tsvis_heap();
-	return tsvis_heap_at(heap->free);
+	return heap->data + heap->free;
 }
 
 void tsvis_mem_set_checkpoint(void *checkpoint)
 {
 	Heap *heap = tsvis_heap();
-	heap->free = (u32) (((s8*) checkpoint) -  ((s8*) __heap_base));
+	heap->free = (u32) (((u8*) checkpoint) - heap->data);
 }
 
 void *tsvis_malloc(u32 bytes)
@@ -106,7 +133,7 @@ void *tsvis_malloc(u32 bytes)
 	if (heap->free + storage > heap->size) {
 		return 0;
 	}
-	void *result = tsvis_heap_at(heap->free);
+	void *result = heap->data + heap->free;
 	heap->free += storage;
 	return result;
 }
@@ -120,8 +147,8 @@ void tsvis_zero_block(s8 *buffer, s32 length)
 
 #else
 
-static s8  *__heap_base = 0;
-static s8  *__data_end = 0;
+static unsigned char __heap_base = 0;
+static unsigned char __data_end = 0;
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -716,8 +743,8 @@ main(int argc, char *argv[])
 #else
 	rnd_State rnd = rnd_new();
 
-	s32 n = 30;
-	s32 p = 30;
+	s32 n = 3000;
+	s32 p = 20000;
 
 	CurveList *curve_list = tsvis_CurveList_new(n);
 
