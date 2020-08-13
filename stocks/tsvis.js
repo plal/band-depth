@@ -17,7 +17,7 @@ var global = {
 	chart_symbols: [],
 	chart_colors: [],
 	events: [],
-	date_start: "2020-01-01",
+	date_start: "2018-01-01",
 	date_end: "2020-07-18",
 	date_norm: "2020-07-15",
 	mouse: { position:[0,0], last_position:[0,0] },
@@ -393,11 +393,21 @@ function prepare_ui()
 }
 
 function grow_heap() {
+	console.log("starting grow heap function")
 	let old_heap_size = global.tsvis_wasm_module.exports.memory.buffer.byteLength
 	global.tsvis_wasm_module.exports.memory.grow(old_heap_size/65536)
 	let new_heap_size = global.tsvis_wasm_module.exports.memory.buffer.byteLength
-	global.tsvis_wasm_module.exports.tsvis_heap_grow(new_heap_size)
 	console.log(`heap grew from ${old_heap_size} to ${new_heap_size}`)
+	global.tsvis_wasm_module.exports.tsvis_heap_grow(new_heap_size)
+	console.log(`success`)
+}
+
+function heap_log() {
+	let heap_size = global.tsvis_wasm_module.exports.tsvis_heap_size()
+	let heap_used = global.tsvis_wasm_module.exports.tsvis_heap_used()
+	let heap_free = global.tsvis_wasm_module.exports.tsvis_heap_free()
+
+	console.log(`heap size: ${heap_size} // heap used: ${heap_used} // heap free: ${heap_free}`)
 }
 
 function run_extremal_depth_algorithm()
@@ -410,6 +420,8 @@ function run_extremal_depth_algorithm()
 	let symbols_ed = []
 
 	let mem_checpoint_raw_p = global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint()
+
+	//heap_log()
 
 	let curve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_CurveList_new(n)
 	while (curve_list_raw_p == 0) {
@@ -469,7 +481,7 @@ function run_extremal_depth_algorithm()
 
 	//console.log(ed_raw_p)
 
-	//console.log("checksum", global.tsvis_wasm_module.exports.checksum(rank_raw_p,symbols_ed.length))
+	// console.log("checksum", global.tsvis_wasm_module.exports.checksum(rank_raw_p,symbols_ed.length))
 
 	//global.extremal_depth.ranked_symbols = []
 	for (let i=0;i<symbols_ed.length;i++) {
@@ -589,7 +601,7 @@ function process_event_queue()
 					global.key_update_start = true
 				} else if (e.raw.keyCode == KEY_E) {
 					global.key_update_end = true
-				}				
+				}
 			}
 		} else if (e.event_type == EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM) {
 			//console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
@@ -1115,9 +1127,9 @@ async function main()
 	let result
 	try {
 
-		// var mem = new WebAssembly.Memory({initial:1000, maximum:1000});
+		// var mem = new WebAssembly.Memory({initial:1, maximum:1000});
 		// var imports = { env: { memory: mem } };
-		//, imports
+		// //, imports
 
     		// const { tsvis_wasm_module } = await WebAssembly.instantiateStreaming( fetch("./tsvis.wasm") );
 		const { instance } = await WebAssembly.instantiateStreaming( fetch("tsvis.wasm") );
