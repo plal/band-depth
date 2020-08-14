@@ -568,6 +568,8 @@ function run_modified_band_depth_algorithm() {
 	prepare_fb_outer_band("mbd")
 	prepare_fb_outliers("mbd")
 
+	global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p)
+
 	//console.log(global.modified_band_depth.ranked_symbols)
 }
 
