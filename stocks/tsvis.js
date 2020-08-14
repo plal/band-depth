@@ -6,7 +6,8 @@ const EVENT= {
 	UPDATE_START_DATE: "event_update_start_date",
 	UPDATE_END_DATE: "event_update_end_date",
 	UPDATE_NORM_DATE: "event_update_norm_date",
-	RUN_EXTREMAL_DEPTH_ALGORITHM: "even_run_extremal_depth_algorithm",
+	RUN_EXTREMAL_DEPTH_ALGORITHM: "event_run_extremal_depth_algorithm",
+	RUN_MODIFIED_BAND_DEPTH_ALGORITHM: "event_run_modified_band_depth_algorithm",
 	MOUSEMOVE: "event_mousemove",
 	KEYDOWN: "event_keydown"
 }
@@ -27,7 +28,8 @@ var global = {
 	key_update_norm: false,
 	key_update_start: false,
 	key_update_end: false,
-	extremal_depth: {fbplot: {active: false, inner_band: {lower:[], upper:[]}, outer_band: {lower:[], upper:[]}, outliers:[] }, ranked_symbols: [] }
+	extremal_depth: {fbplot: {active: false, inner_band: {lower:[], upper:[]}, outer_band: {lower:[], upper:[]}, outliers:[] }, ranked_symbols: [] },
+	modified_band_depth: {fbplot: {active: false, inner_band: {lower:[], upper:[]}, outer_band: {lower:[], upper:[]}, outliers:[] }, ranked_symbols: [] }
 }
 
 function install_event_listener(component, raw_event_type, context, event_type)
@@ -121,9 +123,19 @@ async function download_symbol_data(symbol)
 	}
 }
 
-function prepare_ed_inner_band(rank) {
-	let n = global.extremal_depth.ranked_symbols.length
-	let n_timesteps = global.extremal_depth.ranked_symbols[0].ts_current_values.length //symbol.ts_current_values
+function prepare_fb_inner_band(depth_type) {
+
+	let depth;
+
+	if (depth_type == "ed") {
+		depth   = global.extremal_depth
+	} else if (depth_type == "mbd") {
+		depth   = global.modified_band_depth
+	}
+
+	let ranked_symbols = depth.ranked_symbols
+	let n = ranked_symbols.length
+	let n_timesteps = ranked_symbols[0].ts_current_values.length //symbol.ts_current_values
 
 	let a = Math.floor(n/2)
 	let b = n
@@ -132,25 +144,33 @@ function prepare_ed_inner_band(rank) {
 	let ymax = new Array(n_timesteps)
 
 	for (let j=0;j<n_timesteps;j++) {
-		let y = global.extremal_depth.ranked_symbols[a].ts_current_values[j]
+		let y = ranked_symbols[a].ts_current_values[j]
 		ymin[j] = y
 		ymax[j] = y
 		for (let k=a+1;k<b;++k) {
-			y = global.extremal_depth.ranked_symbols[k].ts_current_values[j]
+			y = ranked_symbols[k].ts_current_values[j]
 			ymin[j] = Math.min(y,ymin[j])
 			ymax[j] = Math.max(y,ymax[j])
 		}
 	}
 
-	global.extremal_depth.fbplot.inner_band.lower = ymin
-	global.extremal_depth.fbplot.inner_band.upper = ymax
+	depth.fbplot.inner_band.lower = ymin
+	depth.fbplot.inner_band.upper = ymax
 
 }
 
-function prepare_ed_outer_band() {
+function prepare_fb_outer_band(depth_type) {
 
-	let ymin = global.extremal_depth.fbplot.inner_band.lower
-	let ymax = global.extremal_depth.fbplot.inner_band.upper
+	let depth;
+
+	if (depth_type == "ed") {
+		depth = global.extremal_depth
+	} else if (depth_type == "mbd") {
+		depth = global.modified_band_depth
+	}
+
+	let ymin = depth.fbplot.inner_band.lower
+	let ymax = depth.fbplot.inner_band.upper
 
 	let n_timesteps = ymin.length
 
@@ -167,19 +187,28 @@ function prepare_ed_outer_band() {
 
 	}
 
-	global.extremal_depth.fbplot.outer_band.lower = ymin_outer
-	global.extremal_depth.fbplot.outer_band.upper = ymax_outer
+	depth.fbplot.outer_band.lower = ymin_outer
+	depth.fbplot.outer_band.upper = ymax_outer
 
 }
 
-function prepare_ed_outliers() {
-	let ranked_symbols = global.extremal_depth.ranked_symbols
-	let outer_band     = global.extremal_depth.fbplot.outer_band
+function prepare_fb_outliers(depth_type) {
+
+	let depth
+
+	if (depth_type == "ed") {
+		depth = global.extremal_depth
+	} else if (depth_type == "mbd") {
+		depth = global.modified_band_depth
+	}
+
+	let ranked_symbols = depth.ranked_symbols
+	let outer_band     = depth.fbplot.outer_band
 
 	let n_timesteps = ranked_symbols[0].ts_current_values.length
 	let n 		 	= ranked_symbols.length
 
-	let outliers = global.extremal_depth.fbplot.outliers
+	let outliers = depth.fbplot.outliers
 	outliers = []
 
 	for(let i=0; i<n; i++) {
@@ -194,7 +223,7 @@ function prepare_ed_outliers() {
 
 	}
 
-	global.extremal_depth.fbplot.outliers = outliers
+	depth.fbplot.outliers = outliers
 }
 
 function prepare_ui()
@@ -271,6 +300,58 @@ function prepare_ui()
 	filter_input.style = 'position:relative; width:100%; margin:2px; border-radius:2px; background-color:#FFFFFF; font-family:Courier; font-size:14pt;'
 	install_event_listener(filter_input, 'change', filter_input, EVENT.FILTER)
 
+	// let modified_band_depth_btn = document.createElement('input')
+	// global.ui.modified_band_depth_btn = modified_band_depth_btn
+	// modified_band_depth_btn.type = "button"
+	// modified_band_depth_btn.innerHTML = "MBD"
+	// //modified_band_depth_btn.classList.add('checkbox_input')
+	// install_event_listener(modified_band_depth_btn, 'click', modified_band_depth_btn, EVENT.RUN_MODIFIED_BAND_DEPTH_ALGORITHM)
+	//
+	// let modified_band_depth_grid = document.createElement('div')
+	// global.ui.modified_band_depth_grid = modified_band_depth_grid
+	// modified_band_depth_grid.id = modified_band_depth_grid
+	// modified_band_depth_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
+	// modified_band_depth_grid.appendChild(modified_band_depth_btn)
+
+	let modified_band_depth_btn = document.createElement('input')
+	global.ui.modified_band_depth_btn = modified_band_depth_btn
+	modified_band_depth_btn.type = "checkbox"
+	//modified_band_depth_btn.classList.add('checkbox_input')
+	install_event_listener(modified_band_depth_btn, 'click', modified_band_depth_btn, EVENT.RUN_MODIFIED_BAND_DEPTH_ALGORITHM)
+
+	let modified_band_depth_lbl = document.createElement('label')
+	global.ui.modified_band_depth_lbl = modified_band_depth_lbl
+	modified_band_depth_lbl.setAttribute("for", modified_band_depth_btn)
+	modified_band_depth_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
+	//modified_band_depth_lbl.classList.add('checkbox_input_label')
+	modified_band_depth_lbl.innerHTML = 'Functional Boxplot MBD'
+
+	let modified_band_depth_grid = document.createElement('div')
+	global.ui.modified_band_depth_grid = modified_band_depth_grid
+	modified_band_depth_grid.id = modified_band_depth_grid
+	modified_band_depth_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
+	modified_band_depth_grid.appendChild(modified_band_depth_lbl)
+	modified_band_depth_grid.appendChild(modified_band_depth_btn)
+
+	let mbd_draw_outliers_btn = document.createElement('input')
+	global.ui.mbd_draw_outliers_btn = mbd_draw_outliers_btn
+	//mbd_draw_outliers_btn.checkmbd = 'true'
+	mbd_draw_outliers_btn.type = "checkbox"
+
+	let mbd_draw_outliers_lbl = document.createElement('label')
+	global.ui.mbd_draw_outliers_lbl = mbd_draw_outliers_lbl
+	mbd_draw_outliers_lbl.setAttribute("for", mbd_draw_outliers_btn)
+	mbd_draw_outliers_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
+	//extremal_depth_lbl.classList.add('checkbox_input_label')
+	mbd_draw_outliers_lbl.innerHTML = '- Draw outliers'
+
+	let mbd_draw_outliers_grid = document.createElement('div')
+	global.ui.mbd_draw_outliers_grid = mbd_draw_outliers_grid
+	mbd_draw_outliers_grid.id = mbd_draw_outliers_grid
+	mbd_draw_outliers_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around;' //justify-content:flex-end'
+	mbd_draw_outliers_grid.appendChild(mbd_draw_outliers_lbl)
+	mbd_draw_outliers_grid.appendChild(mbd_draw_outliers_btn)
+
 	let extremal_depth_btn = document.createElement('input')
 	global.ui.extremal_depth_btn = extremal_depth_btn
 	extremal_depth_btn.type = "checkbox"
@@ -310,24 +391,24 @@ function prepare_ui()
 	draw_curves_grid.appendChild(draw_curves_lbl)
 	draw_curves_grid.appendChild(draw_curves_btn)
 
-	let draw_outliers_btn = document.createElement('input')
-	global.ui.draw_outliers_btn = draw_outliers_btn
-	//draw_outliers_btn.checked = 'true'
-	draw_outliers_btn.type = "checkbox"
+	let ed_draw_outliers_btn = document.createElement('input')
+	global.ui.ed_draw_outliers_btn = ed_draw_outliers_btn
+	//ed_draw_outliers_btn.checked = 'true'
+	ed_draw_outliers_btn.type = "checkbox"
 
-	let draw_outliers_lbl = document.createElement('label')
-	global.ui.draw_outliers_lbl = draw_outliers_lbl
-	draw_outliers_lbl.setAttribute("for", draw_outliers_btn)
-	draw_outliers_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
+	let ed_draw_outliers_lbl = document.createElement('label')
+	global.ui.ed_draw_outliers_lbl = ed_draw_outliers_lbl
+	ed_draw_outliers_lbl.setAttribute("for", ed_draw_outliers_btn)
+	ed_draw_outliers_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
 	//extremal_depth_lbl.classList.add('checkbox_input_label')
-	draw_outliers_lbl.innerHTML = '- Draw outliers'
+	ed_draw_outliers_lbl.innerHTML = '- Draw outliers'
 
-	let draw_outliers_grid = document.createElement('div')
-	global.ui.draw_outliers_grid = draw_outliers_grid
-	draw_outliers_grid.id = draw_outliers_grid
-	draw_outliers_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around;' //justify-content:flex-end'
-	draw_outliers_grid.appendChild(draw_outliers_lbl)
-	draw_outliers_grid.appendChild(draw_outliers_btn)
+	let ed_draw_outliers_grid = document.createElement('div')
+	global.ui.ed_draw_outliers_grid = ed_draw_outliers_grid
+	ed_draw_outliers_grid.id = ed_draw_outliers_grid
+	ed_draw_outliers_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around;' //justify-content:flex-end'
+	ed_draw_outliers_grid.appendChild(ed_draw_outliers_lbl)
+	ed_draw_outliers_grid.appendChild(ed_draw_outliers_btn)
 
 
 	let symbols_table_div = document.createElement('div')
@@ -342,8 +423,10 @@ function prepare_ui()
 	left_panel.appendChild(start_date_grid)
 	left_panel.appendChild(end_date_grid)
 	left_panel.appendChild(norm_date_grid)
-   	left_panel.appendChild(extremal_depth_grid)
-	left_panel.appendChild(draw_outliers_grid)
+	left_panel.appendChild(modified_band_depth_grid)
+	left_panel.appendChild(mbd_draw_outliers_grid)
+	left_panel.appendChild(extremal_depth_grid)
+	left_panel.appendChild(ed_draw_outliers_grid)
 	left_panel.appendChild(draw_curves_grid)
 	left_panel.appendChild(filter_input)
    	left_panel.appendChild(symbols_table_div)
@@ -408,6 +491,84 @@ function heap_log() {
 	let heap_free = global.tsvis_wasm_module.exports.tsvis_heap_free()
 
 	console.log(`heap size: ${heap_size} // heap used: ${heap_used} // heap free: ${heap_free}`)
+}
+
+function run_modified_band_depth_algorithm() {
+
+	global.modified_band_depth.ranked_symbols = []
+
+	let n = global.chart_symbols.length
+
+	let symbols_mbd = []
+
+	let mem_checpoint_raw_p = global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint()
+
+	//heap_log()
+
+	let curve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_CurveList_new(n)
+	while (curve_list_raw_p == 0) {
+		grow_heap()
+		curve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_CurveList_new(n)
+	}
+
+	for (let i=0;i<n;i++) {
+		let symbol = global.chart_symbols[i]
+		let ts_current_values = symbol.ts_current_values
+		if (ts_current_values == null) {
+			console.log("Discarding symbol ", symbol.name, " on modified band depth computation")
+		}
+		symbols_mbd.push(symbol)
+
+		let m = ts_current_values.length
+		//console.log("time points", m)
+		let curve_raw_p  = global.tsvis_wasm_module.exports.tsvis_Curve_new(m)
+		while (curve_raw_p == 0) {
+			grow_heap()
+			curve_raw_p = global.tsvis_wasm_module.exports.tsvis_Curve_new(m)
+		}
+		//console.log("CV ------------> ",global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
+		//console.log("curve_raw_p",curve_raw_p)
+		let values_raw_p = global.tsvis_wasm_module.exports.tsvis_Curve_values(curve_raw_p)
+		//console.log("values_raw_p",values_raw_p)
+
+		const c_curve_values = new Float64Array(global.tsvis_wasm_module.exports.memory.buffer, values_raw_p, m);
+
+		c_curve_values.set(ts_current_values)
+
+		//console.log("sum", global.tsvis_wasm_module.exports.sum_f64(values_raw_p,m))
+
+		let ok = global.tsvis_wasm_module.exports.tsvis_CurveList_append(curve_list_raw_p, curve_raw_p)
+	}
+
+	let mbd_raw_p = global.tsvis_wasm_module.exports.mbd_modified_band_depth_run(curve_list_raw_p)
+	while (mbd_raw_p == 0) {
+		grow_heap()
+		mbd_raw_p = global.tsvis_wasm_module.exports.mbd_modified_band_depth_run(curve_list_raw_p)
+	}
+
+	let rank_raw_p = global.tsvis_wasm_module.exports.mbd_get_modified_band_depth_rank_(mbd_raw_p)
+
+	//console.log("rank_raw_p",rank_raw_p)
+
+	//console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
+
+	const rank = new Int32Array(global.tsvis_wasm_module.exports.memory.buffer, rank_raw_p, symbols_mbd.length);
+
+	//console.log(rank)
+
+	for (let i=0;i<symbols_mbd.length;i++) {
+		let symbol_rank_i = symbols_mbd[rank[i]]
+		symbol_rank_i.mbd_rank = i
+		global.modified_band_depth.ranked_symbols.push(symbol_rank_i)
+		//console.log(rank[i])
+		//console.log(`Depth rank ${i} is symbol ${symbol_rank_i.name} (from most extremal smaller rank to deeper larger rank)`)
+	}
+
+	prepare_fb_inner_band("mbd")
+	prepare_fb_outer_band("mbd")
+	prepare_fb_outliers("mbd")
+
+	//console.log(global.modified_band_depth.ranked_symbols)
 }
 
 function run_extremal_depth_algorithm()
@@ -495,9 +656,9 @@ function run_extremal_depth_algorithm()
 	//--------------
 	//find values of each band (IQR and maximum non outlying envelope)
 	//--------------
-	prepare_ed_inner_band(rank)
-	prepare_ed_outer_band()
-	prepare_ed_outliers()
+	prepare_fb_inner_band("ed")
+	prepare_fb_outer_band("ed")
+	prepare_fb_outliers("ed")
 
 	global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p)
 
@@ -606,6 +767,8 @@ function process_event_queue()
 		} else if (e.event_type == EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM) {
 			//console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 			global.extremal_depth.fbplot.active = !global.extremal_depth.fbplot.active
+		} else if (e.event_type == EVENT.RUN_MODIFIED_BAND_DEPTH_ALGORITHM) {
+			global.modified_band_depth.fbplot.active = !global.modified_band_depth.fbplot.active
 		}
 	}
 	global.events.length = 0
@@ -988,12 +1151,87 @@ function update_ts()
 			let median_symbol = global.extremal_depth.ranked_symbols.pop()
 			draw_timeseries(median_symbol, false)
 
-			if (global.ui.draw_outliers_btn.checked) {
+			if (global.ui.ed_draw_outliers_btn.checked) {
 				//--------------
 				// drawing outliers
 				//--------------
 				for(let i=0; i<global.extremal_depth.fbplot.outliers.length; i++) {
 					let symbol = global.extremal_depth.fbplot.outliers[i]
+					draw_timeseries(symbol, false)
+				}
+
+			}
+
+		}
+
+	}
+
+	if (global.modified_band_depth.fbplot.active) {
+
+		if(global.chart_symbols.length == 0) {
+			console.log("No symbols selected!")
+		} else {
+			run_modified_band_depth_algorithm()
+
+			//--------------
+			// drawing inner band
+			//--------------
+			let ymin = global.modified_band_depth.fbplot.inner_band.lower
+			let ymax = global.modified_band_depth.fbplot.inner_band.upper
+			let num_timesteps = global.modified_band_depth.ranked_symbols[0].ts_current_values.length
+
+			ctx.save()
+			ctx.beginPath()
+			let p = map(0,ymin[0])
+			ctx.moveTo(p[0],p[1])
+			for (let j=1;j<num_timesteps;j++) {
+				p = map(j,ymin[j])
+				ctx.lineTo(p[0],p[1])
+			}
+			for (let j=num_timesteps-1;j>=0;j--) {
+				p = map(j,ymax[j])
+				ctx.lineTo(p[0],p[1])
+			}
+			ctx.closePath()
+			ctx.fillStyle="#77777755"
+			ctx.fill()
+			ctx.restore()
+
+			//--------------
+			// drawing outer band
+			//--------------
+			let ymin_outer = global.modified_band_depth.fbplot.outer_band.lower
+			let ymax_outer = global.modified_band_depth.fbplot.outer_band.upper
+
+			ctx.save()
+			ctx.strokeStyle = "#FFFFFF"
+			ctx.setLineDash([5, 3])
+			ctx.beginPath()
+			p = map(0,ymin_outer[0])
+			ctx.moveTo(p[0],p[1])
+			for (let j=1;j<num_timesteps;j++) {
+				p = map(j,ymin_outer[j])
+				ctx.lineTo(p[0],p[1])
+			}
+			for (let j=num_timesteps-1;j>=0;j--) {
+				p = map(j,ymax_outer[j])
+				ctx.lineTo(p[0],p[1])
+			}
+			ctx.stroke()
+			ctx.restore()
+
+			//--------------
+			// drawing median curve
+			//--------------
+			let median_symbol = global.modified_band_depth.ranked_symbols.pop()
+			draw_timeseries(median_symbol, false)
+
+			if (global.ui.mbd_draw_outliers_btn.checked) {
+				//--------------
+				// drawing outliers
+				//--------------
+				for(let i=0; i<global.modified_band_depth.fbplot.outliers.length; i++) {
+					let symbol = global.modified_band_depth.fbplot.outliers[i]
 					draw_timeseries(symbol, false)
 				}
 
@@ -1160,7 +1398,9 @@ async function main()
 		let symbol_names = await result.json()
 		let symbols = []
 		for (let i=0;i<symbol_names.length;i++) {
-			symbols.push({ name:symbol_names[i], ui_row:null, ui_col:null, on_table:true, on_chart:false, data: null, ts_current_values: null, ed_rank:null})
+			symbols.push({ name:symbol_names[i], ui_row:null, ui_col:null,
+						   on_table:true, on_chart:false, data: null,
+						   ts_current_values: null, ed_rank:null, mbd_rank:null })
 		}
 		global.symbols = symbols
 
