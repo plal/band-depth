@@ -576,7 +576,6 @@ function run_modified_band_depth_algorithm() {
 function run_extremal_depth_algorithm()
 {
 
-	global.extremal_depth.ranked_symbols = []
 	// get curves on the chart and creates the envelope for them
 	let n = global.chart_symbols.length
 
@@ -646,7 +645,7 @@ function run_extremal_depth_algorithm()
 
 	// console.log("checksum", global.tsvis_wasm_module.exports.checksum(rank_raw_p,symbols_ed.length))
 
-	//global.extremal_depth.ranked_symbols = []
+	global.extremal_depth.ranked_symbols = []
 	for (let i=0;i<symbols_ed.length;i++) {
 		let symbol_rank_i = symbols_ed[rank[i]]
 		symbol_rank_i.ed_rank = i
@@ -654,7 +653,7 @@ function run_extremal_depth_algorithm()
 		//console.log(rank[i])
 		//console.log(`Depth rank ${i} is symbol ${symbol_rank_i.name} (from most extremal smaller rank to deeper larger rank)`)
 	}
-
+	console.log(global.extremal_depth.ranked_symbols)
 	//--------------
 	//find values of each band (IQR and maximum non outlying envelope)
 	//--------------
@@ -769,8 +768,14 @@ function process_event_queue()
 		} else if (e.event_type == EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM) {
 			//console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 			global.extremal_depth.fbplot.active = !global.extremal_depth.fbplot.active
+			if (global.extremal_depth.fbplot.active) {
+				run_extremal_depth_algorithm()
+			}
 		} else if (e.event_type == EVENT.RUN_MODIFIED_BAND_DEPTH_ALGORITHM) {
 			global.modified_band_depth.fbplot.active = !global.modified_band_depth.fbplot.active
+			if (global.modified_band_depth.fbplot.active) {
+				run_modified_band_depth_algorithm()
+			}
 		}
 	}
 	global.events.length = 0
@@ -1041,7 +1046,7 @@ function update_ts()
 		}
 	}
 
-	function draw_timeseries(symbol, focused) {
+	function draw_timeseries(symbol, focused, color) {
 
 		let ts_current_values = symbol.ts_current_values
 		if (ts_current_values == null) {
@@ -1062,6 +1067,11 @@ function update_ts()
 		}
 
 		let first_point_drawn = false
+		if (typeof color !== 'undefined') {
+			global.chart_colors[i] = color
+			symbol.ui_col.style.color = color
+		}
+
 		ctx.strokeStyle = global.chart_colors[i]
 		ctx.beginPath()
 		for (let j=x_min;j<=x_max;j++) {
@@ -1098,8 +1108,6 @@ function update_ts()
 		if(global.chart_symbols.length == 0) {
 			console.log("No symbols selected!")
 		} else {
-			run_extremal_depth_algorithm()
-
 			//--------------
 			// drawing inner band
 			//--------------
@@ -1120,7 +1128,7 @@ function update_ts()
 				ctx.lineTo(p[0],p[1])
 			}
 			ctx.closePath()
-			ctx.fillStyle="#77777755"
+			ctx.fillStyle="#00FFFF55"
 			ctx.fill()
 			ctx.restore()
 
@@ -1150,8 +1158,8 @@ function update_ts()
 			//--------------
 			// drawing median curve
 			//--------------
-			let median_symbol = global.extremal_depth.ranked_symbols.pop()
-			draw_timeseries(median_symbol, false)
+			let median_symbol = global.extremal_depth.ranked_symbols[global.extremal_depth.ranked_symbols.length - 1]
+			draw_timeseries(median_symbol, false, "#00FFFF")
 
 			if (global.ui.ed_draw_outliers_btn.checked) {
 				//--------------
@@ -1159,7 +1167,7 @@ function update_ts()
 				//--------------
 				for(let i=0; i<global.extremal_depth.fbplot.outliers.length; i++) {
 					let symbol = global.extremal_depth.fbplot.outliers[i]
-					draw_timeseries(symbol, false)
+					draw_timeseries(symbol, false, "#00FFFF55")
 				}
 
 			}
@@ -1173,8 +1181,6 @@ function update_ts()
 		if(global.chart_symbols.length == 0) {
 			console.log("No symbols selected!")
 		} else {
-			run_modified_band_depth_algorithm()
-
 			//--------------
 			// drawing inner band
 			//--------------
@@ -1195,7 +1201,7 @@ function update_ts()
 				ctx.lineTo(p[0],p[1])
 			}
 			ctx.closePath()
-			ctx.fillStyle="#77777755"
+			ctx.fillStyle="#FF000055"
 			ctx.fill()
 			ctx.restore()
 
@@ -1225,8 +1231,8 @@ function update_ts()
 			//--------------
 			// drawing median curve
 			//--------------
-			let median_symbol = global.modified_band_depth.ranked_symbols.pop()
-			draw_timeseries(median_symbol, false)
+			let median_symbol = global.modified_band_depth.ranked_symbols[global.modified_band_depth.ranked_symbols.length - 1]
+			draw_timeseries(median_symbol, false, "#FF0000")
 
 			if (global.ui.mbd_draw_outliers_btn.checked) {
 				//--------------
@@ -1234,7 +1240,7 @@ function update_ts()
 				//--------------
 				for(let i=0; i<global.modified_band_depth.fbplot.outliers.length; i++) {
 					let symbol = global.modified_band_depth.fbplot.outliers[i]
-					draw_timeseries(symbol, false)
+					draw_timeseries(symbol, false, "#FF000055")
 				}
 
 			}
