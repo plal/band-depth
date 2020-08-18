@@ -3,6 +3,7 @@
 const EVENT= {
 	FILTER: "event_filter",
 	TOGGLE_SYMBOL: "event_toggle_symbol",
+	TOGGLE_ALL: "event_toggle_all",
 	UPDATE_START_DATE: "event_update_start_date",
 	UPDATE_END_DATE: "event_update_end_date",
 	UPDATE_NORM_DATE: "event_update_norm_date",
@@ -18,7 +19,7 @@ var global = {
 	chart_symbols: [],
 	chart_colors: [],
 	events: [],
-	date_start: "2018-01-01",
+	date_start: "2020-01-01",
 	date_end: "2020-07-18",
 	date_norm: "2020-07-15",
 	mouse: { position:[0,0], last_position:[0,0] },
@@ -120,6 +121,48 @@ async function download_symbol_data(symbol)
 	} catch (e) {
 		console.log("Fatal Error: couldn't download symbol data" + symbol.name)
 		return
+	}
+}
+
+function toggle_all_symbols() {
+	let symbols = global.symbols
+
+	let state = global.toggle_state % 2
+
+	for (let i=0; i<symbols.length; i++) {
+
+		let symbol = symbols[i]
+
+		//--------------
+		// if state is even we add every symbol on table to the chart;
+		// if state is odd we remove every symbol on table from the chart;
+		//--------------
+		if (state == 0) {
+			//i
+			let color  = pick_color()
+
+			if (symbol.on_table) {
+				// add symbol to chart
+				symbol.on_chart = true
+				global.chart_symbols.push(symbol)
+				global.chart_colors.push(color)
+				symbol.ui_col.style.color = color
+				symbol.ui_col.style.fontWeight = 'bold'
+				download_symbol_data(symbol)
+			}
+		} else {
+			let to_remove = global.chart_symbols.indexOf(symbol)
+			if (to_remove > -1) {
+			  global.chart_symbols.splice(to_remove, 1);
+			  global.chart_colors.splice(to_remove, 1);
+			}
+			symbol.on_chart = false
+			symbol.ui_col.style.color = "#6b6f71"
+			symbol.ui_col.style.fontWeight = 'initial'
+
+		}
+
+		//console.log(symbols[i].on_chart)
 	}
 }
 
@@ -293,26 +336,6 @@ function prepare_ui()
 	norm_date_grid.appendChild(norm_date_label)
 	norm_date_grid.appendChild(norm_date_input)
 
-	let filter_input = document.createElement('input')
-	global.ui.filter_input = filter_input
-	filter_input.setAttribute("type","text")
-	filter_input.id = 'filter_input'
-	filter_input.style = 'position:relative; width:100%; margin:2px; border-radius:2px; background-color:#FFFFFF; font-family:Courier; font-size:14pt;'
-	install_event_listener(filter_input, 'change', filter_input, EVENT.FILTER)
-
-	// let modified_band_depth_btn = document.createElement('input')
-	// global.ui.modified_band_depth_btn = modified_band_depth_btn
-	// modified_band_depth_btn.type = "button"
-	// modified_band_depth_btn.innerHTML = "MBD"
-	// //modified_band_depth_btn.classList.add('checkbox_input')
-	// install_event_listener(modified_band_depth_btn, 'click', modified_band_depth_btn, EVENT.RUN_MODIFIED_BAND_DEPTH_ALGORITHM)
-	//
-	// let modified_band_depth_grid = document.createElement('div')
-	// global.ui.modified_band_depth_grid = modified_band_depth_grid
-	// modified_band_depth_grid.id = modified_band_depth_grid
-	// modified_band_depth_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
-	// modified_band_depth_grid.appendChild(modified_band_depth_btn)
-
 	let modified_band_depth_btn = document.createElement('input')
 	global.ui.modified_band_depth_btn = modified_band_depth_btn
 	modified_band_depth_btn.type = "checkbox"
@@ -410,6 +433,20 @@ function prepare_ui()
 	ed_draw_outliers_grid.appendChild(ed_draw_outliers_lbl)
 	ed_draw_outliers_grid.appendChild(ed_draw_outliers_btn)
 
+	let filter_input = document.createElement('input')
+	global.ui.filter_input = filter_input
+	filter_input.setAttribute("type","text")
+	filter_input.id = 'filter_input'
+	filter_input.style = 'position:relative; width:100%; margin:2px; border-radius:2px; background-color:#FFFFFF; font-family:Courier; font-size:14pt;'
+	install_event_listener(filter_input, 'change', filter_input, EVENT.FILTER)
+
+	let toggle_all_btn = document.createElement('button')
+	global.ui.toggle_all_btn = toggle_all_btn
+	//toggle_all_btn.setAttribute("type","button")
+	toggle_all_btn.id = "toggle_all_btn"
+	toggle_all_btn.textContent = 'toggle curves on panel'
+	toggle_all_btn.style = "position:relative; width:100%; margin:2px; border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
+	install_event_listener(toggle_all_btn, 'click', toggle_all_btn, EVENT.TOGGLE_ALL)
 
 	let symbols_table_div = document.createElement('div')
 	global.ui.symbols_table_div = symbols_table_div
@@ -429,6 +466,7 @@ function prepare_ui()
 	left_panel.appendChild(ed_draw_outliers_grid)
 	left_panel.appendChild(draw_curves_grid)
 	left_panel.appendChild(filter_input)
+	left_panel.appendChild(toggle_all_btn)
    	left_panel.appendChild(symbols_table_div)
 
 	let table = symbols_table_div.appendChild(document.createElement('table'))
@@ -743,6 +781,9 @@ function process_event_queue()
 				symbol.ui_col.style.color = "#6b6f71"
 				symbol.ui_col.style.fontWeight = 'initial'
 			}
+		} else if (e.event_type == EVENT.TOGGLE_ALL) {
+			toggle_all_symbols()
+			global.toggle_state = global.toggle_state+1
 		} else if (e.event_type == EVENT.UPDATE_START_DATE) {
 			let date = e.context.value
 			global.date_start = date
@@ -1159,7 +1200,7 @@ function update_ts()
 			// drawing median curve
 			//--------------
 			let median_symbol = global.extremal_depth.ranked_symbols[global.extremal_depth.ranked_symbols.length - 1]
-			draw_timeseries(median_symbol, false, "#00FFFF")
+			draw_timeseries(median_symbol, false, "#00FFFFAA")
 
 			if (global.ui.ed_draw_outliers_btn.checked) {
 				//--------------
@@ -1232,7 +1273,7 @@ function update_ts()
 			// drawing median curve
 			//--------------
 			let median_symbol = global.modified_band_depth.ranked_symbols[global.modified_band_depth.ranked_symbols.length - 1]
-			draw_timeseries(median_symbol, false, "#FF0000")
+			draw_timeseries(median_symbol, false, "#FF0000AA")
 
 			if (global.ui.mbd_draw_outliers_btn.checked) {
 				//--------------
@@ -1411,8 +1452,9 @@ async function main()
 						   ts_current_values: null, ed_rank:null, mbd_rank:null })
 		}
 		global.symbols = symbols
+		global.toggle_state = 0
 
-		console.log(global.symbols)
+		//console.log(global.symbols)
 		prepare_ui();
 		setTimeout(update, 32)
 
