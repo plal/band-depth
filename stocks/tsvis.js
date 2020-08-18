@@ -143,23 +143,26 @@ function toggle_all_symbols() {
 
 			if (symbol.on_table) {
 				// add symbol to chart
-				symbol.on_chart = true
-				global.chart_symbols.push(symbol)
-				global.chart_colors.push(color)
-				symbol.ui_col.style.color = color
-				symbol.ui_col.style.fontWeight = 'bold'
-				download_symbol_data(symbol)
+				if (!symbol.on_chart) {
+					symbol.on_chart = true
+					global.chart_symbols.push(symbol)
+					global.chart_colors.push(color)
+					symbol.ui_col.style.color = color
+					symbol.ui_col.style.fontWeight = 'bold'
+					download_symbol_data(symbol)
+				}
 			}
 		} else {
-			let to_remove = global.chart_symbols.indexOf(symbol)
-			if (to_remove > -1) {
-			  global.chart_symbols.splice(to_remove, 1);
-			  global.chart_colors.splice(to_remove, 1);
+			if (symbol.on_chart) {
+				let to_remove = global.chart_symbols.indexOf(symbol)
+				if (to_remove > -1) {
+				  global.chart_symbols.splice(to_remove, 1);
+				  global.chart_colors.splice(to_remove, 1);
+				}
+				symbol.on_chart = false
+				symbol.ui_col.style.color = "#6b6f71"
+				symbol.ui_col.style.fontWeight = 'initial'
 			}
-			symbol.on_chart = false
-			symbol.ui_col.style.color = "#6b6f71"
-			symbol.ui_col.style.fontWeight = 'initial'
-
 		}
 
 		//console.log(symbols[i].on_chart)
@@ -444,7 +447,7 @@ function prepare_ui()
 	global.ui.toggle_all_btn = toggle_all_btn
 	//toggle_all_btn.setAttribute("type","button")
 	toggle_all_btn.id = "toggle_all_btn"
-	toggle_all_btn.textContent = 'toggle curves on panel'
+	toggle_all_btn.textContent = 'toggle curves'
 	toggle_all_btn.style = "position:relative; width:100%; margin:2px; border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
 	install_event_listener(toggle_all_btn, 'click', toggle_all_btn, EVENT.TOGGLE_ALL)
 
