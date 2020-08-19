@@ -3,7 +3,8 @@
 const EVENT= {
 	FILTER: "event_filter",
 	TOGGLE_SYMBOL: "event_toggle_symbol",
-	TOGGLE_ALL: "event_toggle_all",
+	ADD_TABLE_SYMBOLS: "event_add_table_symbols",
+	CLEAR_CHART: "event_clear_chart",
 	UPDATE_START_DATE: "event_update_start_date",
 	UPDATE_END_DATE: "event_update_end_date",
 	UPDATE_NORM_DATE: "event_update_norm_date",
@@ -124,48 +125,58 @@ async function download_symbol_data(symbol)
 	}
 }
 
-function toggle_all_symbols() {
-	let symbols = global.symbols
+//--------------
+// if state is even we add every symbol on table to the chart;
+// if state is odd we remove every symbol from the chart;
+//--------------
 
-	let state = global.toggle_state % 2
+
+function add_table_symbols() {
+	let symbols = global.symbols
 
 	for (let i=0; i<symbols.length; i++) {
 
 		let symbol = symbols[i]
 
-		//--------------
-		// if state is even we add every symbol on table to the chart;
-		// if state is odd we remove every symbol on table from the chart;
-		//--------------
-		if (state == 0) {
-			//i
-			let color  = pick_color()
+		let color  = pick_color()
 
-			if (symbol.on_table) {
-				// add symbol to chart
-				if (!symbol.on_chart) {
-					symbol.on_chart = true
-					global.chart_symbols.push(symbol)
-					global.chart_colors.push(color)
-					symbol.ui_col.style.color = color
-					symbol.ui_col.style.fontWeight = 'bold'
-					download_symbol_data(symbol)
-				}
-			}
-		} else {
-			if (symbol.on_chart) {
-				let to_remove = global.chart_symbols.indexOf(symbol)
-				if (to_remove > -1) {
-				  global.chart_symbols.splice(to_remove, 1);
-				  global.chart_colors.splice(to_remove, 1);
-				}
-				symbol.on_chart = false
-				symbol.ui_col.style.color = "#6b6f71"
-				symbol.ui_col.style.fontWeight = 'initial'
+		//--------------
+		// if symbol is on table and not on chart, add it to chart
+		//--------------
+		if (symbol.on_table) {
+			// add symbol to chart
+			if (!symbol.on_chart) {
+				symbol.on_chart = true
+				global.chart_symbols.push(symbol)
+				global.chart_colors.push(color)
+				symbol.ui_col.style.color = color
+				symbol.ui_col.style.fontWeight = 'bold'
+				download_symbol_data(symbol)
 			}
 		}
+	}
+}
 
-		//console.log(symbols[i].on_chart)
+function clear_chart() {
+	let symbols = global.symbols
+
+	//--------------
+	// remove every symbol from chart
+	//--------------
+	for (let i=0; i<symbols.length; i++) {
+
+		let symbol = symbols[i]
+
+		if (symbol.on_chart) {
+			let to_remove = global.chart_symbols.indexOf(symbol)
+			if (to_remove > -1) {
+			  global.chart_symbols.splice(to_remove, 1);
+			  global.chart_colors.splice(to_remove, 1);
+			}
+			symbol.on_chart = false
+			symbol.ui_col.style.color = "#6b6f71"
+			symbol.ui_col.style.fontWeight = 'initial'
+		}
 	}
 }
 
@@ -443,13 +454,21 @@ function prepare_ui()
 	filter_input.style = 'position:relative; width:100%; margin:2px; border-radius:2px; background-color:#FFFFFF; font-family:Courier; font-size:14pt;'
 	install_event_listener(filter_input, 'change', filter_input, EVENT.FILTER)
 
-	let toggle_all_btn = document.createElement('button')
-	global.ui.toggle_all_btn = toggle_all_btn
-	//toggle_all_btn.setAttribute("type","button")
-	toggle_all_btn.id = "toggle_all_btn"
-	toggle_all_btn.textContent = 'toggle curves'
-	toggle_all_btn.style = "position:relative; width:100%; margin:2px; border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
-	install_event_listener(toggle_all_btn, 'click', toggle_all_btn, EVENT.TOGGLE_ALL)
+	let add_table_symbols_btn = document.createElement('button')
+	global.ui.add_table_symbols_btn = add_table_symbols_btn
+	//add_table_symbols_btn.setAttribute("type","button")
+	add_table_symbols_btn.id = "add_table_symbols_btn"
+	add_table_symbols_btn.textContent = 'add curves on table'
+	add_table_symbols_btn.style = "position:relative; width:100%; margin:2px; border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
+	install_event_listener(add_table_symbols_btn, 'click', add_table_symbols_btn, EVENT.ADD_TABLE_SYMBOLS)
+
+	let clear_chart_btn = document.createElement('button')
+	global.ui.clear_chart_btn = clear_chart_btn
+	//clear_chart_btn.setAttribute("type","button")
+	clear_chart_btn.id = "clear_chart_btn"
+	clear_chart_btn.textContent = 'clear chart'
+	clear_chart_btn.style = "position:relative; width:100%; margin:2px; border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
+	install_event_listener(clear_chart_btn, 'click', clear_chart_btn, EVENT.CLEAR_CHART)
 
 	let symbols_table_div = document.createElement('div')
 	global.ui.symbols_table_div = symbols_table_div
@@ -469,7 +488,8 @@ function prepare_ui()
 	left_panel.appendChild(ed_draw_outliers_grid)
 	left_panel.appendChild(draw_curves_grid)
 	left_panel.appendChild(filter_input)
-	left_panel.appendChild(toggle_all_btn)
+	left_panel.appendChild(add_table_symbols_btn)
+	left_panel.appendChild(clear_chart_btn)
    	left_panel.appendChild(symbols_table_div)
 
 	let table = symbols_table_div.appendChild(document.createElement('table'))
@@ -784,9 +804,10 @@ function process_event_queue()
 				symbol.ui_col.style.color = "#6b6f71"
 				symbol.ui_col.style.fontWeight = 'initial'
 			}
-		} else if (e.event_type == EVENT.TOGGLE_ALL) {
-			toggle_all_symbols()
-			global.toggle_state = global.toggle_state+1
+		} else if (e.event_type == EVENT.ADD_TABLE_SYMBOLS) {
+			add_table_symbols()
+		} else if (e.event_type == EVENT.CLEAR_CHART) {
+			clear_chart()
 		} else if (e.event_type == EVENT.UPDATE_START_DATE) {
 			let date = e.context.value
 			global.date_start = date
