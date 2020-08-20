@@ -1133,11 +1133,14 @@ function update_ts()
 
 		let first_point_drawn = false
 		if (typeof color !== 'undefined') {
-			global.chart_colors[i] = color
+			ctx.strokeStyle = color
 			symbol.ui_col.style.color = color
+		} else {
+			ctx.strokeStyle = global.chart_colors[i]
+			symbol.ui_col.style.color = global.chart_colors[i]
 		}
 
-		ctx.strokeStyle = global.chart_colors[i]
+
 		ctx.beginPath()
 		for (let j=x_min;j<=x_max;j++) {
 			let date_offset = date_start+j
@@ -1224,7 +1227,7 @@ function update_ts()
 			// drawing median curve
 			//--------------
 			let median_symbol = global.extremal_depth.ranked_symbols[global.extremal_depth.ranked_symbols.length - 1]
-			draw_timeseries(median_symbol, false, "#00FFFFAA")
+			draw_timeseries(median_symbol, false, "#00FFFF")
 
 			if (global.ui.ed_draw_outliers_btn.checked) {
 				//--------------
@@ -1232,7 +1235,7 @@ function update_ts()
 				//--------------
 				for(let i=0; i<global.extremal_depth.fbplot.outliers.length; i++) {
 					let symbol = global.extremal_depth.fbplot.outliers[i]
-					draw_timeseries(symbol, false, "#00FFFF55")
+					draw_timeseries(symbol, false, "#00FFFF")
 				}
 
 			}
@@ -1297,7 +1300,7 @@ function update_ts()
 			// drawing median curve
 			//--------------
 			let median_symbol = global.modified_band_depth.ranked_symbols[global.modified_band_depth.ranked_symbols.length - 1]
-			draw_timeseries(median_symbol, false, "#FF0000AA")
+			draw_timeseries(median_symbol, false, "#FF0000")
 
 			if (global.ui.mbd_draw_outliers_btn.checked) {
 				//--------------
@@ -1305,7 +1308,7 @@ function update_ts()
 				//--------------
 				for(let i=0; i<global.modified_band_depth.fbplot.outliers.length; i++) {
 					let symbol = global.modified_band_depth.fbplot.outliers[i]
-					draw_timeseries(symbol, false, "#FF000055")
+					draw_timeseries(symbol, false, "#FF0000")
 				}
 
 			}
