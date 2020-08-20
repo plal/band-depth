@@ -1235,7 +1235,7 @@ function update_ts()
 				//--------------
 				for(let i=0; i<global.extremal_depth.fbplot.outliers.length; i++) {
 					let symbol = global.extremal_depth.fbplot.outliers[i]
-					draw_timeseries(symbol, false, "#00FFFF")
+					draw_timeseries(symbol, false, "#00FFFF55")
 				}
 
 			}
@@ -1308,7 +1308,7 @@ function update_ts()
 				//--------------
 				for(let i=0; i<global.modified_band_depth.fbplot.outliers.length; i++) {
 					let symbol = global.modified_band_depth.fbplot.outliers[i]
-					draw_timeseries(symbol, false, "#FF0000")
+					draw_timeseries(symbol, false, "#FF000055")
 				}
 
 			}
