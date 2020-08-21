@@ -556,6 +556,12 @@ function heap_log() {
 
 function run_modified_band_depth_algorithm() {
 
+	if (global.chart_symbols.length == 0) {
+		window.alert("No symbols selected!")
+		global.ui.modified_band_depth_btn.setAttribute("checked","false")
+		return
+	}
+
 	global.modified_band_depth.ranked_symbols = []
 
 	let n = global.chart_symbols.length
@@ -636,6 +642,12 @@ function run_modified_band_depth_algorithm() {
 
 function run_extremal_depth_algorithm()
 {
+
+	if (global.chart_symbols.length == 0) {
+		window.alert("No symbols selected!")
+		global.ui.extremal_depth_btn.checked = False
+		return
+	}
 
 	// get curves on the chart and creates the envelope for them
 	let n = global.chart_symbols.length
@@ -920,6 +932,7 @@ function update_ts()
 	let y_min = 1.0
 	let y_max = 1.0
 	let last_valid_value = 1
+
 	for (let i=0;i<global.chart_symbols.length;i++) {
 		let symbol = global.chart_symbols[i]
 		symbol.ts_current_values = null
@@ -954,6 +967,17 @@ function update_ts()
 			y_max = Math.max(y_max, value)
 		}
 		symbol.ts_current_values = ts_current_values
+	}
+	if (global.extremal_depth.fbplot.active || global.modified_band_depth.fbplot.active) {
+		let max_outer_bands = Math.max(Math.max.apply(null, global.extremal_depth.fbplot.outer_band.upper),
+									   Math.max.apply(null, global.modified_band_depth.fbplot.outer_band.upper))
+
+		let min_outer_bands = Math.min(Math.min.apply(null, global.extremal_depth.fbplot.outer_band.lower),
+											 Math.min.apply(null, global.modified_band_depth.fbplot.outer_band.lower))
+
+		y_max = Math.max(max_outer_bands, y_max)
+		y_min = Math.min(min_outer_bands, y_min)
+
 	}
 	if(y_min == y_max) {
 		y_min = y_max-1
