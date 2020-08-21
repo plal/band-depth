@@ -1,6 +1,6 @@
 option="$1"
 
-if [ $option == "c" ]; then
+if [ "$option" == "c" ]; then
 
 echo "compiling to C"
 
@@ -46,4 +46,3 @@ cat script
 bash script
 
 fi
-

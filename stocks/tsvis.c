@@ -79,6 +79,9 @@ u32 tsvis_heap_free()
 	return heap->size - heap->free;
 }
 
+u32 tsvis_heap_used() {
+	return tsvis_heap()->free;
+}
 
 // this should be called before anything else
 u32 tsvis_hb()
@@ -285,6 +288,153 @@ f64*
 tsvis_Curve_values(Curve* self)
 {
 	return self->values;
+}
+
+typedef struct {
+	CurveList *curve_list;
+	s32 n; // num curves
+	s32 p; // num points
+	s32 depths;
+	s32 left;
+	s32 length;
+} ModifiedBandDepth;
+
+
+s32 mbd_count_points_between(Curve *curve1, Curve *curve2, Curve *curve3) {
+	s32 size = curve1->num_points;
+	s32 count = 0;
+	for(s32 i=0;i<size;++i) {
+		f64 a = curve1->values[i];
+		f64 b = Min(curve2->values[i],curve3->values[i]);
+		f64 c = Max(curve2->values[i],curve3->values[i]);
+		if (b <= a && a <= c) {
+			count += 1;
+		}
+	}
+	return count;
+}
+
+f64* mbd_get_depths(ModifiedBandDepth *self) { return OffsetedPointer(self,self->depths); }
+
+// f64 *depths_to_cmp;
+// s32 cmp(const void *a, const void *b){
+// 	s32 ia = *(s32 *)a;
+// 	s32 ib = *(s32 *)b;
+// 	return (depths_to_cmp[ia] > depths_to_cmp[ib]) - (depths_to_cmp[ia] < depths_to_cmp[ib]);
+// }
+
+void sort_modified_band_depth_ranks(f64 *depths, s32 *indexes, s32 first, s32 last){
+
+	s32 i, j, pivot, temp;
+
+	if(first<last){
+		pivot=first;
+		i=first;
+		j=last;
+
+		while(i<j){
+			while(depths[indexes[i]]<=depths[indexes[pivot]] && i<last) { i++; }
+			while(depths[indexes[j]]>depths[indexes[pivot]]) { j--; }
+			if(i<j){
+				temp=indexes[i];
+				indexes[i]=indexes[j];
+				indexes[j]=temp;
+			}
+		}
+
+		temp=indexes[pivot];
+		indexes[pivot]=indexes[j];
+		indexes[j]=temp;
+		sort_modified_band_depth_ranks(depths, indexes, first, j-1);
+		sort_modified_band_depth_ranks(depths, indexes, j+1, last);
+
+	}
+
+}
+
+s32* mbd_get_modified_band_depth_rank_(ModifiedBandDepth *self) {
+
+	f64 *depths = mbd_get_depths(self);
+	s32 n = self->n;
+
+	s32 *indexes = tsvis_malloc(sizeof(s32)*n);
+
+	for(s32 i=0;i<n; ++i) {
+		indexes[i]=i;
+	}
+
+	sort_modified_band_depth_ranks(depths, indexes, 0, n-1);
+
+	return indexes;
+}
+
+// s32* mbd_get_modified_band_depth_rank(ModifiedBandDepth* self) {
+// 	f64 *depths = mbd_get_depths(self);
+// 	s32  n = self->n;
+//
+// 	s32 *indexes = tsvis_malloc(sizeof(s32)*n);
+//
+// 	for(s32 i=0;i<n; ++i) {
+// 		indexes[i]=i;
+// 	}
+//
+// 	depths_to_cmp = depths;
+// 	qsort(indexes, n, sizeof(*indexes), cmp);
+//
+// 	return indexes;
+// }
+
+ModifiedBandDepth* mbd_modified_band_depth_run(CurveList *curve_list) {
+	s32 num_curves = curve_list->num_curves;
+	Curve* *curves = curve_list->curves;
+
+	s32 n = num_curves;
+	s32 p = curves[0]->num_points;
+
+	s32 header_storage = RAlign(sizeof(ModifiedBandDepth),8);
+	s32 depths_storage = RAlign(n * sizeof(f64),8);
+	s32 storage = header_storage + depths_storage;
+
+	ModifiedBandDepth *mbd = tsvis_malloc(storage);
+	if (!mbd) { return 0; }
+	for (s32 i=0;i<storage;++i) ((u8*) mbd)[i] = 0;
+
+	*mbd = (ModifiedBandDepth) {
+		.curve_list = curve_list,
+		.n = n,
+		.p = p,
+		.depths = header_storage,
+		.left = storage,
+		.length = storage
+	};
+
+	f64 n_choose_2 = n*(n-1.0)/2.0;
+	f64 *depths = mbd_get_depths(mbd);
+
+	for(s32 k=0; k<n; ++k) {
+		for(s32 i=0; i<n-1; ++i) {
+			for(s32 j=i+1; j<n; ++j) {
+				s32 count = mbd_count_points_between(curves[k], curves[i], curves[j]);
+				f64 proportion = (1.0) * count / p;
+				depths[k] += proportion;
+			}
+		}
+		depths[k] /= n_choose_2;
+	}
+
+	printf("Modified Band Depth results...\n");
+	for (s32 i=0; i<n; ++i) {
+		printf("Curve[%05d]: %f\n", i, depths[i]);
+	}
+	printf("\n");
+	s32 *ranked_indexes = mbd_get_modified_band_depth_rank_(mbd);
+	for (s32 i=0; i<n; ++i) {
+		printf("Curve[%05d]: %d\n", ranked_indexes[i], i);
+	}
+
+
+
+	return mbd;
 }
 
 typedef struct {
@@ -547,7 +697,7 @@ x7   6    7-7  6-(7-7) =  6   6
 
 note that any difference between 0 and n-1 can be genrated if we
 allow for numbers being equal. For example, when n=7, to generate
-a 5 we can make x1 == x2 < x3 < ... < x7
+a 5 we can make x1 == x2 < x3 < ... < x7header_storage
 
      lt   gt   diff           abs_diff
 x1   0    7-1  0-(7-1) = -6   6
@@ -720,14 +870,26 @@ main(int argc, char *argv[])
 
 #if 0
 	// Example from Figure 1 of the Extremal Depth paper
+	// f64 curves_data[] = {
+	// 	0, 0, 0,
+	// 	1, 1, 1,
+	// 	2, 2, 2,
+	// 	3, 3, 3,
+	// 	4, 4, 4
+	// };
+	// s32 n = 3;
+	// s32 p = 3;
+
 	f64 curves_data[] = {
-		0, 0, 0,
-		1, 1, 1,
-		2, 2, 2
+		0.1, -5.0, -4.0, -3.0,
+		0.0,  1.0,  2.1,  3.0,
+		6.1,  1.1,  8.0,  9.2,
+		6.2,  7.0,  2.0,  9.4,
+		6.0,  7.1,  8.1,  9.3
 	};
 
-	s32 n = 3;
-	s32 p = 3;
+	s32 n = 5;
+	s32 p = 4;
 
 	CurveList *curve_list = tsvis_CurveList_new(n);
 
@@ -743,8 +905,8 @@ main(int argc, char *argv[])
 #else
 	rnd_State rnd = rnd_new();
 
-	s32 n = 3000;
-	s32 p = 20000;
+	s32 n = 15;
+	s32 p = 365;
 
 	CurveList *curve_list = tsvis_CurveList_new(n);
 
@@ -763,8 +925,8 @@ main(int argc, char *argv[])
 
 
 	// compue extremal depth
-	ExtremalDepth *ed = ed_extremal_depth_run(curve_list);
-
+	// ExtremalDepth *ed = ed_extremal_depth_run(curve_list);
+	ModifiedBandDepth *mbd = mbd_modified_band_depth_run(curve_list);
 	// s32 *rank = ed_get_extremal_depth_rank(ed);
 	// for (s32 i=0;i<ed->n;++i) {
 	// 	printf("curve[%d] rank: %d\n", rank[i]+1, i+1);
