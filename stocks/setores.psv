@@ -1,0 +1,418 @@
+setor|subsetor|segmento|nome|codigo|segmento2
+Petróleo, Gás e Biocombustíveis|Petróleo, Gás e Biocombustíveis|Exploração, Refino e Distribuição|COSAN|CSAN|NM             
+Petróleo, Gás e Biocombustíveis|Petróleo, Gás e Biocombustíveis|Exploração, Refino e Distribuição|DOMMO|DMMO|
+Petróleo, Gás e Biocombustíveis|Petróleo, Gás e Biocombustíveis|Exploração, Refino e Distribuição|ENAUTA PART|ENAT|NM             
+Petróleo, Gás e Biocombustíveis|Petróleo, Gás e Biocombustíveis|Exploração, Refino e Distribuição|PET MANGUINH|RPMG|
+Petróleo, Gás e Biocombustíveis|Petróleo, Gás e Biocombustíveis|Exploração, Refino e Distribuição|PETROBRAS|PETR|N2
+Petróleo, Gás e Biocombustíveis|Petróleo, Gás e Biocombustíveis|Exploração, Refino e Distribuição|PETROBRAS BR|BRDT|NM             
+Petróleo, Gás e Biocombustíveis|Petróleo, Gás e Biocombustíveis|Exploração, Refino e Distribuição|PETRORIO|PRIO|NM             
+Petróleo, Gás e Biocombustíveis|Petróleo, Gás e Biocombustíveis|Exploração, Refino e Distribuição|ULTRAPAR|UGPA|NM             
+Petróleo, Gás e Biocombustíveis|Petróleo, Gás e Biocombustíveis|Equipamentos e Serviços|LUPATECH|LUPA|NM             
+Petróleo, Gás e Biocombustíveis|Petróleo, Gás e Biocombustíveis|Equipamentos e Serviços|OSX BRASIL|OSXB|NM             
+Materiais Básicos|Mineração|Minerais Metálicos|BRADESPAR|BRAP|N1             
+Materiais Básicos|Mineração|Minerais Metálicos|LITEL|LTEL|MB             
+Materiais Básicos|Mineração|Minerais Metálicos|LITELA|LTLA|MB             
+Materiais Básicos|Mineração|Minerais Metálicos|MMX MINER|MMXM|NM             
+Materiais Básicos|Mineração|Minerais Metálicos|VALE|VALE|NM             
+Materiais Básicos|Siderurgia e Metalurgia|Siderurgia|FERBASA|FESA|N1             
+Materiais Básicos|Siderurgia e Metalurgia|Siderurgia|GERDAU|GGBR|N1             
+Materiais Básicos|Siderurgia e Metalurgia|Siderurgia|GERDAU MET|GOAU|N1             
+Materiais Básicos|Siderurgia e Metalurgia|Siderurgia|SID NACIONAL|CSNA|
+Materiais Básicos|Siderurgia e Metalurgia|Siderurgia|USIMINAS|USIM|N1             
+Materiais Básicos|Siderurgia e Metalurgia|Artefatos de Ferro e Aço|MANGELS INDL|MGEL|
+Materiais Básicos|Siderurgia e Metalurgia|Artefatos de Ferro e Aço|PANATLANTICA|PATI|
+Materiais Básicos|Siderurgia e Metalurgia|Artefatos de Ferro e Aço|TEKNO|TKNO|
+Materiais Básicos|Siderurgia e Metalurgia|Artefatos de Cobre|PARANAPANEMA|PMAM|NM             
+Materiais Básicos|Químicos|Petroquímicos|BRASKEM|BRKM|N1             
+Materiais Básicos|Químicos|Petroquímicos|ELEKEIROZ|ELEK|
+Materiais Básicos|Químicos|Petroquímicos|GPC PART|GPCP|
+Materiais Básicos|Químicos|Fertilizantes e Defensivos|FER HERINGER|FHER|NM             
+Materiais Básicos|Químicos|Fertilizantes e Defensivos|NUTRIPLANT|NUTR|MA             
+Materiais Básicos|Químicos Diversos|CRISTAL|CRPG|
+Materiais Básicos|Químicos Diversos|UNIPAR|UNIP|
+Materiais Básicos|Madeira e Papel|Madeira|DURATEX|DTEX|NM             
+Materiais Básicos|Madeira e Papel|Madeira|EUCATEX|EUCA|N1             
+Materiais Básicos|Madeira e Papel|Papel e Celulose|IRANI|RANI|
+Materiais Básicos|Madeira e Papel|Papel e Celulose|KLABIN S/A|KLBN|N2
+Materiais Básicos|Madeira e Papel|apel e Celulose|MELHOR SP|MSPA|
+Materiais Básicos|Madeira e Papel|apel e Celulose|SANTHER|STTZ|
+Materiais Básicos|Madeira e Papel|apel e Celulose|SUZANO HOLD|NEMO|
+Materiais Básicos|Madeira e Papel|apel e Celulose|SUZANO S.A.|SUZB|NM             
+Materiais Básicos|Embalagens|Embalagens|METAL IGUACU|MTIG|
+Materiais Básicos|Materiais Diversos|Materiais Diversos|SANSUY|SNSY|
+Bens Industriais|Construção e Engenharia|Produtos para Construção|ETERNIT|ETER|NM             
+Bens Industriais|Construção e Engenharia|Produtos para Construção|HAGA S/A|HAGA|
+Bens Industriais|Construção e Engenharia|Produtos para Construção|PORTOBELLO|PTBL|NM             
+Bens Industriais|Construção e Engenharia|Produtos para Construção|Construção Pesada||
+Bens Industriais|Construção e Engenharia|Produtos para Construção|AZEVEDO|AZEV|
+Bens Industriais|Construção e Engenharia|Produtos para Construção|Engenharia Consultiva||
+Bens Industriais|Construção e Engenharia|Produtos para Construção|SONDOTECNICA|SOND|
+Bens Industriais|Construção e Engenharia|Produtos para Construção|TECNOSOLO|TCNO|
+Bens Industriais|Construção e Engenharia|Serviços Diversos|MILLS|MILS|NM             
+Bens Industriais|Material de Transporte|Material Aeronáutico e de Defesa|EMBRAER|EMBR|NM             
+Bens Industriais|Material de Transporte|Material Rodoviário|FRAS-LE|FRAS|N1             
+Bens Industriais|Material de Transporte|Material Rodoviário|MARCOPOLO|POMO|N2             
+Bens Industriais|Material de Transporte|Material Rodoviário|RANDON PART|RAPT|N1             
+Bens Industriais|Material de Transporte|Material Rodoviário|RECRUSUL|RCSL|
+Bens Industriais|Material de Transporte|Material Rodoviário|RIOSULENSE|RSUL|
+Bens Industriais|Material de Transporte|Material Rodoviário|TUPY|TUPY|NM             
+Bens Industriais|Material de Transporte|Material Rodoviário|WETZEL S/A|MWET|
+Bens Industriais|Máquinas e Equipamentos|Motores, Compressores e Outros|SCHULZ|SHUL|
+Bens Industriais|Máquinas e Equipamentos|Motores, Compressores e Outros|WEG|WEGE|NM             
+Bens Industriais|Máquinas e Equipamentos|Máq. e Equip. Industriais|ACO ALTONA|EALT|
+Bens Industriais|Máquinas e Equipamentos|Máq. e Equip. Industriais|BARDELLA|BDLL|
+Bens Industriais|Máquinas e Equipamentos|Máq. e Equip. Industriais|INDS ROMI|ROMI|NM             
+Bens Industriais|Máquinas e Equipamentos|Máq. e Equip. Industriais|INEPAR|INEP|
+Bens Industriais|Máquinas e Equipamentos|Máq. e Equip. Industriais|KEPLER WEBER|KEPL|
+Bens Industriais|Máquinas e Equipamentos|Máq. e Equip. Industriais|METALFRIO|FRIO|NM             
+Bens Industriais|Máquinas e Equipamentos|Máq. e Equip. Industriais|NORDON MET|NORD|
+Bens Industriais|Máquinas e Equipamentos|Máq. e Equip. Industriais|PRATICA|PTCA|M2
+Bens Industriais|Máquinas e Equipamentos|Máq. e Equip. Construção e Agrícolas|METISA|MTSA|
+Bens Industriais|Máquinas e Equipamentos|Máq. e Equip. Construção e Agrícolas|STARA|STTR|MA
+Bens Industriais|Máquinas e Equipamentos|Armas e Munições|TAURUS ARMAS|TASA|N2             
+Bens Industriais|Transporte|Transporte Aéreo|AZUL|AZUL|N2             
+Bens Industriais|Transporte|Transporte Aéreo|GOL|GOLL|N2             
+Bens Industriais|Transporte|Transporte Ferroviário|ALL NORTE|FRRN|MB             
+Bens Industriais|Transporte|Transporte Ferroviário|ALL PAULISTA|GASC|MB             
+Bens Industriais|Transporte|Transporte Ferroviário|COSAN LOG|RLOG|NM             
+Bens Industriais|Transporte|Transporte Ferroviário|FER C ATLANT|VSPT|
+Bens Industriais|Transporte|Transporte Ferroviário|MRS LOGIST|MRSA|MB             
+Bens Industriais|Transporte|Transporte Ferroviário|RUMO S.A.|RAIL|NM             
+Bens Industriais|Transporte|Transporte Hidroviário|LOG-IN|LOGN|NM             
+Bens Industriais|Transporte|Transporte Hidroviário|TREVISA|LUXM|
+Bens Industriais|Transporte|Transporte Rodoviário|JSL|JSLG|NM             
+Bens Industriais|Transporte|Transporte Rodoviário|TEGMA|TGMA|NM             
+Bens Industriais|Transporte|Exploração de Rodovias|AUTOBAN|ANHB|
+Bens Industriais|Transporte|Exploração de Rodovias|CCR SA|CCRO|NM             
+Bens Industriais|Transporte|Exploração de Rodovias|CONC RAPOSO|RPTA|
+Bens Industriais|Transporte|Exploração de Rodovias|CONC RIO TER|CRTE|MB             
+Bens Industriais|Transporte|Exploração de Rodovias|ECON|ERDV|
+Bens Industriais|Transporte|Exploração de Rodovias|ECONORTE|ECNT|
+Bens Industriais|Transporte|Exploração de Rodovias|ECOPISTAS|ASCP|
+Bens Industriais|Transporte|Exploração de Rodovias|ECORODOVIAS|ECOR|NM             
+Bens Industriais|Transporte|Exploração de Rodovias|ECOVIAS|ECOV|
+Bens Industriais|Transporte|Exploração de Rodovias|ROD COLINAS|COLN|
+Bens Industriais|Transporte|Exploração de Rodovias|ROD TIETE|RDVT|
+Bens Industriais|Transporte|Exploração de Rodovias|RT BANDEIRAS|CRBD|
+Bens Industriais|Transporte|Exploração de Rodovias|TRIANGULOSOL|TRIA|
+Bens Industriais|Transporte|Exploração de Rodovias|TRIUNFO PART|TPIS|NM             
+Bens Industriais|Transporte|Exploração de Rodovias|VIAOESTE|VOES|
+Bens Industriais|Transporte|Serviços de Apoio e Armazenagem|GRUAIRPORT|AGRU|MB             
+Bens Industriais|Transporte|Serviços de Apoio e Armazenagem|PORTO VM|PSVM|
+Bens Industriais|Transporte|Serviços de Apoio e Armazenagem|INVEPAR|IVPR|MB             
+Bens Industriais|Transporte|Serviços de Apoio e Armazenagem|SALUS INFRA|SAIP|
+Bens Industriais|Transporte|Serviços de Apoio e Armazenagem|SANTOS BRP|STBP|N2             
+Bens Industriais|Transporte|Serviços de Apoio e Armazenagem|WILSON SONS|WSON|DR3
+Bens Industriais|Serviços Diversos|Serviços Diversos|ATMASA|ATMP|NM             
+Bens Industriais|Serviços Diversos|Serviços Diversos|BBMLOGISTICA|BBML|MA
+Bens Industriais|Serviços Diversos|Serviços Diversos|CSU CARDSYST|CARD|NM             
+Bens Industriais|Serviços Diversos|Serviços Diversos|DTCOM-DIRECT|DTCY|
+Bens Industriais|Serviços Diversos|Serviços Diversos|ESTAPAR|ALPK|NM             
+Bens Industriais|Serviços Diversos|Serviços Diversos|FLEX S/A|FLEX|MA
+Bens Industriais|Serviços Diversos|Serviços Diversos|PRINER|PRNR|MA
+Bens Industriais|Serviços Diversos|Serviços Diversos|VALID|VLID|NM             
+Bens Industriais|Comércio|Material de Transporte|BATTISTELLA|BTTL|
+Bens Industriais|Comércio|Material de Transporte|MINASMAQUINA|MMAQ|
+Bens Industriais|Comércio|Material de Transporte|WLM IND COM|WLMM|
+Consumo não Cíclico|Agropecuária|Agricultura|ALIPERTI|APTI|
+Consumo não Cíclico|Agropecuária|Agricultura|BRASILAGRO|AGRO|NM             
+Consumo não Cíclico|Agropecuária|Agricultura|POMIFRUTAS|FRTA|NM             
+Consumo não Cíclico|Agropecuária|Agricultura|SLC AGRICOLA|SLCE|NM             
+Consumo não Cíclico|Agropecuária|Agricultura|TERRA SANTA|TESA|NM             
+Consumo não Cíclico|Alimentos Processados|Açucar e Alcool|BIOSEV|BSEV|NM             
+Consumo não Cíclico|Alimentos Processados|Açucar e Alcool|RAIZEN ENERG|RESA|
+Consumo não Cíclico|Alimentos Processados|Açucar e Alcool|SAO MARTINHO|SMTO|NM             
+Consumo não Cíclico|Alimentos Processados|Carnes e Derivados|BRF SA|BRFS|NM             
+Consumo não Cíclico|Alimentos Processados|Carnes e Derivados|EXCELSIOR|BAUH|
+Consumo não Cíclico|Alimentos Processados|Carnes e Derivados|JBS|JBSS|NM             
+Consumo não Cíclico|Alimentos Processados|Carnes e Derivados|MARFRIG|MRFG|NM             
+Consumo não Cíclico|Alimentos Processados|Carnes e Derivados|MINERVA|BEEF|NM             
+Consumo não Cíclico|Alimentos Processados|Carnes e Derivados|MINUPAR|MNPR|
+Consumo não Cíclico|Alimentos Processados|Alimentos Diversos|CAMIL|CAML|NM             
+Consumo não Cíclico|Alimentos Processados|Alimentos Diversos|J.MACEDO|JMCD|
+Consumo não Cíclico|Alimentos Processados|Alimentos Diversos|JOSAPAR|JOPA|
+Consumo não Cíclico|Alimentos Processados|Alimentos Diversos|M.DIASBRANCO|MDIA|NM             
+Consumo não Cíclico|Alimentos Processados|Alimentos Diversos|ODERICH|ODER|
+Consumo não Cíclico|Bebidas|Cervejas e Refrigerantes|AMBEV S/A|ABEV|
+Consumo não Cíclico|Produtos de Uso Pessoal e de Limpeza|Produtos de Uso Pessoal|GRUPO NATURA|NTCO|NM             
+Consumo não Cíclico|Produtos de Uso Pessoal e de Limpeza|Produtos de Limpeza|BOMBRIL|BOBR|
+Consumo não Cíclico|Comércio e Distribuição|Alimentos|CARREFOUR BR|CRFB|NM             
+Consumo não Cíclico|Comércio e Distribuição|Alimentos|P.ACUCAR-CBD|PCAR|N1             
+Consumo Cíclico|Construção Civil|Incorporações|CONST A LIND|CALI|
+Consumo Cíclico|Construção Civil|Incorporações|CR2|CRDE|NM             
+Consumo Cíclico|Construção Civil|Incorporações|CYRELA REALT|CYRE|NM             
+Consumo Cíclico|Construção Civil|Incorporações|DIRECIONAL|DIRR|NM             
+Consumo Cíclico|Construção Civil|Incorporações|EVEN|EVEN|NM             
+Consumo Cíclico|Construção Civil|Incorporações|EZTEC|EZTC|NM             
+Consumo Cíclico|Construção Civil|Incorporações|GAFISA|GFSA|NM             
+Consumo Cíclico|Construção Civil|Incorporações|HELBOR|HBOR|NM             
+Consumo Cíclico|Construção Civil|Incorporações|INTER SA|INNT|MA
+Consumo Cíclico|Construção Civil|Incorporações|JHSF PART|JHSF|NM             
+Consumo Cíclico|Construção Civil|Incorporações|JOAO FORTES|JFEN|
+Consumo Cíclico|Construção Civil|Incorporações|MITRE REALTY|MTRE|NM             
+Consumo Cíclico|Construção Civil|Incorporações|MOURA DUBEUX|MDNE|NM             
+Consumo Cíclico|Construção Civil|Incorporações|MRV|MRVE|NM             
+Consumo Cíclico|Construção Civil|Incorporações|PDG REALT|PDGR|NM             
+Consumo Cíclico|Construção Civil|Incorporações|RNI|RDNI|NM             
+Consumo Cíclico|Construção Civil|Incorporações|ROSSI RESID|RSID|NM             
+Consumo Cíclico|Construção Civil|Incorporações|TECNISA|TCSA|NM             
+Consumo Cíclico|Construção Civil|Incorporações|TENDA|TEND|NM             
+Consumo Cíclico|Construção Civil|Incorporações|TRISUL|TRIS|NM             
+Consumo Cíclico|Construção Civil|Incorporações|VIVER|VIVR|NM             
+Consumo Cíclico|Tecidos, Vestuário e Calçados|Fios e Tecidos|CEDRO|CEDO|N1             
+Consumo Cíclico|Tecidos, Vestuário e Calçados|Fios e Tecidos|COTEMINAS|CTNM|
+Consumo Cíclico|Tecidos, Vestuário e Calçados|Fios e Tecidos|DOHLER|DOHL|
+Consumo Cíclico|Tecidos, Vestuário e Calçados|Fios e Tecidos|ENCORPAR|ECPR|
+Consumo Cíclico|Tecidos, Vestuário e Calçados|Fios e Tecidos|IND CATAGUAS|CATA|
+Consumo Cíclico|Tecidos, Vestuário e Calçados|Fios e Tecidos|KARSTEN|CTKA|
+Consumo Cíclico|Tecidos, Vestuário e Calçados|Fios e Tecidos|PETTENATI|PTNT|
+Consumo Cíclico|Tecidos, Vestuário e Calçados|Fios e Tecidos|SANTANENSE|CTSA|
+Consumo Cíclico|Tecidos, Vestuário e Calçados|Fios e Tecidos|SPRINGS|SGPS|NM             
+Consumo Cíclico|Tecidos, Vestuário e Calçados|Fios e Tecidos|TEKA|TEKA|
+Consumo Cíclico|Tecidos, Vestuário e Calçados|Fios e Tecidos|TEX RENAUX|TXRX|
+Consumo Cíclico|Tecidos, Vestuário e Calçados|Vestuário|CIA HERING|HGTX|NM             
+Consumo Cíclico|Tecidos, Vestuário e Calçados|Calçados|ALPARGATAS|ALPA|N1             
+Consumo Cíclico|Tecidos, Vestuário e Calçados|Calçados|CAMBUCI|CAMB|
+Consumo Cíclico|Tecidos, Vestuário e Calçados|Calçados|GRENDENE|GRND|NM             
+Consumo Cíclico|Tecidos, Vestuário e Calçados|Calçados|VULCABRAS|VULC|NM             
+Consumo Cíclico|Tecidos, Vestuário e Calçados|Acessórios|MUNDIAL|MNDL|
+Consumo Cíclico|Tecidos, Vestuário e Calçados|Acessórios|TECHNOS|TECN|NM             
+Consumo Cíclico|Tecidos, Vestuário e Calçados|Acessórios|VIVARA S.A.|VIVA|NM             
+Consumo Cíclico|Utilidades Domésticas|Eletrodomésticos|WHIRLPOOL|WHRL|
+Consumo Cíclico|Utilidades Domésticas|Móveis|UNICASA|UCAS|NM             
+Consumo Cíclico|Utilidades Domésticas|Utensílios Domésticos|HERCULES|HETA|
+Consumo Cíclico|Automóveis e Motocicletas|Automóveis e Motocicletas|IOCHP-MAXION|MYPK|NM             
+Consumo Cíclico|Automóveis e Motocicletas|Automóveis e Motocicletas|METAL LEVE|LEVE|NM             
+Consumo Cíclico|Automóveis e Motocicletas|Automóveis e Motocicletas|PLASCAR PART|PLAS|
+Consumo Cíclico|Hoteis e Restaurantes|Hotelaria|HOTEIS OTHON|HOOT|
+Consumo Cíclico|Hoteis e Restaurantes|Restaurante e Similares|BK BRASIL|BKBR|NM             
+Consumo Cíclico|Hoteis e Restaurantes|Restaurante e Similares|IMC S/A|MEAL|NM             
+Consumo Cíclico|Viagens e Lazer|Bicicletas|BIC MONARK|BMKS|
+Consumo Cíclico|Viagens e Lazer|Brinquedos e Jogos|ESTRELA|ESTR|
+Consumo Cíclico|Viagens e Lazer|Produção de Eventos e Shows|SPTURIS|AHEB|
+Consumo Cíclico|Viagens e Lazer|Produção de Eventos e Shows|TIME FOR FUN|SHOW|NM             
+Consumo Cíclico|Viagens e Lazer|Viagens e Turismo|CVC BRASIL|CVCB|NM             
+Consumo Cíclico|Viagens e Lazer|Atividades Esportivas|SMART FIT|SMFT|M2
+Consumo Cíclico|Diversos|Serviços Educacionais|ANIMA|ANIM|NM             
+Consumo Cíclico|Diversos|Serviços Educacionais|BAHEMA|BAHI|MA
+Consumo Cíclico|Diversos|Serviços Educacionais|COGNA ON|COGN|NM             
+Consumo Cíclico|Diversos|Serviços Educacionais|SER EDUCA|SEER|NM             
+Consumo Cíclico|Diversos|Serviços Educacionais|YDUQS PART|YDUQ|NM             
+Consumo Cíclico|Diversos|Aluguel de carros|LOCALIZA|RENT|NM             
+Consumo Cíclico|Diversos|Aluguel de carros|LOCAMERICA|LCAM|NM             
+Consumo Cíclico|Diversos|Aluguel de carros|MAESTROLOC|MSRO|M2
+Consumo Cíclico|Diversos|Aluguel de carros|MOVIDA|MOVI|NM             
+Consumo Cíclico|Diversos|Aluguel de carros|UNIDAS|UNID|
+Consumo Cíclico|Diversos|Programas de Fidelização|SMILES|SMLS|NM             
+Consumo Cíclico|Comércio|Tecidos, Vestuário e Calçados|AREZZO CO|ARZZ|NM             
+Consumo Cíclico|Comércio|Tecidos, Vestuário e Calçados|CEA MODAS|CEAB|NM             
+Consumo Cíclico|Comércio|Tecidos, Vestuário e Calçados|GRAZZIOTIN|CGRA|
+Consumo Cíclico|Comércio|Tecidos, Vestuário e Calçados|GUARARAPES|GUAR|
+Consumo Cíclico|Comércio|Tecidos, Vestuário e Calçados|LE LIS BLANC|LLIS|NM             
+Consumo Cíclico|Comércio|Tecidos, Vestuário e Calçados|LOJAS MARISA|AMAR|NM             
+Consumo Cíclico|Comércio|Tecidos, Vestuário e Calçados|LOJAS RENNER|LREN|NM             
+Consumo Cíclico|Comércio|Eletrodomésticos|MAGAZ LUIZA|MGLU|NM             
+Consumo Cíclico|Comércio|Eletrodomésticos|VIAVAREJO|VVAR|NM             
+Consumo Cíclico|Comércio|Produtos Diversos|B2W DIGITAL|BTOW|NM             
+Consumo Cíclico|Comércio|Produtos Diversos|CENTAURO|CNTO|NM             
+Consumo Cíclico|Comércio|Produtos Diversos|LOJAS AMERIC|LAME|N1             
+Consumo Cíclico|Comércio|Produtos Diversos|SARAIVA LIVR|SLED|N2             
+Saúde|Medicamentos e Outros Produtos|Medicamentos e Outros Produtos|BIOMM|BIOM|MA
+Saúde|Medicamentos e Outros Produtos|Medicamentos e Outros Produtos|BIOTOSCANA|GBIO|DR3
+Saúde|Medicamentos e Outros Produtos|Medicamentos e Outros Produtos|NORTCQUIMICA|NRTQ|MA
+Saúde|Medicamentos e Outros Produtos|Medicamentos e Outros Produtos|OUROFINO S/A|OFSA|NM             
+Saúde|Análises e Diagnósticos|Análises e Diagnósticos|ADVANCED-DH|ADHM|
+Saúde|Análises e Diagnósticos|Análises e Diagnósticos|ALLIAR|AALR|NM             
+Saúde|Análises e Diagnósticos|Análises e Diagnósticos|DASA|DASA|
+Saúde|Análises e Diagnósticos|Análises e Diagnósticos|FLEURY|FLRY|NM             
+Saúde|Análises e Diagnósticos|Análises e Diagnósticos|HAPVIDA|HAPV|NM             
+Saúde|Análises e Diagnósticos|Análises e Diagnósticos|IHPARDINI|PARD|NM             
+Saúde|Análises e Diagnósticos|Análises e Diagnósticos|INTERMEDICA|GNDI|NM             
+Saúde|Análises e Diagnósticos|Análises e Diagnósticos|ODONTOPREV|ODPV|NM             
+Saúde|Análises e Diagnósticos|Análises e Diagnósticos|QUALICORP|QUAL|NM             
+Saúde|Equipamentos|Equipamentos|BAUMER|BALM|
+Saúde|Equipamentos|Equipamentos|LIFEMED|LMED|MA
+Saúde|Comércio e Distribuição|Medicamentos e Outros Produtos|DIMED|PNVL|
+Saúde|Comércio e Distribuição|Medicamentos e Outros Produtos|HYPERA|HYPE|NM             
+Saúde|Comércio e Distribuição|Medicamentos e Outros Produtos|PROFARMA|PFRM|NM             
+Saúde|Comércio e Distribuição|Medicamentos e Outros Produtos|RAIADROGASIL|RADL|NM             
+Tecnologia da Informação|Computadores e Equipamentos|Computadores e Equipamentos|POSITIVO TEC|POSI|NM             
+Tecnologia da Informação|Programas e Serviços|Programas e Serviços|BRQ|BRQB|MA
+Tecnologia da Informação|Programas e Serviços|Programas e Serviços|LINX|LINX|NM             
+Tecnologia da Informação|Programas e Serviços|Programas e Serviços|LOCAWEB|LWSA|NM             
+Tecnologia da Informação|Programas e Serviços|Programas e Serviços|QUALITY SOFT|QUSW|MA
+Tecnologia da Informação|Programas e Serviços|Programas e Serviços|SINQIA|SQIA|NM             
+Tecnologia da Informação|Programas e Serviços|Programas e Serviços|TOTVS|TOTS|NM             
+Comunicações|Telecomunicações|Telecomunicações|ALGAR TELEC|ALGT|
+Comunicações|Telecomunicações|Telecomunicações|OI|OIBR|N1
+Comunicações|Telecomunicações|Telecomunicações|TELEBRAS|TELB|
+Comunicações|Telecomunicações|Telecomunicações|TELEF BRASIL|VIVT|
+Comunicações|Telecomunicações|Telecomunicações|TIM PART S/A|TIMP|NM             
+Comunicações|Mídia|Produção e Difusão de Filmes e Programas|CINESYSTEM|CNSY|MA
+Utilidade Pública|Energia Elétrica|Energia Elétrica|AES SUL|AESL|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|AES TIETE E|TIET|N2             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|AFLUENTE T|AFLT|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|ALUPAR|ALUP|N2             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|AMPLA ENERG|CBEE|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|CACHOEIRA|CPTE|MB             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|CEB|CEBR|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|CEEE-D|CEED|N1             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|CEEE-GT|EEEL|N1             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|CELESC|CLSC|N2             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|CELGPAR|GPAR|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|CELPE|CEPE|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|CEMIG|CMIG|N1             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|CEMIG DIST|CMGD|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|CEMIG GT|CMGT|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|CESP|CESP|N1             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|COELBA|CEEB|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|COELCE|COCE|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|COPEL|CPLE|N1             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|COSERN|CSRN|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|CPFL ENERGIA|CPFE|NM             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|CPFL GERACAO|CPFG|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|CPFL PIRATIN|CPFP|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|CPFL RENOVAV|CPRE|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|EBE|EBEN|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|ELEKTRO|EKTR|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|ELETROBRAS|ELET|N1             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|ELETROPAR|LIPR|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|EMAE|EMAE|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|ENERGIAS BR|ENBR|NM             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|ENERGISA|ENGI|N2             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|ENERGISA MT|ENMT|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|ENERSUL|ENER|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|ENEVA|ENEV|NM             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|ENGIE BRASIL|EGIE|NM             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|EQTL PARA|EQPA|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|EQTLMARANHAO|EQMA|MB             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|EQUATORIAL|EQTL|NM             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|ESCELSA|ESCE|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|FGENERGIA|FGEN|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|GER PARANAP|GEPA|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|ITAPEBI|ITPB|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|LIGHT|LIGH|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|LIGHT S/A|LIGT|NM             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|NEOENERGIA|NEOE|NM             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|OMEGA GER|OMGE|NM             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|PAUL F LUZ|PALF|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|PROMAN|PRMN|MB             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|REDE ENERGIA|REDE|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|RENOVA|RNEW|N2             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|STATKRAFT|STKF|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|STO ANTONIO|STEN|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|TAESA|TAEE|N2             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|TERMOPE|TMPE|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|TERM. PE III|TEPE|
+Utilidade Pública|Energia Elétrica|Energia Elétrica|TRAN PAULIST|TRPL|N1             
+Utilidade Pública|Energia Elétrica|Energia Elétrica|UPTICK|UPKP|MB             
+Utilidade Pública|Água e Saneamento|Água e Saneamento|CASAN|CASN|
+Utilidade Pública|Água e Saneamento|Água e Saneamento|COPASA|CSMG|NM             
+Utilidade Pública|Água e Saneamento|Água e Saneamento|IGUA SA|IGSN|MA
+Utilidade Pública|Água e Saneamento|Água e Saneamento|SABESP|SBSP|NM             
+Utilidade Pública|Água e Saneamento|Água e Saneamento|SANEPAR|SAPR|N2             
+Utilidade Pública|Água e Saneamento|Água e Saneamento|SANESALTO|SNST|
+Utilidade Pública|Gás|Gás|CEG|CEGR|
+Utilidade Pública|Gás|Gás|COMGAS|CGAS|
+Financeiro|Intermediários Financeiros|Bancos|ABC BRASIL|ABCB|N2             
+Financeiro|Intermediários Financeiros|Bancos|ALFA HOLDING|RPAD|
+Financeiro|Intermediários Financeiros|Bancos|ALFA INVEST|BRIV|
+Financeiro|Intermediários Financeiros|Bancos|AMAZONIA|BAZA|
+Financeiro|Intermediários Financeiros|Bancos|BANCO BMG|BMGB|N1             
+Financeiro|Intermediários Financeiros|Bancos|BANCO INTER|BIDI|N2             
+Financeiro|Intermediários Financeiros|Bancos|BANCO PAN|BPAN|N1             
+Financeiro|Intermediários Financeiros|Bancos|BANESE|BGIP|
+Financeiro|Intermediários Financeiros|Bancos|BANESTES|BEES|
+Financeiro|Intermediários Financeiros|Bancos|BANPARA|BPAR|
+Financeiro|Intermediários Financeiros|Bancos|BANRISUL|BRSR|N1             
+Financeiro|Intermediários Financeiros|Bancos|BRADESCO|BBDC|N1             
+Financeiro|Intermediários Financeiros|Bancos|BRASIL|BBAS|NM             
+Financeiro|Intermediários Financeiros|Bancos|BRB BANCO|BSLI|
+Financeiro|Intermediários Financeiros|Bancos|BTGP BANCO|BPAC|
+Financeiro|Intermediários Financeiros|Bancos|INDUSVAL|IDVL|N2             
+Financeiro|Intermediários Financeiros|Bancos|ITAUSA|ITSA|N1             
+Financeiro|Intermediários Financeiros|Bancos|ITAUUNIBANCO|ITUB|N1             
+Financeiro|Intermediários Financeiros|Bancos|MERC BRASIL|BMEB|
+Financeiro|Intermediários Financeiros|Bancos|MERC INVEST|BMIN|
+Financeiro|Intermediários Financeiros|Bancos|NORD BRASIL|BNBR|
+Financeiro|Intermediários Financeiros|Bancos|PARANA|PRBC|
+Financeiro|Intermediários Financeiros|Bancos|PINE|PINE|N2             
+Financeiro|Intermediários Financeiros|Bancos|SANTANDER BR|SANB|
+Financeiro|Intermediários Financeiros|Soc. Crédito e Financiamento|ALFA FINANC|CRIV|
+Financeiro|Intermediários Financeiros|Soc. Crédito e Financiamento|FINANSINOS|FNCN|
+Financeiro|Intermediários Financeiros|Soc. Crédito e Financiamento|MERC FINANC|MERC|
+Financeiro|Intermediários Financeiros|Soc. Arrendamento Mercantil|BRADESCO LSG|BDLS|
+Financeiro|Intermediários Financeiros|Soc. Arrendamento Mercantil|BV LEASING|BVLS|
+Financeiro|Intermediários Financeiros|Soc. Arrendamento Mercantil|DIBENS LSG|DBEN|
+Financeiro|Securitizadoras de Recebíveis|Securitizadoras de Recebíveis|BRAZIL REALT|BZRS|
+Financeiro|Securitizadoras de Recebíveis|Securitizadoras de Recebíveis|BRAZILIAN SC|BSCS|
+Financeiro|Securitizadoras de Recebíveis|Securitizadoras de Recebíveis|BRC SECURIT|BRCS|
+Financeiro|Securitizadoras de Recebíveis|Securitizadoras de Recebíveis|BRPR 56 SEC|WTVR|
+Financeiro|Securitizadoras de Recebíveis|Securitizadoras de Recebíveis|CIBRASEC|CBSC|
+Financeiro|Securitizadoras de Recebíveis|Securitizadoras de Recebíveis|ECO SEC AGRO|ECOA|MB             
+Financeiro|Securitizadoras de Recebíveis|Securitizadoras de Recebíveis|GAIA AGRO|GAFL|
+Financeiro|Securitizadoras de Recebíveis|Securitizadoras de Recebíveis|GAIA SECURIT|GAIA|MB             
+Financeiro|Securitizadoras de Recebíveis|Securitizadoras de Recebíveis|OCTANTE SEC|OCTS|
+Financeiro|Securitizadoras de Recebíveis|Securitizadoras de Recebíveis|PDG SECURIT|PDGS|
+Financeiro|Securitizadoras de Recebíveis|Securitizadoras de Recebíveis|POLO CAP SEC|PLSC|
+Financeiro|Securitizadoras de Recebíveis|Securitizadoras de Recebíveis|RBCAPITALRES|RBRA|MB             
+Financeiro|Securitizadoras de Recebíveis|Securitizadoras de Recebíveis|TRUESEC|APCS|
+Financeiro|Securitizadoras de Recebíveis|Securitizadoras de Recebíveis|VERTCIASEC|VERT|
+Financeiro|Securitizadoras de Recebíveis|Securitizadoras de Recebíveis|WTORRE PIC|WTPI|
+Financeiro|Serviços Financeiros Diversos|Gestão de Recursos e Investimentos|BNDESPAR|BNDP|MB             
+Financeiro|Serviços Financeiros Diversos|Gestão de Recursos e Investimentos|BRAZILIAN FR|BFRE|
+Financeiro|Serviços Financeiros Diversos|Gestão de Recursos e Investimentos|GP INVEST|GPIV|DR3
+Financeiro|Serviços Financeiros Diversos|Gestão de Recursos e Investimentos|IDEIASNET|IDNT|
+Financeiro|Serviços Financeiros Diversos|Gestão de Recursos e Investimentos|PPLA|PPLA|DR3
+Financeiro|Serviços Financeiros Diversos|Serviços Financeiros Diversos|B3|B3SA|NM             
+Financeiro|Serviços Financeiros Diversos|Serviços Financeiros Diversos|CIELO|CIEL|NM             
+Financeiro|Previdência e Seguros|Seguradoras|ALFA CONSORC|BRGE|
+Financeiro|Previdência e Seguros|Seguradoras|BBSEGURIDADE|BBSE|NM             
+Financeiro|Previdência e Seguros|Seguradoras|IRBBRASIL RE|IRBR|NM             
+Financeiro|Previdência e Seguros|Seguradoras|PORTO SEGURO|PSSA|NM             
+Financeiro|Previdência e Seguros|Seguradoras|SEG AL BAHIA|CSAB|
+Financeiro|Previdência e Seguros|Seguradoras|SUL AMERICA|SULA|N2             
+Financeiro|Previdência e Seguros|Corretoras de Seguros|ALPER S.A.|APER|NM             
+Financeiro|Previdência e Seguros|Corretoras de Seguros|WIZ S.A.|WIZS|NM             
+Financeiro|Exploração de Imóveis|Exploração de Imóveis|ALIANSCSONAE|ALSO|NM             
+Financeiro|Exploração de Imóveis|Exploração de Imóveis|BR MALLS PAR|BRML|NM             
+Financeiro|Exploração de Imóveis|Exploração de Imóveis|BR PROPERT|BRPR|NM             
+Financeiro|Exploração de Imóveis|Exploração de Imóveis|COR RIBEIRO|CORR|
+Financeiro|Exploração de Imóveis|Exploração de Imóveis|CYRE COM-CCP|CCPR|NM             
+Financeiro|Exploração de Imóveis|Exploração de Imóveis|GENERALSHOPP|GSHP|NM             
+Financeiro|Exploração de Imóveis|Exploração de Imóveis|HABITASUL|HBTS|
+Financeiro|Exploração de Imóveis|Exploração de Imóveis|IGB S/A|IGBR|
+Financeiro|Exploração de Imóveis|Exploração de Imóveis|IGUATEMI|IGTA|NM             
+Financeiro|Exploração de Imóveis|Exploração de Imóveis|JEREISSATI|JPSA|
+Financeiro|Exploração de Imóveis|Exploração de Imóveis|LOG COM PROP|LOGG|NM             
+Financeiro|Exploração de Imóveis|Exploração de Imóveis|MENEZES CORT|MNZC|MB             
+Financeiro|Exploração de Imóveis|Exploração de Imóveis|MULTIPLAN|MULT|N2             
+Financeiro|Exploração de Imóveis|Exploração de Imóveis|SAO CARLOS|SCAR|NM             
+Financeiro|Exploração de Imóveis|Intermediação Imobiliária|BR BROKERS|BBRK|NM             
+Financeiro|Exploração de Imóveis|Intermediação Imobiliária|LOPES BRASIL|LPSB|NM             
+Financeiro|Holdings Diversificadas|Holdings Diversificadas|MONT ARANHA|MOAR|
+Financeiro|Holdings Diversificadas|Holdings Diversificadas|PAR AL BAHIA|PEAB|
+Financeiro|Holdings Diversificadas|Holdings Diversificadas|SPRINGER|SPRI|
+Financeiro|Outros Títulos|Outros Títulos|CEPAC - CTBA|CTBA|MB             
+Financeiro|Outros Títulos|Outros Títulos|CEPAC - MCRJ|MCRJ|MB             
+Financeiro|Outros Títulos|Outros Títulos|CEPAC - PMSP|PMSP|MB             
+Outros|Outros|Outros|524 PARTICIP|QVQP|MB             
+Outros|Outros|Outros|ALEF S/A|ALEF|MB             
+Outros|Outros|Outros|ATOMPAR|ATOM|
+Outros|Outros|Outros|BETAPART|BETP|MB             
+Outros|Outros|Outros|CABINDA PART|CABI|MB             
+Outros|Outros|Outros|CACONDE PART|CACO|MB             
+Outros|Outros|Outros|CAPITALPART|CPTP|MB             
+Outros|Outros|Outros|CEMEPE|MAPT|
+Outros|Outros|Outros|CIMS|CMSA|
+Outros|Outros|Outros|GAMA PART|OPGM|MB             
+Outros|Outros|Outros|INVEST BEMGE|FIGE|
+Outros|Outros|Outros|J B DUARTE|JBDU|
+Outros|Outros|Outros|LONGDIS|SPRT|MB             
+Outros|Outros|Outros|MGI PARTICIP|MGIP|
+Outros|Outros|Outros|OPPORT ENERG|OPHE|MB             
+Outros|Outros|Outros|POLPAR|PPAR|
+Outros|Outros|Outros|PROMPT PART|PRPT|MB             
+Outros|Outros|Outros|SELECTPART|SLCT|MB             
+Outros|Outros|Outros|SUDESTE S/A|OPSE|MB             
+Outros|Outros|Outros|SUL 116 PART|OPTS|MB             
