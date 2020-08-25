@@ -4,6 +4,8 @@ const EVENT= {
 	FILTER: "event_filter",
 	TOGGLE_SYMBOL: "event_toggle_symbol",
 	ADD_TABLE_SYMBOLS: "event_add_table_symbols",
+	CREATE_GROUP: "event_create_group",
+	TOGGLE_GROUP: "event_toggle_group",
 	CLEAR_CHART: "event_clear_chart",
 	UPDATE_START_DATE: "event_update_start_date",
 	UPDATE_END_DATE: "event_update_end_date",
@@ -19,6 +21,9 @@ var global = {
 	symbols: [],
 	chart_symbols: [],
 	chart_colors: [],
+	groups: [],
+	group_count: 0,
+	chart_groups: [],
 	events: [],
 	date_start: "2020-01-01",
 	date_end: "2020-07-18",
@@ -155,6 +160,77 @@ function add_table_symbols() {
 			}
 		}
 	}
+}
+
+function create_groups_table_div() {
+	let groups_table_div = document.createElement('div')
+	global.ui.groups_table_div = groups_table_div
+	groups_table_div.id = 'groups_table_div'
+	groups_table_div.style = 'position:relative; width:100%; height:100%; margin:2px; overflow:auto; border-radius:2px; background-color:#FFFFFF'
+
+	let groups_table = groups_table_div.appendChild(document.createElement('table'))
+	global.ui.groups_table = groups_table
+	groups_table.style = 'position:block; width:100%; heigth: 100% !important;'
+
+	global.ui.left_panel.appendChild(groups_table_div)
+
+}
+
+function update_groups_table() {
+
+	let group = global.groups[global.group_count-1]
+	let row    = global.ui.groups_table.appendChild(document.createElement('tr'))
+	let col    = row.appendChild(document.createElement('td'))
+	col.innerText = group.name
+	col.style = "cursor: pointer"
+	col.style.fontFamily = 'Courier'
+	col.style.fontSize = '14pt'
+	col.style.color ="#6b6f71"
+	group.ui_row = row
+	group.ui_col = col
+	install_event_listener(group.ui_col, 'click', group, EVENT.TOGGLE_GROUP)
+}
+
+
+function create_group() {
+	let symbols = global.symbols
+
+	let group = {}
+	group.name = "Group " + global.group_count
+	group.color = pick_color()
+	group.on_chart = false
+	group.members = []
+
+	for (let i=0; i<symbols.length; i++) {
+		let symbol = symbols[i]
+
+		if(symbol.on_chart) {
+			group.members.push(symbol)
+
+			let to_remove = global.chart_symbols.indexOf(symbol)
+			if (to_remove > -1) {
+			  global.chart_symbols.splice(to_remove, 1);
+			  global.chart_colors.splice(to_remove, 1);
+			}
+			symbol.on_chart = false
+			symbol.ui_col.style.color = "#6b6f71"
+			symbol.ui_col.style.fontWeight = 'initial'
+		}
+
+	}
+
+	global.groups.push(group)
+
+	global.group_count = global.group_count + 1
+
+	if (global.group_count == 1) {
+		create_groups_table_div()
+		update_groups_table()
+	} else if (global.group_count > 1) {
+		update_groups_table()
+	}
+
+	console.log(global.groups)
 }
 
 function clear_chart() {
@@ -462,6 +538,15 @@ function prepare_ui()
 	add_table_symbols_btn.style = "position:relative; width:100%; margin:2px; border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
 	install_event_listener(add_table_symbols_btn, 'click', add_table_symbols_btn, EVENT.ADD_TABLE_SYMBOLS)
 
+	let create_group_btn = document.createElement('button')
+	global.ui.create_group_btn = create_group_btn
+	//create_group_btn.setAttribute("type","button")
+	create_group_btn.id = "create_group_btn"
+	create_group_btn.textContent = 'create group'
+	create_group_btn.style = "position:relative; width:100%; margin:2px; border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
+	install_event_listener(create_group_btn, 'click', create_group_btn, EVENT.CREATE_GROUP)
+
+
 	let clear_chart_btn = document.createElement('button')
 	global.ui.clear_chart_btn = clear_chart_btn
 	//clear_chart_btn.setAttribute("type","button")
@@ -491,13 +576,14 @@ function prepare_ui()
 	left_panel.appendChild(add_table_symbols_btn)
 	left_panel.appendChild(clear_chart_btn)
    	left_panel.appendChild(symbols_table_div)
+	left_panel.appendChild(create_group_btn)
 
-	let table = symbols_table_div.appendChild(document.createElement('table'))
-	global.ui.symbols_table = table
-	table.style = 'position:block; width:100%; heigth: 100% !important;'
+	let symbols_table = symbols_table_div.appendChild(document.createElement('table'))
+	global.ui.symbols_table = symbols_table
+	symbols_table.style = 'position:block; width:100%; heigth: 100% !important;'
 	for (let i=0;i<global.symbols.length;i++) {
 		let symbol = global.symbols[i]
-		let row = table.appendChild(document.createElement('tr'))
+		let row = symbols_table.appendChild(document.createElement('tr'))
 		let col = row.appendChild(document.createElement('td'))
 		col.innerText = symbol.name
 		col.style = "cursor: pointer"
@@ -818,6 +904,55 @@ function process_event_queue()
 			}
 		} else if (e.event_type == EVENT.ADD_TABLE_SYMBOLS) {
 			add_table_symbols()
+		} else if (e.event_type == EVENT.CREATE_GROUP) {
+			create_group()
+		} else if (e.event_type == EVENT.TOGGLE_GROUP) {
+			let group = e.context
+			if (!group.on_chart) {
+				group.on_chart = true
+				global.chart_groups.push(group)
+				group.ui_col.style.color = group.color
+				group.ui_col.style.fontWeight = 'bold'
+
+				let members = group.members
+				for (let i=0; i<members.length; i++) {
+					let member = members[i]
+
+					if (!member.on_chart) {
+						// add member to chart
+						member.on_chart = true
+						global.chart_symbols.push(member)
+						global.chart_colors.push(group.color)
+						member.ui_col.style.color = group.color
+						member.ui_col.style.fontWeight = 'bold'
+					}
+
+				}
+			} else {
+
+				let members = group.members
+				for (let i=0; i<members.length; i++) {
+					let member = members[i]
+
+					let to_remove = global.chart_symbols.indexOf(member)
+					if (to_remove > -1) {
+					  global.chart_symbols.splice(to_remove, 1);
+					  global.chart_colors.splice(to_remove, 1);
+					}
+					member.on_chart = false
+					member.ui_col.style.color = "#6b6f71"
+					member.ui_col.style.fontWeight = 'initial'
+
+				}
+
+				let to_remove = global.chart_groups.indexOf(group)
+				if (to_remove > -1) {
+				  global.chart_groups.splice(to_remove, 1);
+				}
+				group.on_chart = false
+				group.ui_col.style.color = "#6b6f71"
+				group.ui_col.style.fontWeight = 'initial'
+			}
 		} else if (e.event_type == EVENT.CLEAR_CHART) {
 			clear_chart()
 		} else if (e.event_type == EVENT.UPDATE_START_DATE) {
@@ -888,9 +1023,9 @@ function update_ts()
 
 	let margin = [ 100, 50, 5, 5 ]
 	let ts_rect = [ rect[0] + margin[SIDE.LEFT],
-		        rect[1] + margin[SIDE.TOP],
-		        rect[2] - margin[SIDE.LEFT] - margin[SIDE.RIGHT],
-		        rect[3] - margin[SIDE.BOTTOM] - margin[SIDE.TOP] ]
+		        	rect[1] + margin[SIDE.TOP],
+		        	rect[2] - margin[SIDE.LEFT] - margin[SIDE.RIGHT],
+		        	rect[3] - margin[SIDE.BOTTOM] - margin[SIDE.TOP] ]
 
 	ctx.clearRect(0,0,canvas.width, canvas.height)
 
@@ -1356,6 +1491,24 @@ function update_ts()
 		}
 
 	}
+
+	for (let i=0; i<global.chart_groups.length; i++) {
+
+		let group = global.chart_groups[i]
+		let members = group.members
+
+		for (let j=0; j<members.length; j++) {
+
+			let member = members[j]
+
+			if(global.focused_symbol == null || member != global.focused_symbol) {
+				draw_timeseries(member, false, group.color)
+			}
+
+		}
+
+	}
+
 
 	//--------------
 	// highlight on focused time series
