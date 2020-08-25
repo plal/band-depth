@@ -196,7 +196,8 @@ function create_group() {
 	let symbols = global.symbols
 
 	let group = {}
-	group.name = "Group " + global.group_count
+	let group_name = window.prompt("Enter group name", "Group " + global.group_count)
+	group.name = group_name
 	group.color = pick_color()
 	group.on_chart = false
 	group.members = []
