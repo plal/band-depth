@@ -850,6 +850,29 @@ function run_modified_band_depth_algorithm() {
 	global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p)
 
 	//console.log(global.modified_band_depth.ranked_symbols)
+
+	//--------------
+	// sort symbols by mbd_rank
+	//--------------
+	global.symbols.sort((a,b) => {
+		if (a.mbd_rank != null && b.mbd_rank != null) {
+			return a.mbd_rank - b.mbd_rank
+		} else if (a.mbd_rank != null) {
+			return -1
+		} else if (b.mbd_rank != null ) {
+			return 1
+		} else {
+			return -1
+		}
+	})
+	let parent = global.ui.symbols_table
+	while (parent.firstChild) {
+	    parent.firstChild.remove();
+	}
+	for (let i=0;i<global.symbols.length;i++) {
+		let symbol = global.symbols[i]
+		global.ui.symbols_table.appendChild(symbol.ui_row)
+	}
 }
 
 function run_extremal_depth_algorithm()
@@ -1596,8 +1619,8 @@ function update_ts()
 		let record = global.focused_symbol
 		let value = global.focused_symbol.data[global.focused_date]
 		let date = date_offset_to_string(date_start+global.focused_date)
-		let text = `symbol: ${global.focused_symbol.name} // date: ${date} // #${global.focused_symbol.ed_rank}`
-		ctx.font = '24px Monospace';
+		let text = `symbol: ${global.focused_symbol.name} // date: ${date} // ED rank: #${global.focused_symbol.ed_rank+1} // MBD rank: #${global.focused_symbol.mbd_rank+1}`
+		ctx.font = '20px Monospace';
 		ctx.textAlign = 'center';
 		ctx.fillText(text, canvas.width/2, 40);
 	}
