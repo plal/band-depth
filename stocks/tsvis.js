@@ -6,6 +6,7 @@ const EVENT= {
 	ADD_TABLE_SYMBOLS: "event_add_table_symbols",
 	CREATE_GROUP: "event_create_group",
 	TOGGLE_GROUP: "event_toggle_group",
+	REMOVE_ACTIVE_GROUPS: "event_remove_active_groups",
 	CLEAR_CHART: "event_clear_chart",
 	UPDATE_START_DATE: "event_update_start_date",
 	UPDATE_END_DATE: "event_update_end_date",
@@ -130,6 +131,25 @@ async function download_symbol_data(symbol)
 	}
 }
 
+function add_symbol_to_chart(symbol, color) {
+	symbol.on_chart = true
+	global.chart_symbols.push(symbol)
+	global.chart_colors.push(color)
+	symbol.ui_col.style.color = color
+	symbol.ui_col.style.fontWeight = 'bold'
+}
+
+function remove_symbol_from_chart(symbol) {
+	let to_remove = global.chart_symbols.indexOf(symbol)
+	if (to_remove > -1) {
+	  global.chart_symbols.splice(to_remove, 1);
+	  global.chart_colors.splice(to_remove, 1);
+	}
+	symbol.on_chart = false
+	symbol.ui_col.style.color = "#6b6f71"
+	symbol.ui_col.style.fontWeight = 'initial'
+}
+
 //--------------
 // if state is even we add every symbol on table to the chart;
 // if state is odd we remove every symbol from the chart;
@@ -170,6 +190,7 @@ function create_groups_table_div() {
 
 	let groups_table = groups_table_div.appendChild(document.createElement('table'))
 	global.ui.groups_table = groups_table
+	groups_table.id = 'groups_table'
 	groups_table.style = 'position:block; width:100%; heigth: 100% !important;'
 
 	global.ui.left_panel.appendChild(groups_table_div)
@@ -179,8 +200,8 @@ function create_groups_table_div() {
 function update_groups_table() {
 
 	let group = global.groups[global.group_count-1]
-	let row    = global.ui.groups_table.appendChild(document.createElement('tr'))
-	let col    = row.appendChild(document.createElement('td'))
+	let row   = global.ui.groups_table.appendChild(document.createElement('tr'))
+	let col   = row.appendChild(document.createElement('td'))
 	col.innerText = group.name
 	col.style = "cursor: pointer"
 	col.style.fontFamily = 'Courier'
@@ -231,12 +252,99 @@ function create_group() {
 		update_groups_table()
 	}
 
-	console.log(global.groups)
+	// console.log(global.groups)
+}
+
+function add_group_to_chart(group) {
+	group.on_chart = true
+	global.chart_groups.push(group)
+	group.ui_col.style.color = group.color
+	group.ui_col.style.fontWeight = 'bold'
+
+	//--------------
+	// add every group member to chart
+	//--------------
+	let members = group.members
+	for (let i=0; i<members.length; i++) {
+		let member = members[i]
+
+		if (!member.on_chart) {
+			// add member to chart
+			member.on_chart = true
+			global.chart_symbols.push(member)
+			global.chart_colors.push(group.color)
+			member.ui_col.style.color = group.color
+			member.ui_col.style.fontWeight = 'bold'
+		}
+
+	}
+}
+
+function remove_group_from_chart(group) {
+	//--------------
+	// remove every group member from chart before removing group
+	//--------------
+	let members = group.members
+	for (let i=0; i<members.length; i++) {
+		let member = members[i]
+		remove_symbol_from_chart(member)
+	}
+
+	let to_remove = global.chart_groups.indexOf(group)
+	if (to_remove > -1) {
+	  global.chart_groups.splice(to_remove, 1);
+	}
+	group.on_chart = false
+	group.ui_col.style.color = "#6b6f71"
+	group.ui_col.style.fontWeight = 'initial'
+}
+
+function remove_group(group) {
+
+	remove_group_from_chart(group)
+
+	let to_remove = global.groups.indexOf(group)
+	if (to_remove > -1) {
+		global.groups.splice(to_remove, 1)
+	}
+}
+
+function remove_active_groups() {
+	let groups = global.groups
+
+	//--------------
+	// search for active groups and remove them
+	//--------------
+	let i=0
+	while (i<groups.length) {
+
+		let group = groups[i]
+
+		if (group.on_chart) {
+			console.log(`Removing ${group.name}`)
+			remove_group(group)
+			document.getElementById("groups_table").deleteRow(i)
+			global.group_count = global.group_count - 1
+
+		} else {
+			i = i+1
+		}
+
+	}
+
+	//--------------
+	// if no groups, remove group table from system
+	//--------------
+	if (global.group_count == 0) {
+		document.getElementById('groups_table').remove()
+		document.getElementById('groups_table_div').remove()
+	}
+
 }
 
 function clear_chart() {
 	let symbols = global.symbols
-
+	let groups  = global.groups
 	//--------------
 	// remove every symbol from chart
 	//--------------
@@ -245,16 +353,25 @@ function clear_chart() {
 		let symbol = symbols[i]
 
 		if (symbol.on_chart) {
-			let to_remove = global.chart_symbols.indexOf(symbol)
-			if (to_remove > -1) {
-			  global.chart_symbols.splice(to_remove, 1);
-			  global.chart_colors.splice(to_remove, 1);
-			}
-			symbol.on_chart = false
-			symbol.ui_col.style.color = "#6b6f71"
-			symbol.ui_col.style.fontWeight = 'initial'
+			remove_symbol_from_chart(symbol)
 		}
 	}
+
+	//--------------
+	// remove every group from chart
+	//--------------
+	for (let i=0; i<groups.length; i++) {
+
+		let group = groups[i]
+
+		if (group.on_chart) {
+			remove_group_from_chart(group)
+		}
+	}
+
+	global.chart_symbols = []
+	global.chart_colors  = []
+	global.chart_groups	 = []
 }
 
 function prepare_fb_inner_band(depth_type) {
@@ -547,6 +664,13 @@ function prepare_ui()
 	create_group_btn.style = "position:relative; width:100%; margin:2px; border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
 	install_event_listener(create_group_btn, 'click', create_group_btn, EVENT.CREATE_GROUP)
 
+	let remove_active_groups_btn = document.createElement('button')
+	global.ui.remove_active_groups_btn = remove_active_groups_btn
+	//remove_active_groups_btn.setAttribute("type","button")
+	remove_active_groups_btn.id = "remove_active_groups_btn"
+	remove_active_groups_btn.textContent = 'remove active groups'
+	remove_active_groups_btn.style = "position:relative; width:100%; margin:2px; border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
+	install_event_listener(remove_active_groups_btn, 'click', remove_active_groups_btn, EVENT.REMOVE_ACTIVE_GROUPS)
 
 	let clear_chart_btn = document.createElement('button')
 	global.ui.clear_chart_btn = clear_chart_btn
@@ -578,6 +702,7 @@ function prepare_ui()
 	left_panel.appendChild(clear_chart_btn)
    	left_panel.appendChild(symbols_table_div)
 	left_panel.appendChild(create_group_btn)
+	left_panel.appendChild(remove_active_groups_btn)
 
 	let symbols_table = symbols_table_div.appendChild(document.createElement('table'))
 	global.ui.symbols_table = symbols_table
@@ -887,21 +1012,10 @@ function process_event_queue()
 			let color  = pick_color()
 			if (!symbol.on_chart) {
 				// add symbol to chart
-				symbol.on_chart = true
-				global.chart_symbols.push(symbol)
-				global.chart_colors.push(color)
-				symbol.ui_col.style.color = color
-				symbol.ui_col.style.fontWeight = 'bold'
+				add_symbol_to_chart(symbol, color)
 				download_symbol_data(symbol)
 			} else {
-				let to_remove = global.chart_symbols.indexOf(symbol)
-				if (to_remove > -1) {
-				  global.chart_symbols.splice(to_remove, 1);
-				  global.chart_colors.splice(to_remove, 1);
-				}
-				symbol.on_chart = false
-				symbol.ui_col.style.color = "#6b6f71"
-				symbol.ui_col.style.fontWeight = 'initial'
+				remove_symbol_from_chart(symbol)
 			}
 		} else if (e.event_type == EVENT.ADD_TABLE_SYMBOLS) {
 			add_table_symbols()
@@ -910,50 +1024,12 @@ function process_event_queue()
 		} else if (e.event_type == EVENT.TOGGLE_GROUP) {
 			let group = e.context
 			if (!group.on_chart) {
-				group.on_chart = true
-				global.chart_groups.push(group)
-				group.ui_col.style.color = group.color
-				group.ui_col.style.fontWeight = 'bold'
-
-				let members = group.members
-				for (let i=0; i<members.length; i++) {
-					let member = members[i]
-
-					if (!member.on_chart) {
-						// add member to chart
-						member.on_chart = true
-						global.chart_symbols.push(member)
-						global.chart_colors.push(group.color)
-						member.ui_col.style.color = group.color
-						member.ui_col.style.fontWeight = 'bold'
-					}
-
-				}
+				add_group_to_chart(group)
 			} else {
-
-				let members = group.members
-				for (let i=0; i<members.length; i++) {
-					let member = members[i]
-
-					let to_remove = global.chart_symbols.indexOf(member)
-					if (to_remove > -1) {
-					  global.chart_symbols.splice(to_remove, 1);
-					  global.chart_colors.splice(to_remove, 1);
-					}
-					member.on_chart = false
-					member.ui_col.style.color = "#6b6f71"
-					member.ui_col.style.fontWeight = 'initial'
-
-				}
-
-				let to_remove = global.chart_groups.indexOf(group)
-				if (to_remove > -1) {
-				  global.chart_groups.splice(to_remove, 1);
-				}
-				group.on_chart = false
-				group.ui_col.style.color = "#6b6f71"
-				group.ui_col.style.fontWeight = 'initial'
+				remove_group_from_chart(group)
 			}
+		} else if (e.event_type == EVENT.REMOVE_ACTIVE_GROUPS) {
+			remove_active_groups()
 		} else if (e.event_type == EVENT.CLEAR_CHART) {
 			clear_chart()
 		} else if (e.event_type == EVENT.UPDATE_START_DATE) {
