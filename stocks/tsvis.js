@@ -26,7 +26,7 @@ var global = {
 	group_count: 0,
 	chart_groups: [],
 	events: [],
-	date_start: "2020-01-01",
+	date_start: "2018-01-01",
 	date_end: "2020-07-18",
 	date_norm: "2020-07-15",
 	mouse: { position:[0,0], last_position:[0,0] },
@@ -1590,24 +1590,26 @@ function update_ts()
 			}
 		}
 
-	}
+		for (let i=0; i<global.chart_groups.length; i++) {
 
-	for (let i=0; i<global.chart_groups.length; i++) {
+			let group = global.chart_groups[i]
+			let members = group.members
 
-		let group = global.chart_groups[i]
-		let members = group.members
+			for (let j=0; j<members.length; j++) {
 
-		for (let j=0; j<members.length; j++) {
+				let member = members[j]
 
-			let member = members[j]
+				if(global.focused_symbol == null || member != global.focused_symbol) {
+					draw_timeseries(member, false, group.color)
+				}
 
-			if(global.focused_symbol == null || member != global.focused_symbol) {
-				draw_timeseries(member, false, group.color)
 			}
 
 		}
 
+
 	}
+
 
 
 	//--------------
