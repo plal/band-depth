@@ -8,6 +8,7 @@ Basic c functions used in the tsvis tool.
 //
 //---------------------------------------------------------------
 
+
 typedef char   s8;
 typedef int    s32;
 typedef float  f32;
@@ -15,6 +16,8 @@ typedef double f64;
 
 typedef unsigned int u32;
 typedef unsigned char u8;
+
+#include "math.c"
 
 #define Min(a,b) (((a)<(b))?(a):(b))
 #define Max(a,b) (((a)>(b))?(a):(b))
@@ -867,16 +870,61 @@ typedef struct {
 } Matrix;
 
 
+static void
+matrix_accumulate(Matrix *self, s32 row, s32 col, f32 value)
+{
+	Assert(row >= 0 && row < rows);
+	Assert(col >= 0 && col < cols);
+	self->data[row * self->cols + col] += value;
+}
+
+static void
+matrix_print(Matrix *self)
+{
+	// print it upside down
+	for (s32 i=self->rows-1;i>=0;--i) {
+		for (s32 j=0;j<self->cols;++j) {
+			printf("%10.3g ", self->data[i * self->cols + j]);
+		}
+		printf("\n");
+	}
+}
+
 typedef struct {
 	f32 x;
 	f32 y;
-} Point;
+} v2_f32;
 
 // assumes |(ndx,ndy)| = sqrt(ndx^2 + ndy^2) = 1
-static Point
+static f32
+v2_f32_length_squared(v2_f32 v)
+{
+	return v.x * v.x + v.y * v.y;
+}
+
+static f32
+v2_f32_length(v2_f32 v)
+{
+	return f32_sqrt(v2_f32_length_squared(v));
+}
+
+static v2_f32
+v2_f32_subtract(v2_f32 a, v2_f32 b)
+{
+	return (v2_f32) { .x = a.x - b.x, .y = a.y - b.y };
+}
+
+static v2_f32
+v2_f32_normalize(v2_f32 v)
+{
+	f32 length = v2_f32_length(v);
+	return (v2_f32) { .x = v.x/length, .y = v.y/length };
+}
+
+// assumes |(ndx,ndy)| = sqrt(ndx^2 + ndy^2) = 1
+static v2_f32
 next_grid_intersection(f32 x, f32 y, f32 ndx, f32 ndy)
 {
-
 	//
 	// (1, tg_theta)
 	//
@@ -885,11 +933,11 @@ next_grid_intersection(f32 x, f32 y, f32 ndx, f32 ndy)
 	//
 
 	Assert(ndx > 0);
-	f32 next_x = (s32) (1 + ((x < 0) ? (s32) (x-1) : (s32) x));
+	f32 next_x = (s32) (1 + f32_floor(x));
 	if (ndy == 0) {
-		return (Point) { .x = next_x, .y = y };
+		return (v2_f32) { .x = next_x, .y = y };
 	} else if (ndy > 0) {
-		f32 next_y = (s32) (1 + ((y < 0) ? (s32) (y-1) : (s32) y));
+		f32 next_y = (s32) (1 + f32_floor(y));
 		//
 		// step_x * ndx = next_x - x
 		// step_x = (next_x - x) / ndx
@@ -900,9 +948,9 @@ next_grid_intersection(f32 x, f32 y, f32 ndx, f32 ndy)
 		f32 step_x = (next_x - x) / ndx;
 		f32 step_y = (next_y - y) / ndy;
 		if (step_x <= step_y) {
-			return (Point) { .x = next_x, .y = y + step_x * ndy};
+			return (v2_f32) { .x = next_x, .y = y + step_x * ndy};
 		} else {
-			return (Point) { .x = x + step_y * ndx, .y = next_y };
+			return (v2_f32) { .x = x + step_y * ndx, .y = next_y };
 		}
 	} else {
 		//
@@ -910,27 +958,28 @@ next_grid_intersection(f32 x, f32 y, f32 ndx, f32 ndy)
 		// -2.9 ----> (int) -3.9 ----> -3
 		// -2   ----> (int) -3 ----> -3
 		//
-		f32 next_y = (s32) ((y <= 0) ? (s32) (y-1) : (s32) y);
+		f32 next_y = (s32) f32_floor(y - 1e-6);
 		f32 step_x = (next_x - x) / ndx;
 		f32 step_y = (next_y - y) / ndy;
 		if (step_x <= step_y) {
-			return (Point) { .x = next_x, .y = y + step_x * ndy};
+			return (v2_f32) { .x = next_x, .y = y + step_x * ndy};
 		} else {
-			return (Point) { .x = x + step_y * ndx, .y = next_y };
+			return (v2_f32) { .x = x + step_y * ndx, .y = next_y };
 		}
 	}
 	Assert(0);
-	return (Point) { .x = 0, .y = 0 };
+	return (v2_f32) { .x = 0, .y = 0 };
 }
 
-
-#if 0
+#if 1
 Matrix*
-line_density_matrix(CurveList *curve_list, s32 rows, s32 cols, f32 viewbox_x, f32 viewbox_y, f32 viewbox_dx, f32 viewbox_dy)
+curves_density_matrix(CurveList *curve_list, s32 rows, s32 cols, f32 viewbox_x, f32 viewbox_y, f32 viewbox_dx, f32 viewbox_dy)
 {
 	u32 matrix_storage = sizeof(Matrix) + rows * cols * sizeof(f32);
 	Matrix *result = tsvis_malloc(matrix_storage);
-	resut[0] = (Matrix) {
+	result[0] = (Matrix) {
+		.rows = rows,
+		.cols = cols
 	};
 	if (!result) return 0;
 
@@ -940,35 +989,78 @@ line_density_matrix(CurveList *curve_list, s32 rows, s32 cols, f32 viewbox_x, f3
 
 		Curve *c = curve_list->curves[i];
 		s32 has_prev = 0;
-		f32 prev_gx = 0.0;
-		f32 prev_gy = 0.0;
+		v2_f32 prev = { 0 };
+
+		s32 cell_x = -1;
+		s32 cell_y_min = 0;
+		s32 cell_y_max = 0;
 		for (s32 j=0;j<c->num_points;++j) {
 			f32 x = j;
 			f32 y = c->values[j];
-			f32 gx = ((x - viewbox_x)/viewbox_dx) * cols;
-			f32 gy = ((y - viewbox_y)/viewbox_dy) * rows;
-
+			v2_f32 curr = {
+				.x = ((x - viewbox_x)/viewbox_dx) * cols,
+				.y = ((y - viewbox_y)/viewbox_dy) * rows
+			};
 			if (has_prev) {
 				// trace all the intersections
-				f32 gdx = gx - gdx;
-				f32 gdy = gy - gdy;
+				v2_f32 direction = v2_f32_subtract(curr, prev);
+				f32 length_squared = v2_f32_length_squared(direction);
+				v2_f32 norm_direction = v2_f32_normalize(direction);
 
-				// 
+				// iterate through the cells hit by the current segment
+				{
+					v2_f32 p = prev;
+					while (1) {
+						// get cell of point
+						//
+						s32 cx = (s32) f32_floor(p.x);
+						s32 cy = (s32) f32_floor(p.y);
+						if (norm_direction.y < 0) {
+							if (f32_floor(p.y) == p.y) { cy = cy - 1; }
+						}
 
+						// assumes cx never decreases
+						if (cell_x < 0) {
+							cell_x = cx;
+							cell_y_min = cell_y_max = (s32) cy;
+						} else if (cell_x == cx) {
+							cell_y_min = Min(cy, cell_y_min);
+							cell_y_max = Max(cy, cell_y_max);
+						} else {
+							printf("curve:%05d column:%04d row_range:%04d,%04d\n", i, cell_x, cell_y_min, cell_y_max);
 
+							s32 cells_hit_by_this_curve_on_cell_x = cell_y_max - cell_y_min + 1;
+							for (s32 k=cell_y_min;k<=cell_y_max;++k) {
+								matrix_accumulate(result, k, cell_x, 1.0f/cells_hit_by_this_curve_on_cell_x);
+							}
 
+							cell_x = cx;
+							cell_y_min = cell_y_max = (s32) cy;
+						}
 
-
+						// printf("curve:%05d segment:%03d cell:%04d,%04d\n", i, j-1, cx, cy);
+						p = next_grid_intersection(p.x, p.y, norm_direction.x, norm_direction.y);
+						f32 current_length_squared = v2_f32_length_squared(v2_f32_subtract(p, prev));
+						if (current_length_squared > length_squared) {
+							break;
+						}
+					}
+				}
 			}
-
-
-			prev_gx = gx;
-			prev_gy = gy;
+			has_prev = 1;
+			prev = curr;
 		}
-
-
-
+		if (cell_x >= 0) {
+			s32 cells_hit_by_this_curve_on_cell_x = cell_y_max - cell_y_min + 1;
+			for (s32 k=cell_y_min;k<=cell_y_max;++k) {
+				matrix_accumulate(result, k, cell_x, 1.0f/cells_hit_by_this_curve_on_cell_x);
+			}
+			printf("curve:%05d column:%04d row_range:%04d,%04d\n", i, cell_x, cell_y_min, cell_y_max);
+		}
 	}
+
+	return result;
+
 }
 #endif
 
@@ -1048,34 +1140,86 @@ static void
 test_next_grid_intersection()
 {
 	// f32 ndx = 1, ndy = 0;
-	f32 ndx = 0.8660254, ndy = -0.5;
-	Point p = { .x = 0, .y = 0 };
-	s32 n = 10;
+	// f32 ndx = 0.8660254, ndy = -0.5;
+
+	v2_f32 u = { .x = 1, .y = 5 };
+	v2_f32 v = { .x = 2, .y = 3 };
+	v2_f32 dir = v2_f32_subtract(v, u);
+	f32    length_squared = v2_f32_length_squared(dir);
+	v2_f32 norm_dir = v2_f32_normalize(dir);
+
+	s32 min_x = (s32) (Min(f32_floor(u.x), f32_floor(v.x)));
+	s32 min_y = (s32) (Min(f32_floor(u.y), f32_floor(v.y)));
+	s32 max_x = (s32) (Max(f32_ceil(u.x), f32_ceil(v.x)));
+	s32 max_y = (s32) (Max(f32_ceil(u.y), f32_ceil(v.y)));
+
 	printf("#!/bin/bash\n");
 	printf("cat <<EOF > tmp_grid.R\n");
 	printf("pdf('grid.pdf',width=10, height=10)\n");
 	printf("x <- matrix(c(\n");
-	printf("%f,%f\n", p.x, p.y);
-	for (s32 i=0;i<n;++i) {
-		p = next_grid_intersection(p.x, p.y, ndx, ndy);
-		printf(",%f,%f\n", p.x, p.y);
+
+	v2_f32 p = u;
+	s32 first_point = 1;
+	while (1) {
+		if (!first_point) printf(",");
+		first_point = 0;
+		printf("%f,%f\n", p.x, p.y);
+		p = next_grid_intersection(p.x, p.y, norm_dir.x, norm_dir.y);
+		f32 current_length_squared = v2_f32_length_squared(v2_f32_subtract(p, u));
+		if (current_length_squared > length_squared) {
+			break;
+		}
 	}
 	printf("),ncol=2,byrow=T)\n");
 	printf("plot(x,type='p')\n");
-	printf("abline(h=(0:%d)*%d,col=gray(0.8))\n",n, ndy < 0 ? -1 : 1);
-	printf("abline(v=(0:%d),col=gray(0.8))\n",n);
+	printf("abline(h=(%d):(%d),col=gray(0.8))\n", min_y, max_y);
+	printf("abline(v=(%d):(%d),col=gray(0.8))\n", min_x, max_x);
 	printf("dev.off()\n");
 	printf("EOF\n");
 	printf("R -f tmp_grid.R\n");
 	printf("open grid.pdf\n");
 }
 
+static void
+test_curves_density_matrix()
+{
+	f64 curves_data[] = {
+		1.0,  5.0,  3.0,  4.0,
+		5.0,  0.0,  2.0,  0.0
+	};
+
+	s32 n = 2;
+	s32 p = 4;
+
+	CurveList *curve_list = tsvis_CurveList_new(n);
+
+	s32 offset = 0;
+	for (s32 i=0;i<n;++i) {
+		Curve *curve = tsvis_Curve_new(p);
+		for (s32 j=0;j<p;j++) {
+			curve->values[j] = curves_data[offset + j];
+		}
+		tsvis_CurveList_append(curve_list, curve);
+		offset += p;
+	}
+
+	s32 rows = 12;
+	s32 cols = 8;
+	Matrix *matrix = curves_density_matrix(curve_list, rows, cols, -0.5f, -0.5f, 4, 6);
+
+	matrix_print(matrix);
+
+
+
+
+}
 
 int
 main(int argc, char *argv[])
 {
 	// test_extremal_depth();
-	test_next_grid_intersection();
+	// test_next_grid_intersection();
+	test_curves_density_matrix();
 	return 0;
 }
 

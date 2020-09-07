@@ -9,7 +9,7 @@ echo "compiling to C"
 export PATH=/usr/local/Cellar/llvm/10.0.0_3/bin:$PATH
 cat <<EOF | sed 's/#.*$//g' | paste -d' ' -s - | tr ';' '\n' | sed 's/  */ /g' | sed 's/^ *//g' > script_c
 clang
--O3
+-O0
 -g
 -g -ggdb
 -o tsvis
