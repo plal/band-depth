@@ -860,14 +860,123 @@ s32 checksum(s32 *a, int len)
 	// 00 01 10
 }
 
+typedef struct {
+	s32 rows;
+	s32 cols;
+	f32 data[];
+} Matrix;
+
+
+typedef struct {
+	f32 x;
+	f32 y;
+} Point;
+
+// assumes |(ndx,ndy)| = sqrt(ndx^2 + ndy^2) = 1
+static Point
+next_grid_intersection(f32 x, f32 y, f32 ndx, f32 ndy)
+{
+
+	//
+	// (1, tg_theta)
+	//
+	// (x, y) + step_x * (ndx, ndy)
+	// (x, y) + step_y * (ndx, ndy)
+	//
+
+	Assert(ndx > 0);
+	f32 next_x = (s32) (1 + ((x < 0) ? (s32) (x-1) : (s32) x));
+	if (ndy == 0) {
+		return (Point) { .x = next_x, .y = y };
+	} else if (ndy > 0) {
+		f32 next_y = (s32) (1 + ((y < 0) ? (s32) (y-1) : (s32) y));
+		//
+		// step_x * ndx = next_x - x
+		// step_x = (next_x - x) / ndx
+		//
+		// step_y * ndy = next_y - y
+		// step_y = (next_y - y) / ndy
+		//
+		f32 step_x = (next_x - x) / ndx;
+		f32 step_y = (next_y - y) / ndy;
+		if (step_x <= step_y) {
+			return (Point) { .x = next_x, .y = y + step_x * ndy};
+		} else {
+			return (Point) { .x = x + step_y * ndx, .y = next_y };
+		}
+	} else {
+		//
+		// -1.5 ----> (int) -2.5 ----> -2
+		// -2.9 ----> (int) -3.9 ----> -3
+		// -2   ----> (int) -3 ----> -3
+		//
+		f32 next_y = (s32) ((y <= 0) ? (s32) (y-1) : (s32) y);
+		f32 step_x = (next_x - x) / ndx;
+		f32 step_y = (next_y - y) / ndy;
+		if (step_x <= step_y) {
+			return (Point) { .x = next_x, .y = y + step_x * ndy};
+		} else {
+			return (Point) { .x = x + step_y * ndx, .y = next_y };
+		}
+	}
+	Assert(0);
+	return (Point) { .x = 0, .y = 0 };
+}
+
+
+#if 0
+Matrix*
+line_density_matrix(CurveList *curve_list, s32 rows, s32 cols, f32 viewbox_x, f32 viewbox_y, f32 viewbox_dx, f32 viewbox_dy)
+{
+	u32 matrix_storage = sizeof(Matrix) + rows * cols * sizeof(f32);
+	Matrix *result = tsvis_malloc(matrix_storage);
+	resut[0] = (Matrix) {
+	};
+	if (!result) return 0;
+
+	// there is enough space to compute things
+
+	for (s32 i=0;i<curve_list->num_curves;++i) {
+
+		Curve *c = curve_list->curves[i];
+		s32 has_prev = 0;
+		f32 prev_gx = 0.0;
+		f32 prev_gy = 0.0;
+		for (s32 j=0;j<c->num_points;++j) {
+			f32 x = j;
+			f32 y = c->values[j];
+			f32 gx = ((x - viewbox_x)/viewbox_dx) * cols;
+			f32 gy = ((y - viewbox_y)/viewbox_dy) * rows;
+
+			if (has_prev) {
+				// trace all the intersections
+				f32 gdx = gx - gdx;
+				f32 gdy = gy - gdy;
+
+				// 
+
+
+
+
+
+			}
+
+
+			prev_gx = gx;
+			prev_gy = gy;
+		}
+
+
+
+	}
+}
+#endif
 
 #ifndef WEBASSEMBLY
 
-int
-main(int argc, char *argv[])
+static void
+test_extremal_depth()
 {
-
-
 #if 0
 	// Example from Figure 1 of the Extremal Depth paper
 	// f64 curves_data[] = {
@@ -932,6 +1041,42 @@ main(int argc, char *argv[])
 	// 	printf("curve[%d] rank: %d\n", rank[i]+1, i+1);
 	// 	//curves[rank[i]].ed_rank = (1.0*i)/ed->n;
 	// }
+
+}
+
+static void
+test_next_grid_intersection()
+{
+	// f32 ndx = 1, ndy = 0;
+	f32 ndx = 0.8660254, ndy = -0.5;
+	Point p = { .x = 0, .y = 0 };
+	s32 n = 10;
+	printf("#!/bin/bash\n");
+	printf("cat <<EOF > tmp_grid.R\n");
+	printf("pdf('grid.pdf',width=10, height=10)\n");
+	printf("x <- matrix(c(\n");
+	printf("%f,%f\n", p.x, p.y);
+	for (s32 i=0;i<n;++i) {
+		p = next_grid_intersection(p.x, p.y, ndx, ndy);
+		printf(",%f,%f\n", p.x, p.y);
+	}
+	printf("),ncol=2,byrow=T)\n");
+	printf("plot(x,type='p')\n");
+	printf("abline(h=(0:%d)*%d,col=gray(0.8))\n",n, ndy < 0 ? -1 : 1);
+	printf("abline(v=(0:%d),col=gray(0.8))\n",n);
+	printf("dev.off()\n");
+	printf("EOF\n");
+	printf("R -f tmp_grid.R\n");
+	printf("open grid.pdf\n");
+}
+
+
+int
+main(int argc, char *argv[])
+{
+	// test_extremal_depth();
+	test_next_grid_intersection();
+	return 0;
 }
 
 #endif
