@@ -1467,8 +1467,6 @@ async function main()
 
 		// var mem = new WebAssembly.Memory({initial:1, maximum:1000});
 		// var imports = { env: { memory: mem } };
-		// //, imports
-
     		// const { tsvis_wasm_module } = await WebAssembly.instantiateStreaming( fetch("./tsvis.wasm") );
 		const { instance } = await WebAssembly.instantiateStreaming( fetch("tsvis.wasm") );
 		// instance.exports.memory.grow(1000)
