@@ -890,6 +890,21 @@ matrix_print(Matrix *self)
 	}
 }
 
+void*
+matrix_raw_values(Matrix *self) {
+	return &self->data[0];
+}
+
+s32
+matrix_rows(Matrix *self) {
+	return self->rows;
+}
+
+s32
+matrix_cols(Matrix *self) {
+	return self->cols;
+}
+
 typedef struct {
 	f32 x;
 	f32 y;
