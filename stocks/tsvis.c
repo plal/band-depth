@@ -855,12 +855,12 @@ typedef struct {
 f32*
 matrix_get_data(Matrix *self) { return &self->data[0]; }
 
-static void
+static s32
 matrix_accumulate(Matrix *self, s32 row, s32 col, f32 value)
 {
-	Assert(row >= 0 && row < rows);
-	Assert(col >= 0 && col < cols);
+	if (row < 0 || row >= self->rows || col < 0 || col >= self->cols) { return 0; }
 	self->data[row * self->cols + col] += value;
+	return 1;
 }
 
 static void
