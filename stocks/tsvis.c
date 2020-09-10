@@ -1171,12 +1171,13 @@ static void
 test_curves_density_matrix()
 {
 	f64 curves_data[] = {
-		1.0,  5.0,  3.0,  4.0,
-		5.0,  0.0,  2.0,  0.0
+		1, 0.9031405731204399, 0.8938352437347997, 0.8938352437347997,
+		0.8938352437347997, 0.8724754361848367, 0.8843184625145396,
+		0.8888653695675162, 0.8941524584963519, 0.8773395474251877
 	};
 
-	s32 n = 2;
-	s32 p = 4;
+	s32 n = 1;
+	s32 p = 10;
 
 	CurveList *curve_list = tsvis_CurveList_new(n);
 
@@ -1190,9 +1191,17 @@ test_curves_density_matrix()
 		offset += p;
 	}
 
-	s32 rows = 4;
-	s32 cols = 6;
-	Matrix *matrix = curves_density_matrix(curve_list, rows, cols, -0.5f, -0.5f, 4, 6);
+	s32 rows 	   = 41;
+	s32 cols 	   = 153;
+	f32 viewbox_x  = 0;
+	f32 viewbox_y  = 0.8724754;
+	f32 viewbox_dx = 9;
+	f32 viewbox_dy = 0.1275245;
+
+
+	// s32 rows = 4;
+	// s32 cols = 6;
+	Matrix *matrix = curves_density_matrix(curve_list, rows, cols, viewbox_x, viewbox_y, viewbox_dx, viewbox_dy);
 
 	matrix_print(matrix);
 

@@ -39,7 +39,8 @@ var global = {
 	key_update_end: false,
 	extremal_depth: {fbplot: {active: false, inner_band: {lower:[], upper:[]}, outer_band: {lower:[], upper:[]}, outliers:[] }, ranked_symbols: [] },
 	modified_band_depth: {fbplot: {active: false, inner_band: {lower:[], upper:[]}, outer_band: {lower:[], upper:[]}, outliers:[] }, ranked_symbols: [] },
-	denselines: { active: false }
+	denselines: { active: false },
+	viewbox: { x:0, y:0, width:1, height:1, rows:4, cols:4 }
 }
 
 function install_event_listener(component, raw_event_type, context, event_type)
@@ -696,9 +697,13 @@ function prepare_ui()
 	let create_curve_density_matrix_lbl = document.createElement('label')
 	global.ui.create_curve_density_matrix_lbl = create_curve_density_matrix_lbl
 	create_curve_density_matrix_lbl.setAttribute("for", create_curve_density_matrix_btn)
-	create_curve_density_matrix_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
+	create_curve_density_matrix_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:120px;'
 	//extremal_depth_lbl.classList.add('checkbox_input_label')
 	create_curve_density_matrix_lbl.innerHTML = 'DenseLines'
+
+	let create_curve_density_matrix_resolution = document.createElement('input')
+	global.ui.create_curve_density_matrix_resolution = create_curve_density_matrix_resolution
+	create_curve_density_matrix_resolution.value = "32"
 
 	let create_curve_density_matrix_grid = document.createElement('div')
 	global.ui.create_curve_density_matrix_grid = create_curve_density_matrix_grid
@@ -706,6 +711,9 @@ function prepare_ui()
 	create_curve_density_matrix_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around;' //justify-content:flex-end'
 	create_curve_density_matrix_grid.appendChild(create_curve_density_matrix_lbl)
 	create_curve_density_matrix_grid.appendChild(create_curve_density_matrix_btn)
+	create_curve_density_matrix_grid.appendChild(create_curve_density_matrix_resolution)
+
+
 
 	let left_panel = document.createElement('div')
    	global.ui.left_panel = left_panel
@@ -1042,6 +1050,8 @@ function build_curves_density_matrix() {
 		curve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_CurveList_new(n)
 	}
 
+	let max_m = 0
+
 	for (let i=0;i<n;i++) {
 		let symbol = global.chart_symbols[i]
 		let ts_current_values = symbol.ts_current_values
@@ -1053,6 +1063,7 @@ function build_curves_density_matrix() {
 		}
 
 		let m = ts_current_values.length
+		max_m = Math.max(max_m, m)
 
 		let curve_raw_p  = global.tsvis_wasm_module.exports.tsvis_Curve_new(m)
 		while (curve_raw_p == 0) {
@@ -1065,16 +1076,17 @@ function build_curves_density_matrix() {
 		const c_curve_values = new Float64Array(global.tsvis_wasm_module.exports.memory.buffer, values_raw_p, m);
 
 		c_curve_values.set(ts_current_values)
+		console.log(ts_current_values)
 
 		let ok = global.tsvis_wasm_module.exports.tsvis_CurveList_append(curve_list_raw_p, curve_raw_p)
 	}
 
-	let nrows 	   = 20
-	let ncols 	   = 30
-	let viewbox_x  = -0.5
-	let viewbox_y  = -0.5
-	let viewbox_dx = 20
-	let viewbox_dy = 30
+	let nrows 	   = global.viewbox.rows
+	let ncols 	   = global.viewbox.cols
+	let viewbox_x  = global.viewbox.x
+	let viewbox_y  = global.viewbox.y
+	let viewbox_dx = global.viewbox.width//20
+	let viewbox_dy = global.viewbox.height//30
 
 	let cdm_raw_p = global.tsvis_wasm_module.exports.curves_density_matrix(curve_list_raw_p, nrows, ncols, viewbox_x, viewbox_y, viewbox_dx, viewbox_dy)
 
@@ -1194,10 +1206,8 @@ function process_event_queue()
 			}
 		} else if (e.event_type == EVENT.BUILD_CURVES_DENSITY_MATRIX) {
 			global.denselines.active = !global.denselines.active
-			if (global.denselines.active) {
-				build_curves_density_matrix()
-				// console.log(global.denselines)
-			}
+			build_curves_density_matrix()
+			// console.log(global.denselines)
 		}
 	}
 	global.events.length = 0
@@ -1333,6 +1343,16 @@ function update_ts()
 	//--------------
 	let x_min = 0
 	let x_max = date_end - date_start
+
+	global.viewbox.x 	  = x_min
+	global.viewbox.y 	  = y_min
+	global.viewbox.width  = x_max - x_min
+	global.viewbox.height = y_max -y_min
+	let resolution = parseInt(global.ui.create_curve_density_matrix_resolution.value)
+	let rows = Math.floor(ts_rect[RECT.HEIGHT] / resolution)
+	let cols = Math.floor(ts_rect[RECT.WIDTH] / resolution)
+	global.viewbox.rows = rows
+	global.viewbox.cols = cols
 
 	function map(x, y) {
 		let px = ts_rect[RECT.LEFT] + (1.0 * (x - x_min) / (x_max - x_min)) * ts_rect[RECT.WIDTH]
@@ -1525,7 +1545,7 @@ function update_ts()
 		let starting_x = ts_rect[RECT.LEFT]
 		let starting_y = ts_rect[RECT.TOP]
 
-		let colors = ['#f7f7f7','#d9d9d9','#bdbdbd','#969696','#636363','#252525'] 
+		let colors = ['#f7f7f7','#d9d9d9','#bdbdbd','#969696','#636363','#252525']
 		// ['#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026','#800026']
 		// ['#ffffd9','#edf8b1','#c7e9b4','#7fcdbb','#41b6c4','#1d91c0','#225ea8','#253494','#081d58']
 		// ['#67001f','#b2182b','#d6604d','#f4a582','#fddbc7','#f7f7f7','#d1e5f0','#92c5de','#4393c3','#2166ac','#053061']
@@ -1558,14 +1578,16 @@ function update_ts()
 
 		for (let i=0; i<rows; i++) {
 			for (let j=0; j<cols; j++) {
-				let color_idx = Math.floor((ordered_matrix[j+cols*i] * (colors.length-1)) / max_value)
+				let intensity = (Math.floor(ordered_matrix[j+cols*i] * 255)).toString(16) //Math.floor((ordered_matrix[j+cols*i] * (colors.length-1)) / max_value)
+				intensity = intensity.length == 2 ? intensity : ("0"+intensity)
+				let color = "#" + intensity + intensity + intensity
 				// console.log(global.denselines.entries[j+cols*i], color_idx)
-				ctx.fillStyle = colors[color_idx]
-				ctx.strokeStyle = ctx.fillStyle
+				ctx.fillStyle = color
+				// ctx.strokeStyle = ctx.fillStyle
 				ctx.beginPath()
 				ctx.rect(starting_x + (cell_width*j), starting_y + (cell_height*i), cell_width, cell_height)
 				ctx.fill()
-				ctx.stroke()
+				// ctx.stroke()
 			}
 		}
 	}
