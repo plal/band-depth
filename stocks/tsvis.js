@@ -13,6 +13,7 @@ const EVENT= {
 	UPDATE_NORM_DATE: "event_update_norm_date",
 	RUN_EXTREMAL_DEPTH_ALGORITHM: "event_run_extremal_depth_algorithm",
 	RUN_MODIFIED_BAND_DEPTH_ALGORITHM: "event_run_modified_band_depth_algorithm",
+	BUILD_CURVES_DENSITY_MATRIX: "event_build_curves_density_matrix",
 	MOUSEMOVE: "event_mousemove",
 	KEYDOWN: "event_keydown"
 }
@@ -37,7 +38,8 @@ var global = {
 	key_update_start: false,
 	key_update_end: false,
 	extremal_depth: {fbplot: {active: false, inner_band: {lower:[], upper:[]}, outer_band: {lower:[], upper:[]}, outliers:[] }, ranked_symbols: [] },
-	modified_band_depth: {fbplot: {active: false, inner_band: {lower:[], upper:[]}, outer_band: {lower:[], upper:[]}, outliers:[] }, ranked_symbols: [] }
+	modified_band_depth: {fbplot: {active: false, inner_band: {lower:[], upper:[]}, outer_band: {lower:[], upper:[]}, outliers:[] }, ranked_symbols: [] },
+	denselines: { active: false }
 }
 
 function install_event_listener(component, raw_event_type, context, event_type)
@@ -685,6 +687,26 @@ function prepare_ui()
 	symbols_table_div.id = 'symbols_table_div'
 	symbols_table_div.style = 'position:relative; width:100%; height:100%; margin:2px; overflow:auto; border-radius:2px; background-color:#FFFFFF'
 
+	let create_curve_density_matrix_btn = document.createElement('input')
+	global.ui.create_curve_density_matrix_btn = create_curve_density_matrix_btn
+	//create_curve_density_matrix_btn.checked = 'true'
+	create_curve_density_matrix_btn.type = "checkbox"
+	install_event_listener(create_curve_density_matrix_btn, 'click', create_curve_density_matrix_btn, EVENT.BUILD_CURVES_DENSITY_MATRIX)
+
+	let create_curve_density_matrix_lbl = document.createElement('label')
+	global.ui.create_curve_density_matrix_lbl = create_curve_density_matrix_lbl
+	create_curve_density_matrix_lbl.setAttribute("for", create_curve_density_matrix_btn)
+	create_curve_density_matrix_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
+	//extremal_depth_lbl.classList.add('checkbox_input_label')
+	create_curve_density_matrix_lbl.innerHTML = 'DenseLines'
+
+	let create_curve_density_matrix_grid = document.createElement('div')
+	global.ui.create_curve_density_matrix_grid = create_curve_density_matrix_grid
+	create_curve_density_matrix_grid.id = create_curve_density_matrix_grid
+	create_curve_density_matrix_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around;' //justify-content:flex-end'
+	create_curve_density_matrix_grid.appendChild(create_curve_density_matrix_lbl)
+	create_curve_density_matrix_grid.appendChild(create_curve_density_matrix_btn)
+
 	let left_panel = document.createElement('div')
    	global.ui.left_panel = left_panel
    	left_panel.id = 'left_panel'
@@ -697,6 +719,7 @@ function prepare_ui()
 	left_panel.appendChild(extremal_depth_grid)
 	left_panel.appendChild(ed_draw_outliers_grid)
 	left_panel.appendChild(draw_curves_grid)
+	left_panel.appendChild(create_curve_density_matrix_grid)
 	left_panel.appendChild(filter_input)
 	left_panel.appendChild(add_table_symbols_btn)
 	left_panel.appendChild(clear_chart_btn)
@@ -996,6 +1019,87 @@ function run_extremal_depth_algorithm()
 
 }
 
+function build_curves_density_matrix() {
+
+	if (global.denselines.entries) {
+		for (let i=0; i<global.denselines.entries.length; i++) {
+			global.denselines.entries[i] = 0
+		}
+	}
+
+	let mem_checpoint_raw_p = global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint()
+
+	let n = global.chart_symbols.length
+
+	// let curve1 = [1.0, 5.0, 3.0, 4.0]
+	// let curve2 = [5.0, 0.0, 2.0, 0.0]
+	// let curves = [curve1,curve2]
+	// let n = curves.length
+
+	let curve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_CurveList_new(n)
+	while (curve_list_raw_p == 0) {
+		grow_heap()
+		curve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_CurveList_new(n)
+	}
+
+	for (let i=0;i<n;i++) {
+		let symbol = global.chart_symbols[i]
+		let ts_current_values = symbol.ts_current_values
+
+		// let ts_current_values = curves[i]
+
+		if (ts_current_values == null) {
+			console.log("Discarding symbol ", symbol.name, " on curve density matrix building")
+		}
+
+		let m = ts_current_values.length
+
+		let curve_raw_p  = global.tsvis_wasm_module.exports.tsvis_Curve_new(m)
+		while (curve_raw_p == 0) {
+			grow_heap()
+			curve_raw_p = global.tsvis_wasm_module.exports.tsvis_Curve_new(m)
+		}
+
+		let values_raw_p = global.tsvis_wasm_module.exports.tsvis_Curve_values(curve_raw_p)
+
+		const c_curve_values = new Float64Array(global.tsvis_wasm_module.exports.memory.buffer, values_raw_p, m);
+
+		c_curve_values.set(ts_current_values)
+
+		let ok = global.tsvis_wasm_module.exports.tsvis_CurveList_append(curve_list_raw_p, curve_raw_p)
+	}
+
+	let nrows 	   = 20
+	let ncols 	   = 30
+	let viewbox_x  = -0.5
+	let viewbox_y  = -0.5
+	let viewbox_dx = 20
+	let viewbox_dy = 30
+
+	let cdm_raw_p = global.tsvis_wasm_module.exports.curves_density_matrix(curve_list_raw_p, nrows, ncols, viewbox_x, viewbox_y, viewbox_dx, viewbox_dy)
+
+	while (cdm_raw_p == 0) {
+		grow_heap()
+		cdm_raw_p = global.tsvis_wasm_module.exports.curves_density_matrix(curve_list_raw_p, nrows, ncols, viewbox_x, viewbox_y, viewbox_dx, viewbox_dy)
+	}
+
+	let cdm_entries_raw_p = global.tsvis_wasm_module.exports.matrix_get_data(cdm_raw_p)
+	const cdm_entries = new Float32Array(global.tsvis_wasm_module.exports.memory.buffer, cdm_entries_raw_p, nrows*ncols)
+
+	global.denselines.rows 		 = nrows
+	global.denselines.cols 		 = ncols
+	global.denselines.viewbox_x  = viewbox_x
+	global.denselines.viewbox_y  = viewbox_y
+	global.denselines.viewbox_dx = viewbox_dx
+	global.denselines.viewbox_dy = viewbox_dy
+	global.denselines.entries    = cdm_entries
+
+	// console.log(cdm_entries)
+
+	global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p)
+
+}
+
 const KEY_S = 83
 const KEY_E = 69
 const KEY_N = 78
@@ -1087,6 +1191,12 @@ function process_event_queue()
 			global.modified_band_depth.fbplot.active = !global.modified_band_depth.fbplot.active
 			if (global.modified_band_depth.fbplot.active) {
 				run_modified_band_depth_algorithm()
+			}
+		} else if (e.event_type == EVENT.BUILD_CURVES_DENSITY_MATRIX) {
+			global.denselines.active = !global.denselines.active
+			if (global.denselines.active) {
+				build_curves_density_matrix()
+				// console.log(global.denselines)
 			}
 		}
 	}
@@ -1330,29 +1440,6 @@ function update_ts()
 	ctx.restore();
 
 	//--------------
-	//auxiliar lines on mouse position to track date and value
-	//--------------
-	let pt = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
-
-	let y_p0 = map(Math.floor(0.5+pt[0]),y_min)
-	let y_p1 = map(Math.floor(0.5+pt[0]),y_max)
-
-	ctx.beginPath()
-	ctx.moveTo(y_p0[0], y_p0[1])
-	ctx.lineTo(y_p1[0], y_p1[1])
-	ctx.stroke()
-	drawTextBG(ctx, date_offset_to_string(date_start+pt[0]), y_p0[0], y_p0[1])
-
-	let x_p0 = map(x_min, pt[1])
-	let x_p1 = map(x_max, pt[1])
-
-	ctx.beginPath()
-	ctx.moveTo(x_p0[0], x_p0[1])
-	ctx.lineTo(x_p1[0], x_p1[1])
-	ctx.stroke()
-	drawTextBG(ctx, pt[1].toFixed(2), x_p0[0], x_p0[1])
-
-	//--------------
 	// drawing and highlighting utils
 	//--------------
 	let closest_date = null
@@ -1426,6 +1513,62 @@ function update_ts()
 		ctx.stroke()
 	}
 
+
+	if (global.denselines.active) {
+		let rows = global.denselines.rows
+		let cols = global.denselines.cols
+		let max_value = Math.max.apply(null, global.denselines.entries)
+
+		let cell_width   = ts_rect[RECT.WIDTH] / global.denselines.cols
+		let cell_height  = ts_rect[RECT.HEIGHT] / global.denselines.rows
+
+		let starting_x = ts_rect[RECT.LEFT]
+		let starting_y = ts_rect[RECT.TOP]
+
+		let colors = ['#f7f7f7','#d9d9d9','#bdbdbd','#969696','#636363','#252525'] 
+		// ['#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026','#800026']
+		// ['#ffffd9','#edf8b1','#c7e9b4','#7fcdbb','#41b6c4','#1d91c0','#225ea8','#253494','#081d58']
+		// ['#67001f','#b2182b','#d6604d','#f4a582','#fddbc7','#f7f7f7','#d1e5f0','#92c5de','#4393c3','#2166ac','#053061']
+		for (let i=0;i<colors.length;i++) {
+			let r = parseInt(colors[i].slice(1,3),16)
+			let g = parseInt(colors[i].slice(3,5),16)
+			let b = parseInt(colors[i].slice(5,7),16)
+			let o = 0.7
+			r = Math.trunc(r * o + 255 * (1-o)).toString(16)
+			g = Math.trunc(g * o + 255 * (1-o)).toString(16)
+			b = Math.trunc(b * o + 255 * (1-o)).toString(16)
+			r = r.length == 2 ? r : ("0"+r)
+			g = g.length == 2 ? g : ("0"+g)
+			b = b.length == 2 ? b : ("0"+b)
+			let color = "#" + r + g + b
+			colors[i] = color
+			// colors[i] = colors[i] + '4f'
+		}
+
+		// console.log(colors)
+
+		let ordered_matrix = []
+		for (let i=rows-1; i>=0; i--) {
+			for (let j=0; j<cols; j++) {
+				ordered_matrix.push(global.denselines.entries[j+cols*i])
+			}
+		}
+
+		// console.log(ordered_matrix)
+
+		for (let i=0; i<rows; i++) {
+			for (let j=0; j<cols; j++) {
+				let color_idx = Math.floor((ordered_matrix[j+cols*i] * (colors.length-1)) / max_value)
+				// console.log(global.denselines.entries[j+cols*i], color_idx)
+				ctx.fillStyle = colors[color_idx]
+				ctx.strokeStyle = ctx.fillStyle
+				ctx.beginPath()
+				ctx.rect(starting_x + (cell_width*j), starting_y + (cell_height*i), cell_width, cell_height)
+				ctx.fill()
+				ctx.stroke()
+			}
+		}
+	}
 
 	//--------------
 	// running extremal depth algorithm and drawing bands
@@ -1611,6 +1754,29 @@ function update_ts()
 	}
 
 
+	//--------------
+	//auxiliar lines on mouse position to track date and value
+	//--------------
+	let pt = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
+
+	let y_p0 = map(Math.floor(0.5+pt[0]),y_min)
+	let y_p1 = map(Math.floor(0.5+pt[0]),y_max)
+
+	ctx.strokeStyle = "#555555"
+	ctx.beginPath()
+	ctx.moveTo(y_p0[0], y_p0[1])
+	ctx.lineTo(y_p1[0], y_p1[1])
+	ctx.stroke()
+	drawTextBG(ctx, date_offset_to_string(date_start+pt[0]), y_p0[0], y_p0[1])
+
+	let x_p0 = map(x_min, pt[1])
+	let x_p1 = map(x_max, pt[1])
+
+	ctx.beginPath()
+	ctx.moveTo(x_p0[0], x_p0[1])
+	ctx.lineTo(x_p1[0], x_p1[1])
+	ctx.stroke()
+	drawTextBG(ctx, pt[1].toFixed(2), x_p0[0], x_p0[1])
 
 	//--------------
 	// highlight on focused time series

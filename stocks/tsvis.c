@@ -371,22 +371,6 @@ s32* mbd_get_modified_band_depth_rank_(ModifiedBandDepth *self) {
 	return indexes;
 }
 
-// s32* mbd_get_modified_band_depth_rank(ModifiedBandDepth* self) {
-// 	f64 *depths = mbd_get_depths(self);
-// 	s32  n = self->n;
-//
-// 	s32 *indexes = tsvis_malloc(sizeof(s32)*n);
-//
-// 	for(s32 i=0;i<n; ++i) {
-// 		indexes[i]=i;
-// 	}
-//
-// 	depths_to_cmp = depths;
-// 	qsort(indexes, n, sizeof(*indexes), cmp);
-//
-// 	return indexes;
-// }
-
 ModifiedBandDepth* mbd_modified_band_depth_run(CurveList *curve_list) {
 	s32 num_curves = curve_list->num_curves;
 	Curve* *curves = curve_list->curves;
@@ -434,8 +418,6 @@ ModifiedBandDepth* mbd_modified_band_depth_run(CurveList *curve_list) {
 	for (s32 i=0; i<n; ++i) {
 		printf("Curve[%05d]: %d\n", ranked_indexes[i], i);
 	}
-
-
 
 	return mbd;
 }
@@ -870,6 +852,9 @@ typedef struct {
 } Matrix;
 
 
+f32*
+matrix_get_data(Matrix *self) { return &self->data[0]; }
+
 static void
 matrix_accumulate(Matrix *self, s32 row, s32 col, f32 value)
 {
@@ -888,21 +873,6 @@ matrix_print(Matrix *self)
 		}
 		printf("\n");
 	}
-}
-
-void*
-matrix_raw_values(Matrix *self) {
-	return &self->data[0];
-}
-
-s32
-matrix_rows(Matrix *self) {
-	return self->rows;
-}
-
-s32
-matrix_cols(Matrix *self) {
-	return self->cols;
 }
 
 typedef struct {
@@ -990,7 +960,9 @@ next_grid_intersection(f32 x, f32 y, f32 ndx, f32 ndy)
 Matrix*
 curves_density_matrix(CurveList *curve_list, s32 rows, s32 cols, f32 viewbox_x, f32 viewbox_y, f32 viewbox_dx, f32 viewbox_dy)
 {
+
 	u32 matrix_storage = sizeof(Matrix) + rows * cols * sizeof(f32);
+
 	Matrix *result = tsvis_malloc(matrix_storage);
 	result[0] = (Matrix) {
 		.rows = rows,
@@ -1218,14 +1190,11 @@ test_curves_density_matrix()
 		offset += p;
 	}
 
-	s32 rows = 12;
-	s32 cols = 8;
+	s32 rows = 4;
+	s32 cols = 6;
 	Matrix *matrix = curves_density_matrix(curve_list, rows, cols, -0.5f, -0.5f, 4, 6);
 
 	matrix_print(matrix);
-
-
-
 
 }
 
