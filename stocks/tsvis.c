@@ -943,7 +943,8 @@ next_grid_intersection(f32 x, f32 y, f32 ndx, f32 ndy)
 		// -2.9 ----> (int) -3.9 ----> -3
 		// -2   ----> (int) -3 ----> -3
 		//
-		f32 next_y = (s32) f32_floor(y - 1e-6);
+		f32 floor_y = f32_floor(y);
+		f32 next_y = (y == floor_y) ? floor_y-1 : floor_y;
 		f32 step_x = (next_x - x) / ndx;
 		f32 step_y = (next_y - y) / ndy;
 		if (step_x <= step_y) {
