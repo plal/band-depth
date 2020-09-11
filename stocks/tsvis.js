@@ -1078,7 +1078,7 @@ function build_curves_density_matrix() {
 		c_curve_values.set(ts_current_values)
 		console.log(ts_current_values)
 
-		let ok = global.tsvis_wasm_module.exports.tsvis_CurveList_append(curve_list_raw_p, curve_raw_p)
+		let ok = global.tsvis_wasm_module.exports.tsvis_CurveList_append(curve_list_raw_p, curve_raw_p	)
 	}
 
 	let nrows 	   = global.viewbox.rows
@@ -1574,20 +1574,75 @@ function update_ts()
 			}
 		}
 
-		// console.log(ordered_matrix)
+		// let max_value_ = 0.0
+		// for (let i=0; i<rows; i++) {
+		// 	for (let j=0; j<cols; j++) {
+		// 		let value	  = ordered_matrix[j+cols*i] / global.chart_symbols.length
+		// 		if (value > max_value_) {
+		// 			max_value_ = value
+		// 		}
+		// 	}
+		// }
+
+		function hex_to_rgb(hexstr) {
+			let r = parseInt(hexstr.slice(1,3),16) / 255.0
+			let g = parseInt(hexstr.slice(3,5),16) / 255.0
+			let b = parseInt(hexstr.slice(5,7),16) / 255.0
+
+			return [r,g,b]
+		}
+
+		function rgb_to_hex(rgbarr) {
+
+			let r = Math.trunc(rgbarr[0] * 255).toString(16)
+			let g = Math.trunc(rgbarr[1] * 255).toString(16)
+			let b = Math.trunc(rgbarr[2] * 255).toString(16)
+
+			r = r.length == 2 ? r : ("0"+r)
+			g = g.length == 2 ? g : ("0"+g)
+			b = b.length == 2 ? b : ("0"+b)
+			let color = "#" + r + g + b
+
+			return color
+		}
+
+		function rgb_lerp(a_rgb, b_rgb, lambda) {
+			return [a_rgb[0] * lambda + b_rgb[0] * (1-lambda),
+					a_rgb[1] * lambda + b_rgb[1] * (1-lambda),
+					a_rgb[2] * lambda + b_rgb[2] * (1-lambda)]
+		}
+
+		function hex_lerp(a_hex, b_hex, lambda) {
+			return rgb_to_hex(rgb_lerp(hex_to_rgb(a_hex), hex_to_rgb(b_hex), lambda) )
+		}
 
 		for (let i=0; i<rows; i++) {
 			for (let j=0; j<cols; j++) {
-				let intensity = (Math.floor(ordered_matrix[j+cols*i] * 255)).toString(16) //Math.floor((ordered_matrix[j+cols*i] * (colors.length-1)) / max_value)
-				intensity = intensity.length == 2 ? intensity : ("0"+intensity)
-				let color = "#" + intensity + intensity + intensity
+				let value = ordered_matrix[j+cols*i] / max_value//global.chart_symbols.length
+				// value = value / max_value
+				let color = "#000000"
+				let color_scale = ['#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026','#800026']
+				// ['#fff7ec','#fee8c8','#fdd49e','#fdbb84','#fc8d59','#ef6548','#d7301f','#b30000','#7f0000', '#7f0000']
+				// ['#ffffd9','#edf8b1','#c7e9b4','#7fcdbb','#41b6c4','#1d91c0','#225ea8','#253494','#081d58','#081d58']
+				// ['#67001f','#b2182b','#d6604d','#f4a582','#fddbc7','#f7f7f7','#d1e5f0','#92c5de','#4393c3','#2166ac','#053061']
+
+				if (value > 0.0) {
+					let x = value * (color_scale.length-1)
+					let x_idx = Math.floor(x)
+					let x_idx_next = Math.min(x_idx+1, color_scale.length-1)
+					let lambda = 0.5//1 - (x - x_idx)
+					color = hex_lerp(color_scale[x_idx], color_scale[x_idx_next], lambda)
+				}
+				//Math.floor((ordered_matrix[j+cols*i] * (colors.length-1)) / max_value)
+				// intensity = intensity.length == 2 ? intensity : ("0"+intensity)
+				// let color = "#" + intensity + intensity + intensity
 				// console.log(global.denselines.entries[j+cols*i], color_idx)
 				ctx.fillStyle = color
-				// ctx.strokeStyle = ctx.fillStyle
+				ctx.strokeStyle = ctx.fillStyle
 				ctx.beginPath()
 				ctx.rect(starting_x + (cell_width*j), starting_y + (cell_height*i), cell_width, cell_height)
 				ctx.fill()
-				// ctx.stroke()
+				ctx.stroke()
 			}
 		}
 	}
