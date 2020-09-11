@@ -1537,7 +1537,7 @@ function update_ts()
 	if (global.denselines.active) {
 		let rows = global.denselines.rows
 		let cols = global.denselines.cols
-		let max_value = Math.max.apply(null, global.denselines.entries)
+		let max_value = Math.max.apply(null, global.denselines.entries) / global.chart_symbols.length
 
 		let cell_width   = ts_rect[RECT.WIDTH] / global.denselines.cols
 		let cell_height  = ts_rect[RECT.HEIGHT] / global.denselines.rows
@@ -1618,8 +1618,9 @@ function update_ts()
 
 		for (let i=0; i<rows; i++) {
 			for (let j=0; j<cols; j++) {
-				let value = ordered_matrix[j+cols*i] / max_value//global.chart_symbols.length
-				// value = value / max_value
+				let value = ordered_matrix[j+cols*i] / global.chart_symbols.length
+				value = value / max_value
+				// console.log(value)
 				let color = "#000000"
 				let color_scale = ['#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026','#800026']
 				// ['#fff7ec','#fee8c8','#fdd49e','#fdbb84','#fc8d59','#ef6548','#d7301f','#b30000','#7f0000', '#7f0000']
