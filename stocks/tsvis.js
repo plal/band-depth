@@ -90,11 +90,11 @@ function drawTextBG(ctx, txt, x, y) {
     ctx.save();
 
     // set font
-    ctx.font = "12pt Courier";
+    ctx.font = "bold 12pt Courier";
 
     // draw text from top - makes life easier at the moment
     ctx.textBaseline = 'top';
-	ctx.textAlign = 'left'
+	ctx.textAlign = 'right'
 
     /// color for background
     ctx.fillStyle = '#000000';
@@ -103,7 +103,7 @@ function drawTextBG(ctx, txt, x, y) {
     var width = ctx.measureText(txt).width;
 
     /// draw background rect assuming height of font
-    ctx.fillRect(x, y, width, parseInt(ctx.font, 12));
+    ctx.fillRect(x-width, y, width, parseInt(ctx.font, 12));
 
     /// text color
     ctx.fillStyle = '#FFFFFF';
@@ -1206,7 +1206,9 @@ function process_event_queue()
 			}
 		} else if (e.event_type == EVENT.BUILD_CURVES_DENSITY_MATRIX) {
 			global.denselines.active = !global.denselines.active
-			build_curves_density_matrix()
+			if (global.denselines.active) {
+				build_curves_density_matrix()
+			}
 			// console.log(global.denselines)
 		}
 	}
@@ -1545,28 +1547,6 @@ function update_ts()
 		let starting_x = ts_rect[RECT.LEFT]
 		let starting_y = ts_rect[RECT.TOP]
 
-		let colors = ['#f7f7f7','#d9d9d9','#bdbdbd','#969696','#636363','#252525']
-		// ['#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026','#800026']
-		// ['#ffffd9','#edf8b1','#c7e9b4','#7fcdbb','#41b6c4','#1d91c0','#225ea8','#253494','#081d58']
-		// ['#67001f','#b2182b','#d6604d','#f4a582','#fddbc7','#f7f7f7','#d1e5f0','#92c5de','#4393c3','#2166ac','#053061']
-		for (let i=0;i<colors.length;i++) {
-			let r = parseInt(colors[i].slice(1,3),16)
-			let g = parseInt(colors[i].slice(3,5),16)
-			let b = parseInt(colors[i].slice(5,7),16)
-			let o = 0.7
-			r = Math.trunc(r * o + 255 * (1-o)).toString(16)
-			g = Math.trunc(g * o + 255 * (1-o)).toString(16)
-			b = Math.trunc(b * o + 255 * (1-o)).toString(16)
-			r = r.length == 2 ? r : ("0"+r)
-			g = g.length == 2 ? g : ("0"+g)
-			b = b.length == 2 ? b : ("0"+b)
-			let color = "#" + r + g + b
-			colors[i] = color
-			// colors[i] = colors[i] + '4f'
-		}
-
-		// console.log(colors)
-
 		let ordered_matrix = []
 		for (let i=rows-1; i>=0; i--) {
 			for (let j=0; j<cols; j++) {
@@ -1574,15 +1554,6 @@ function update_ts()
 			}
 		}
 
-		// let max_value_ = 0.0
-		// for (let i=0; i<rows; i++) {
-		// 	for (let j=0; j<cols; j++) {
-		// 		let value	  = ordered_matrix[j+cols*i] / global.chart_symbols.length
-		// 		if (value > max_value_) {
-		// 			max_value_ = value
-		// 		}
-		// 	}
-		// }
 
 		function hex_to_rgb(hexstr) {
 			let r = parseInt(hexstr.slice(1,3),16) / 255.0
@@ -1601,7 +1572,7 @@ function update_ts()
 			r = r.length == 2 ? r : ("0"+r)
 			g = g.length == 2 ? g : ("0"+g)
 			b = b.length == 2 ? b : ("0"+b)
-			let color = "#" + r + g + b
+			let color = "#" + r + g + b + 'BB'
 
 			return color
 		}
@@ -1621,10 +1592,10 @@ function update_ts()
 				let value = ordered_matrix[j+cols*i] / global.chart_symbols.length
 				value = value / max_value
 				// console.log(value)
-				let color = "#000000"
-				let color_scale = ['#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026','#800026']
+				let color = "#2f3233"
+				let color_scale = ['#ffffd9','#edf8b1','#c7e9b4','#7fcdbb','#41b6c4','#1d91c0','#225ea8','#253494','#081d58','#081d58']
 				// ['#fff7ec','#fee8c8','#fdd49e','#fdbb84','#fc8d59','#ef6548','#d7301f','#b30000','#7f0000', '#7f0000']
-				// ['#ffffd9','#edf8b1','#c7e9b4','#7fcdbb','#41b6c4','#1d91c0','#225ea8','#253494','#081d58','#081d58']
+				// ['#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026','#800026']
 				// ['#67001f','#b2182b','#d6604d','#f4a582','#fddbc7','#f7f7f7','#d1e5f0','#92c5de','#4393c3','#2166ac','#053061']
 
 				if (value > 0.0) {
@@ -1634,10 +1605,7 @@ function update_ts()
 					let lambda = 0.5//1 - (x - x_idx)
 					color = hex_lerp(color_scale[x_idx], color_scale[x_idx_next], lambda)
 				}
-				//Math.floor((ordered_matrix[j+cols*i] * (colors.length-1)) / max_value)
-				// intensity = intensity.length == 2 ? intensity : ("0"+intensity)
-				// let color = "#" + intensity + intensity + intensity
-				// console.log(global.denselines.entries[j+cols*i], color_idx)
+
 				ctx.fillStyle = color
 				ctx.strokeStyle = ctx.fillStyle
 				ctx.beginPath()
@@ -1919,77 +1887,16 @@ function update()
 	setTimeout(update, 32)
 }
 
-
-
-
-// async function init() {
-//
-//     	const { instance } = await WebAssembly.instantiateStreaming( fetch("./add.wasm") );
-//
-// 	// initialize webassembly module
-// 	instance.exports.rans_init();
-//
-// 	const js_array = [1, 2, 3, 4, 5];
-//
-// 	const c_checkpoint = instance.exports.rans_mem_get_checkpoint();
-//
-// 	const c_array_pointer = instance.exports.rans_malloc(js_array.length * 4);
-//
-// 	console.log(instance.exports.rans_mem_get_checkpoint());
-//
-// 	// Turn that sequence of 32-bit integers
-// 	// into a Uint32Array, starting at that address.
-// 	const c_array = new Uint32Array( instance.exports.memory.buffer, c_array_pointer, js_array.length );
-//
-// 	// Copy the values from JS to C.
-// 	c_array.set(js_array);
-//
-// 	console.log(c_array_pointer)
-//
-// 	// Run the function, passing the starting address and length.
-// 	console.log(instance.exports.rans_sum(c_array_pointer, c_array.length));
-//
-// 	instance.exports.rans_mem_set_checkpoint(c_checkpoint);
-//
-// 	console.log(instance.exports.rans_mem_get_checkpoint());
-//
-// 	console.log(instance.exports.rans_log(2));
-// }
-//
-// init();
-
-
 async function main()
 {
 	let result
 	try {
 
-		// var mem = new WebAssembly.Memory({initial:1, maximum:1000});
-		// var imports = { env: { memory: mem } };
-    		// const { tsvis_wasm_module } = await WebAssembly.instantiateStreaming( fetch("./tsvis.wasm") );
 		const { instance } = await WebAssembly.instantiateStreaming( fetch("tsvis.wasm") );
-		// instance.exports.memory.grow(1000)
+
 		let heap_size = instance.exports.memory.buffer.byteLength
 		global.tsvis_wasm_module = instance
 		global.tsvis_wasm_module.exports.tsvis_heap_init(heap_size)
-
-		// for (let i=0;i<400;i++) {
-		// 	let block = global.tsvis_wasm_module.exports.tsvis_malloc(8)
-		// 	global.tsvis_wasm_module.exports.tsvis_zero_block(block,8)
-		// 	console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
-		// 	// console.log(global.tsvis_wasm_module.exports.tsvis_free.value)
-		// }
-
-		/*
-		let c_curve_raw_pointer = global.tsvis_wasm_module.exports.tsvis_new_curve(4)
-		console.log("pointer: " + c_curve_raw_pointer)
-		console.log("chkpt:   " + global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
-		console.log("values:  " + global.tsvis_wasm_module.exports.tsvis_curve_values_array())
-
-		let c_curve_values_raw = global.tsvis_wasm_module.exports.tsvis_curve_values_array()
-		const c_curve_values = new Float64Array( instance.exports.memory.buffer, c_curve_values_raw, 4);
-		c_curve_values.set([1.0, 3.2, 4.5, 8.7])
-		*/
 
 		let result = await fetch('http://localhost:8888/desc')
 		let symbol_names = await result.json()
@@ -2002,7 +1909,6 @@ async function main()
 		global.symbols = symbols
 		global.toggle_state = 0
 
-		//console.log(global.symbols)
 		prepare_ui();
 		setTimeout(update, 32)
 
