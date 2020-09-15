@@ -1024,8 +1024,8 @@ function build_curves_density_matrix() {
 	}
 
 	global.denselines.hashcode = denselines_hashcode
-	console.log(counter + " " + JSON.stringify(global.viewbox) + " " + denselines_hashcode)
-	counter = counter +1
+	// console.log(counter + " " + JSON.stringify(global.viewbox) + " " + denselines_hashcode)
+	counter = counter + 1
 
 	let mem_checpoint_raw_p = global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint()
 
@@ -1081,7 +1081,14 @@ function build_curves_density_matrix() {
 	}
 
 	let cdm_entries_raw_p = global.tsvis_wasm_module.exports.matrix_get_data(cdm_raw_p)
-	const cdm_entries = new Float32Array(global.tsvis_wasm_module.exports.memory.buffer, cdm_entries_raw_p, nrows*ncols)
+	let cdm_entries = new Float32Array(global.tsvis_wasm_module.exports.memory.buffer, cdm_entries_raw_p, nrows*ncols)
+
+
+	// normalize cdm entries
+	let normalized_matrix = []
+	for (let i=0;i<nrows*ncols;i++) {
+		normalized_matrix.push(cdm_entries[i] / n)
+	}
 
 	// global.denselines.rows 		 = nrows
 	// global.denselines.cols 		 = ncols
@@ -1089,7 +1096,8 @@ function build_curves_density_matrix() {
 	// global.denselines.viewbox_y  = viewbox_y
 	// global.denselines.viewbox_dx = viewbox_dx
 	// global.denselines.viewbox_dy = viewbox_dy
-	global.denselines.entries    = cdm_entries
+	global.denselines.entries = normalized_matrix
+	// cdm_entries
 
 	global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p)
 
@@ -1525,11 +1533,11 @@ function update_ts()
 
 		rows = global.viewbox.rows
 		cols = global.viewbox.cols
-		let max_value = Math.max.apply(null, global.denselines.entries) / global.chart_symbols.length
+		let max_value = Math.max.apply(null, global.denselines.entries)
 
-		if (updated) {
-			console.log(global.denselines.entries)
-		}
+		// if (updated) {
+		// 	console.log(global.denselines.entries)
+		// }
 
 		let cell_width  = ts_rect[RECT.WIDTH] / global.viewbox.cols
 		let cell_height = ts_rect[RECT.HEIGHT] / global.viewbox.rows
@@ -1537,12 +1545,13 @@ function update_ts()
 		let starting_x = ts_rect[RECT.LEFT]
 		let starting_y = ts_rect[RECT.TOP]
 
-		let ordered_matrix = []
-		for (let i=rows-1; i>=0; i--) {
-			for (let j=0; j<cols; j++) {
-				ordered_matrix.push(global.denselines.entries[j+cols*i])
-			}
-		}
+		let matrix = global.denselines.entries
+		// let ordered_matrix = []
+		// for (let i=rows-1; i>=0; i--) {
+		// 	for (let j=0; j<cols; j++) {
+		// 		ordered_matrix.push(global.denselines.entries[j+cols*i])
+		// 	}
+		// }
 
 		function hex_to_rgb(hexstr) {
 			let r = parseInt(hexstr.slice(1,3),16) / 255.0
@@ -1579,7 +1588,7 @@ function update_ts()
 		ctx.save()
 		for (let i=0; i<rows; i++) {
 			for (let j=0; j<cols; j++) {
-				let value = ordered_matrix[j+cols*i] / global.chart_symbols.length
+				let value = matrix[(cols*i)+j]
 				value = value / max_value
 				// console.log(value)
 				let color = "#2f3233"
@@ -1599,7 +1608,8 @@ function update_ts()
 				ctx.fillStyle = color
 				ctx.strokeStyle = ctx.fillStyle
 				ctx.beginPath()
-				ctx.rect(starting_x + (cell_width*j), starting_y + (cell_height*i), cell_width, cell_height)
+				ctx.rect( starting_x + (cell_width*j), 
+					  ts_rect[RECT.HEIGHT] - (i + 1) * cell_height, cell_width, cell_height)
 				ctx.closePath()
 				ctx.fill()
 				ctx.stroke()
