@@ -120,7 +120,7 @@ if __name__ == "__main__":
 
     if ON_HEROKU:
         port = int(os.environ.get('PORT', 17995)) 
-     else:
+    else:
         port = 8000
 
     server = http.server.HTTPServer(('', port), CustomHTTPHandler)
