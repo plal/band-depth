@@ -978,7 +978,7 @@ function run_extremal_depth_algorithm()
 		symbol_rank_i.ed_rank = i
 		global.extremal_depth.ranked_symbols.push(symbol_rank_i)
 	}
-	console.log(global.extremal_depth.ranked_symbols)
+	//console.log(global.extremal_depth.ranked_symbols)
 
 	//--------------
 	//find values of each band (IQR and maximum non outlying envelope)
@@ -1061,7 +1061,7 @@ function build_curves_density_matrix() {
 		const c_curve_values = new Float64Array(global.tsvis_wasm_module.exports.memory.buffer, values_raw_p, m);
 
 		c_curve_values.set(ts_current_values)
-		console.log(ts_current_values)
+		//console.log(ts_current_values)
 
 		let ok = global.tsvis_wasm_module.exports.tsvis_CurveList_append(curve_list_raw_p, curve_raw_p	)
 	}
@@ -1295,7 +1295,7 @@ function update_ts()
 			}
 		}
 		if (norm_value == undefined) {
-			console.log("no price for symbol " + symbol.name + " on norm date")
+			//console.log("no price for symbol " + symbol.name + " on norm date")
 		}
 		let ts_current_values = []
 		for (let j=date_start;j<=date_end;j++) {
@@ -1484,7 +1484,7 @@ function update_ts()
 
 		let ts_current_values = symbol.ts_current_values
 		if (ts_current_values == null) {
-			console.log("Not drawing ts for symbol ", symbol.name);
+			//console.log("Not drawing ts for symbol ", symbol.name);
 			return;
 		}
 
