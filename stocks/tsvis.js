@@ -39,7 +39,7 @@ var global = {
 	key_update_end: false,
 	extremal_depth: {fbplot: {active: false, inner_band: {lower:[], upper:[]}, outer_band: {lower:[], upper:[]}, outliers:[] }, ranked_symbols: [] },
 	modified_band_depth: {fbplot: {active: false, inner_band: {lower:[], upper:[]}, outer_band: {lower:[], upper:[]}, outliers:[] }, ranked_symbols: [] },
-	denselines: { active: false },
+	denselines: { active: false, hashcode: 0, entries:[] },
 	viewbox: { x:0, y:0, width:1, height:1, rows:4, cols:4 }
 }
 
@@ -90,11 +90,11 @@ function drawTextBG(ctx, txt, x, y) {
     ctx.save();
 
     // set font
-    ctx.font = "12pt Courier";
+    ctx.font = "bold 12pt Courier";
 
     // draw text from top - makes life easier at the moment
     ctx.textBaseline = 'top';
-	ctx.textAlign = 'left'
+	ctx.textAlign = 'right'
 
     /// color for background
     ctx.fillStyle = '#000000';
@@ -103,7 +103,7 @@ function drawTextBG(ctx, txt, x, y) {
     var width = ctx.measureText(txt).width;
 
     /// draw background rect assuming height of font
-    ctx.fillRect(x, y, width, parseInt(ctx.font, 12));
+    ctx.fillRect(x-width, y, width, parseInt(ctx.font, 12));
 
     /// text color
     ctx.fillStyle = '#FFFFFF';
@@ -375,6 +375,16 @@ function clear_chart() {
 	global.chart_symbols = []
 	global.chart_colors  = []
 	global.chart_groups	 = []
+}
+
+function hashcode(str) {
+    var hash = 2987407, i, chr;
+    for (i = 0; i < str.length; i++) {
+      chr   = str.charCodeAt(i);
+      hash  = ((hash << 5) - hash) + chr;
+      hash |= 0; // Convert to 32bit integer
+    }
+    return hash;
 }
 
 function prepare_fb_inner_band(depth_type) {
@@ -672,7 +682,8 @@ function prepare_ui()
 	//remove_active_groups_btn.setAttribute("type","button")
 	remove_active_groups_btn.id = "remove_active_groups_btn"
 	remove_active_groups_btn.textContent = 'remove active groups'
-	remove_active_groups_btn.style = "position:relative; width:100%; margin:2px; border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
+	remove_active_groups_btn.style = "position:relative; width:100%; margin:2px;\
+	 								  border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
 	install_event_listener(remove_active_groups_btn, 'click', remove_active_groups_btn, EVENT.REMOVE_ACTIVE_GROUPS)
 
 	let clear_chart_btn = document.createElement('button')
@@ -697,13 +708,14 @@ function prepare_ui()
 	let create_curve_density_matrix_lbl = document.createElement('label')
 	global.ui.create_curve_density_matrix_lbl = create_curve_density_matrix_lbl
 	create_curve_density_matrix_lbl.setAttribute("for", create_curve_density_matrix_btn)
-	create_curve_density_matrix_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:120px;'
+	create_curve_density_matrix_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:120px'
 	//extremal_depth_lbl.classList.add('checkbox_input_label')
 	create_curve_density_matrix_lbl.innerHTML = 'DenseLines'
 
 	let create_curve_density_matrix_resolution = document.createElement('input')
 	global.ui.create_curve_density_matrix_resolution = create_curve_density_matrix_resolution
 	create_curve_density_matrix_resolution.value = "32"
+	create_curve_density_matrix_resolution.style = "position:relative; width:35; margin:2px"
 
 	let create_curve_density_matrix_grid = document.createElement('div')
 	global.ui.create_curve_density_matrix_grid = create_curve_density_matrix_grid
@@ -911,26 +923,20 @@ function run_extremal_depth_algorithm()
 
 	if (global.chart_symbols.length == 0) {
 		window.alert("No symbols selected!")
-		global.ui.extremal_depth_btn.checked = False
 		return
 	}
 
-	// get curves on the chart and creates the envelope for them
 	let n = global.chart_symbols.length
 
 	let symbols_ed = []
 
 	let mem_checpoint_raw_p = global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint()
 
-	//heap_log()
-
 	let curve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_CurveList_new(n)
 	while (curve_list_raw_p == 0) {
 		grow_heap()
 		curve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_CurveList_new(n)
 	}
-
-	//console.log("CL ------------> ",global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 
 	for (let i=0;i<n;i++) {
 		let symbol = global.chart_symbols[i]
@@ -941,58 +947,39 @@ function run_extremal_depth_algorithm()
 		symbols_ed.push(symbol)
 
 		let m = ts_current_values.length
-		//console.log("time points", m)
+
 		let curve_raw_p  = global.tsvis_wasm_module.exports.tsvis_Curve_new(m)
 		while (curve_raw_p == 0) {
 			grow_heap()
 			curve_raw_p = global.tsvis_wasm_module.exports.tsvis_Curve_new(m)
 		}
-		//console.log("CV ------------> ",global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
-		//console.log("curve_raw_p",curve_raw_p)
+
 		let values_raw_p = global.tsvis_wasm_module.exports.tsvis_Curve_values(curve_raw_p)
-		//console.log("values_raw_p",values_raw_p)
 
 		const c_curve_values = new Float64Array(global.tsvis_wasm_module.exports.memory.buffer, values_raw_p, m);
-
 		c_curve_values.set(ts_current_values)
-
-		//console.log("sum", global.tsvis_wasm_module.exports.sum_f64(values_raw_p,m))
 
 		let ok = global.tsvis_wasm_module.exports.tsvis_CurveList_append(curve_list_raw_p, curve_raw_p)
 	}
-
-	//console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 
 	let ed_raw_p = global.tsvis_wasm_module.exports.ed_extremal_depth_run(curve_list_raw_p)
 	while (ed_raw_p == 0) {
 		grow_heap()
 		ed_raw_p = global.tsvis_wasm_module.exports.ed_extremal_depth_run(curve_list_raw_p)
 	}
-	//console.log("ED ------------> ",global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
-
-	//console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 
 	let rank_raw_p = global.tsvis_wasm_module.exports.ed_get_extremal_depth_rank(ed_raw_p)
 
-	//console.log("rank_raw_p",rank_raw_p)
-
-	//console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
-
 	const rank = new Int32Array(global.tsvis_wasm_module.exports.memory.buffer, rank_raw_p, symbols_ed.length);
-
-	//console.log(ed_raw_p)
-
-	// console.log("checksum", global.tsvis_wasm_module.exports.checksum(rank_raw_p,symbols_ed.length))
 
 	global.extremal_depth.ranked_symbols = []
 	for (let i=0;i<symbols_ed.length;i++) {
 		let symbol_rank_i = symbols_ed[rank[i]]
 		symbol_rank_i.ed_rank = i
 		global.extremal_depth.ranked_symbols.push(symbol_rank_i)
-		//console.log(rank[i])
-		//console.log(`Depth rank ${i} is symbol ${symbol_rank_i.name} (from most extremal smaller rank to deeper larger rank)`)
 	}
 	console.log(global.extremal_depth.ranked_symbols)
+
 	//--------------
 	//find values of each band (IQR and maximum non outlying envelope)
 	//--------------
@@ -1027,22 +1014,22 @@ function run_extremal_depth_algorithm()
 
 }
 
+var counter = 0
 function build_curves_density_matrix() {
 
-	if (global.denselines.entries) {
-		for (let i=0; i<global.denselines.entries.length; i++) {
-			global.denselines.entries[i] = 0
-		}
+	let denselines_hashcode = hashcode(JSON.stringify(global.viewbox))
+
+	if (denselines_hashcode == global.denselines.hashcode) {
+		return false
 	}
+
+	global.denselines.hashcode = denselines_hashcode
+	// console.log(counter + " " + JSON.stringify(global.viewbox) + " " + denselines_hashcode)
+	counter = counter + 1
 
 	let mem_checpoint_raw_p = global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint()
 
 	let n = global.chart_symbols.length
-
-	// let curve1 = [1.0, 5.0, 3.0, 4.0]
-	// let curve2 = [5.0, 0.0, 2.0, 0.0]
-	// let curves = [curve1,curve2]
-	// let n = curves.length
 
 	let curve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_CurveList_new(n)
 	while (curve_list_raw_p == 0) {
@@ -1055,8 +1042,6 @@ function build_curves_density_matrix() {
 	for (let i=0;i<n;i++) {
 		let symbol = global.chart_symbols[i]
 		let ts_current_values = symbol.ts_current_values
-
-		// let ts_current_values = curves[i]
 
 		if (ts_current_values == null) {
 			console.log("Discarding symbol ", symbol.name, " on curve density matrix building")
@@ -1085,8 +1070,8 @@ function build_curves_density_matrix() {
 	let ncols 	   = global.viewbox.cols
 	let viewbox_x  = global.viewbox.x
 	let viewbox_y  = global.viewbox.y
-	let viewbox_dx = global.viewbox.width//20
-	let viewbox_dy = global.viewbox.height//30
+	let viewbox_dx = global.viewbox.width
+	let viewbox_dy = global.viewbox.height
 
 	let cdm_raw_p = global.tsvis_wasm_module.exports.curves_density_matrix(curve_list_raw_p, nrows, ncols, viewbox_x, viewbox_y, viewbox_dx, viewbox_dy)
 
@@ -1096,19 +1081,27 @@ function build_curves_density_matrix() {
 	}
 
 	let cdm_entries_raw_p = global.tsvis_wasm_module.exports.matrix_get_data(cdm_raw_p)
-	const cdm_entries = new Float32Array(global.tsvis_wasm_module.exports.memory.buffer, cdm_entries_raw_p, nrows*ncols)
+	let cdm_entries = new Float32Array(global.tsvis_wasm_module.exports.memory.buffer, cdm_entries_raw_p, nrows*ncols)
 
-	global.denselines.rows 		 = nrows
-	global.denselines.cols 		 = ncols
-	global.denselines.viewbox_x  = viewbox_x
-	global.denselines.viewbox_y  = viewbox_y
-	global.denselines.viewbox_dx = viewbox_dx
-	global.denselines.viewbox_dy = viewbox_dy
-	global.denselines.entries    = cdm_entries
 
-	// console.log(cdm_entries)
+	// normalize cdm entries
+	let normalized_matrix = []
+	for (let i=0;i<nrows*ncols;i++) {
+		normalized_matrix.push(cdm_entries[i] / n)
+	}
+
+	// global.denselines.rows 		 = nrows
+	// global.denselines.cols 		 = ncols
+	// global.denselines.viewbox_x  = viewbox_x
+	// global.denselines.viewbox_y  = viewbox_y
+	// global.denselines.viewbox_dx = viewbox_dx
+	// global.denselines.viewbox_dy = viewbox_dy
+	global.denselines.entries = normalized_matrix
+	// cdm_entries
 
 	global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p)
+
+	return true
 
 }
 
@@ -1194,7 +1187,6 @@ function process_event_queue()
 				}
 			}
 		} else if (e.event_type == EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM) {
-			//console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 			global.extremal_depth.fbplot.active = !global.extremal_depth.fbplot.active
 			if (global.extremal_depth.fbplot.active) {
 				run_extremal_depth_algorithm()
@@ -1206,8 +1198,6 @@ function process_event_queue()
 			}
 		} else if (e.event_type == EVENT.BUILD_CURVES_DENSITY_MATRIX) {
 			global.denselines.active = !global.denselines.active
-			build_curves_density_matrix()
-			// console.log(global.denselines)
 		}
 	}
 	global.events.length = 0
@@ -1323,6 +1313,17 @@ function update_ts()
 		}
 		symbol.ts_current_values = ts_current_values
 	}
+
+	// if (global.extremal_depth.fbplot.active) {
+	// 	y_max = Math.max.apply(y_max, global.extremal_depth.fbplot.outer_band.upper)
+	// 	y_min = Math.min.apply(y_min, global.extremal_depth.fbplot.outer_band.lower)
+	// }
+	//
+	// if (global.modified_band_depth.fbplot.active) {
+	// 	y_max = Math.max.apply(y_max, global.modified_band_depth.fbplot.outer_band.upper)
+	// 	y_min = Math.min.apply(y_min, global.modified_band_depth.fbplot.outer_band.lower)
+	// }
+
 	if (global.extremal_depth.fbplot.active || global.modified_band_depth.fbplot.active) {
 		let max_outer_bands = Math.max(Math.max.apply(null, global.extremal_depth.fbplot.outer_band.upper),
 									   Math.max.apply(null, global.modified_band_depth.fbplot.outer_band.upper))
@@ -1334,6 +1335,7 @@ function update_ts()
 		y_min = Math.min(min_outer_bands, y_min)
 
 	}
+
 	if(y_min == y_max) {
 		y_min = y_max-1
 	}
@@ -1347,10 +1349,11 @@ function update_ts()
 	global.viewbox.x 	  = x_min
 	global.viewbox.y 	  = y_min
 	global.viewbox.width  = x_max - x_min
-	global.viewbox.height = y_max -y_min
+	global.viewbox.height = y_max - y_min
 	let resolution = parseInt(global.ui.create_curve_density_matrix_resolution.value)
 	let rows = Math.floor(ts_rect[RECT.HEIGHT] / resolution)
 	let cols = Math.floor(ts_rect[RECT.WIDTH] / resolution)
+	global.viewbox.resolution = resolution
 	global.viewbox.rows = rows
 	global.viewbox.cols = cols
 
@@ -1535,52 +1538,30 @@ function update_ts()
 
 
 	if (global.denselines.active) {
-		let rows = global.denselines.rows
-		let cols = global.denselines.cols
-		let max_value = Math.max.apply(null, global.denselines.entries) / global.chart_symbols.length
 
-		let cell_width   = ts_rect[RECT.WIDTH] / global.denselines.cols
-		let cell_height  = ts_rect[RECT.HEIGHT] / global.denselines.rows
+		let updated = build_curves_density_matrix()
+
+		// build_curves_density_matrix()
+
+		rows = global.viewbox.rows
+		cols = global.viewbox.cols
+		let max_value = Math.max.apply(null, global.denselines.entries)
+
+		// if (updated) {
+		// 	console.log(global.denselines.entries)
+		// }
+
+		let cell_width  = ts_rect[RECT.WIDTH] / global.viewbox.cols
+		let cell_height = ts_rect[RECT.HEIGHT] / global.viewbox.rows
 
 		let starting_x = ts_rect[RECT.LEFT]
 		let starting_y = ts_rect[RECT.TOP]
 
-		let colors = ['#f7f7f7','#d9d9d9','#bdbdbd','#969696','#636363','#252525']
-		// ['#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026','#800026']
-		// ['#ffffd9','#edf8b1','#c7e9b4','#7fcdbb','#41b6c4','#1d91c0','#225ea8','#253494','#081d58']
-		// ['#67001f','#b2182b','#d6604d','#f4a582','#fddbc7','#f7f7f7','#d1e5f0','#92c5de','#4393c3','#2166ac','#053061']
-		for (let i=0;i<colors.length;i++) {
-			let r = parseInt(colors[i].slice(1,3),16)
-			let g = parseInt(colors[i].slice(3,5),16)
-			let b = parseInt(colors[i].slice(5,7),16)
-			let o = 0.7
-			r = Math.trunc(r * o + 255 * (1-o)).toString(16)
-			g = Math.trunc(g * o + 255 * (1-o)).toString(16)
-			b = Math.trunc(b * o + 255 * (1-o)).toString(16)
-			r = r.length == 2 ? r : ("0"+r)
-			g = g.length == 2 ? g : ("0"+g)
-			b = b.length == 2 ? b : ("0"+b)
-			let color = "#" + r + g + b
-			colors[i] = color
-			// colors[i] = colors[i] + '4f'
-		}
-
-		// console.log(colors)
-
-		let ordered_matrix = []
-		for (let i=rows-1; i>=0; i--) {
-			for (let j=0; j<cols; j++) {
-				ordered_matrix.push(global.denselines.entries[j+cols*i])
-			}
-		}
-
-		// let max_value_ = 0.0
-		// for (let i=0; i<rows; i++) {
+		let matrix = global.denselines.entries
+		// let ordered_matrix = []
+		// for (let i=rows-1; i>=0; i--) {
 		// 	for (let j=0; j<cols; j++) {
-		// 		let value	  = ordered_matrix[j+cols*i] / global.chart_symbols.length
-		// 		if (value > max_value_) {
-		// 			max_value_ = value
-		// 		}
+		// 		ordered_matrix.push(global.denselines.entries[j+cols*i])
 		// 	}
 		// }
 
@@ -1601,7 +1582,7 @@ function update_ts()
 			r = r.length == 2 ? r : ("0"+r)
 			g = g.length == 2 ? g : ("0"+g)
 			b = b.length == 2 ? b : ("0"+b)
-			let color = "#" + r + g + b
+			let color = "#" + r + g + b + 'BB'
 
 			return color
 		}
@@ -1616,36 +1597,37 @@ function update_ts()
 			return rgb_to_hex(rgb_lerp(hex_to_rgb(a_hex), hex_to_rgb(b_hex), lambda) )
 		}
 
+		ctx.save()
 		for (let i=0; i<rows; i++) {
 			for (let j=0; j<cols; j++) {
-				let value = ordered_matrix[j+cols*i] / global.chart_symbols.length
+				let value = matrix[(cols*i)+j]
 				value = value / max_value
 				// console.log(value)
-				let color = "#000000"
-				let color_scale = ['#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026','#800026']
+				let color = "#2f3233"
+				let color_scale = ['#ffffd9','#edf8b1','#c7e9b4','#7fcdbb','#41b6c4','#1d91c0','#225ea8','#253494','#081d58','#081d58']
 				// ['#fff7ec','#fee8c8','#fdd49e','#fdbb84','#fc8d59','#ef6548','#d7301f','#b30000','#7f0000', '#7f0000']
-				// ['#ffffd9','#edf8b1','#c7e9b4','#7fcdbb','#41b6c4','#1d91c0','#225ea8','#253494','#081d58','#081d58']
+				// ['#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026','#800026']
 				// ['#67001f','#b2182b','#d6604d','#f4a582','#fddbc7','#f7f7f7','#d1e5f0','#92c5de','#4393c3','#2166ac','#053061']
 
 				if (value > 0.0) {
 					let x = value * (color_scale.length-1)
 					let x_idx = Math.floor(x)
 					let x_idx_next = Math.min(x_idx+1, color_scale.length-1)
-					let lambda = 0.5//1 - (x - x_idx)
+					let lambda = 1 - (x - x_idx)
 					color = hex_lerp(color_scale[x_idx], color_scale[x_idx_next], lambda)
 				}
-				//Math.floor((ordered_matrix[j+cols*i] * (colors.length-1)) / max_value)
-				// intensity = intensity.length == 2 ? intensity : ("0"+intensity)
-				// let color = "#" + intensity + intensity + intensity
-				// console.log(global.denselines.entries[j+cols*i], color_idx)
+
 				ctx.fillStyle = color
 				ctx.strokeStyle = ctx.fillStyle
 				ctx.beginPath()
-				ctx.rect(starting_x + (cell_width*j), starting_y + (cell_height*i), cell_width, cell_height)
+				ctx.rect( starting_x + (cell_width*j),
+					  ts_rect[RECT.HEIGHT] - (i + 1) * cell_height, cell_width, cell_height)
+				ctx.closePath()
 				ctx.fill()
 				ctx.stroke()
 			}
 		}
+		ctx.restore()
 	}
 
 	//--------------
@@ -1664,6 +1646,7 @@ function update_ts()
 			let num_timesteps = global.extremal_depth.ranked_symbols[0].ts_current_values.length
 
 			ctx.save()
+
 			ctx.beginPath()
 			let p = map(0,ymin[0])
 			ctx.moveTo(p[0],p[1])
@@ -1678,6 +1661,7 @@ function update_ts()
 			ctx.closePath()
 			ctx.fillStyle="#00FFFF55"
 			ctx.fill()
+
 			ctx.restore()
 
 			//--------------
@@ -1865,7 +1849,8 @@ function update_ts()
 		let record = global.focused_symbol
 		let value = global.focused_symbol.data[global.focused_date]
 		let date = date_offset_to_string(date_start+global.focused_date)
-		let text = `symbol: ${global.focused_symbol.name} // date: ${date} // ED rank: #${global.focused_symbol.ed_rank+1} // MBD rank: #${global.focused_symbol.mbd_rank+1}`
+		let text = `symbol: ${global.focused_symbol.name} // date: ${date} // ED rank: #${global.focused_symbol.ed_rank+1} // `+
+					`MBD rank: #${global.focused_symbol.mbd_rank+1}`
 		ctx.font = '20px Monospace';
 		ctx.textAlign = 'center';
 		ctx.fillText(text, canvas.width/2, 40);
@@ -1919,77 +1904,16 @@ function update()
 	setTimeout(update, 32)
 }
 
-
-
-
-// async function init() {
-//
-//     	const { instance } = await WebAssembly.instantiateStreaming( fetch("./add.wasm") );
-//
-// 	// initialize webassembly module
-// 	instance.exports.rans_init();
-//
-// 	const js_array = [1, 2, 3, 4, 5];
-//
-// 	const c_checkpoint = instance.exports.rans_mem_get_checkpoint();
-//
-// 	const c_array_pointer = instance.exports.rans_malloc(js_array.length * 4);
-//
-// 	console.log(instance.exports.rans_mem_get_checkpoint());
-//
-// 	// Turn that sequence of 32-bit integers
-// 	// into a Uint32Array, starting at that address.
-// 	const c_array = new Uint32Array( instance.exports.memory.buffer, c_array_pointer, js_array.length );
-//
-// 	// Copy the values from JS to C.
-// 	c_array.set(js_array);
-//
-// 	console.log(c_array_pointer)
-//
-// 	// Run the function, passing the starting address and length.
-// 	console.log(instance.exports.rans_sum(c_array_pointer, c_array.length));
-//
-// 	instance.exports.rans_mem_set_checkpoint(c_checkpoint);
-//
-// 	console.log(instance.exports.rans_mem_get_checkpoint());
-//
-// 	console.log(instance.exports.rans_log(2));
-// }
-//
-// init();
-
-
 async function main()
 {
 	let result
 	try {
 
-		// var mem = new WebAssembly.Memory({initial:1, maximum:1000});
-		// var imports = { env: { memory: mem } };
-    		// const { tsvis_wasm_module } = await WebAssembly.instantiateStreaming( fetch("./tsvis.wasm") );
-		const { instance } = await WebAssembly.instantiateStreaming( fetch("/tsvis.wasm") );
-		// instance.exports.memory.grow(1000)
+		const { instance } = await WebAssembly.instantiateStreaming( fetch("tsvis.wasm") );
+
 		let heap_size = instance.exports.memory.buffer.byteLength
 		global.tsvis_wasm_module = instance
 		global.tsvis_wasm_module.exports.tsvis_heap_init(heap_size)
-
-		// for (let i=0;i<400;i++) {
-		// 	let block = global.tsvis_wasm_module.exports.tsvis_malloc(8)
-		// 	global.tsvis_wasm_module.exports.tsvis_zero_block(block,8)
-		// 	console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
-		// 	// console.log(global.tsvis_wasm_module.exports.tsvis_free.value)
-		// }
-
-		/*
-		let c_curve_raw_pointer = global.tsvis_wasm_module.exports.tsvis_new_curve(4)
-		console.log("pointer: " + c_curve_raw_pointer)
-		console.log("chkpt:   " + global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
-		console.log("values:  " + global.tsvis_wasm_module.exports.tsvis_curve_values_array())
-
-		let c_curve_values_raw = global.tsvis_wasm_module.exports.tsvis_curve_values_array()
-		const c_curve_values = new Float64Array( instance.exports.memory.buffer, c_curve_values_raw, 4);
-		c_curve_values.set([1.0, 3.2, 4.5, 8.7])
-		*/
 
 		let result = await fetch('/desc')
 		let symbol_names = await result.json()
@@ -2002,13 +1926,11 @@ async function main()
 		global.symbols = symbols
 		global.toggle_state = 0
 
-		//console.log(global.symbols)
 		prepare_ui();
 		setTimeout(update, 32)
 
 	} catch (e) {
 		console.log("Fatal Error: couldn't download data")
-		console.log(e)
 		return
 	}
 }
