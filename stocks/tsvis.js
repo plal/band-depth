@@ -672,7 +672,8 @@ function prepare_ui()
 	//remove_active_groups_btn.setAttribute("type","button")
 	remove_active_groups_btn.id = "remove_active_groups_btn"
 	remove_active_groups_btn.textContent = 'remove active groups'
-	remove_active_groups_btn.style = "position:relative; width:100%; margin:2px; border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
+	remove_active_groups_btn.style = "position:relative; width:100%; margin:2px;\
+	 								  border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
 	install_event_listener(remove_active_groups_btn, 'click', remove_active_groups_btn, EVENT.REMOVE_ACTIVE_GROUPS)
 
 	let clear_chart_btn = document.createElement('button')
@@ -697,13 +698,14 @@ function prepare_ui()
 	let create_curve_density_matrix_lbl = document.createElement('label')
 	global.ui.create_curve_density_matrix_lbl = create_curve_density_matrix_lbl
 	create_curve_density_matrix_lbl.setAttribute("for", create_curve_density_matrix_btn)
-	create_curve_density_matrix_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:120px;'
+	create_curve_density_matrix_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:120px'
 	//extremal_depth_lbl.classList.add('checkbox_input_label')
 	create_curve_density_matrix_lbl.innerHTML = 'DenseLines'
 
 	let create_curve_density_matrix_resolution = document.createElement('input')
 	global.ui.create_curve_density_matrix_resolution = create_curve_density_matrix_resolution
 	create_curve_density_matrix_resolution.value = "32"
+	create_curve_density_matrix_resolution.style = "position:relative; width:35; margin:2px"
 
 	let create_curve_density_matrix_grid = document.createElement('div')
 	global.ui.create_curve_density_matrix_grid = create_curve_density_matrix_grid
@@ -911,26 +913,20 @@ function run_extremal_depth_algorithm()
 
 	if (global.chart_symbols.length == 0) {
 		window.alert("No symbols selected!")
-		global.ui.extremal_depth_btn.checked = False
 		return
 	}
 
-	// get curves on the chart and creates the envelope for them
 	let n = global.chart_symbols.length
 
 	let symbols_ed = []
 
 	let mem_checpoint_raw_p = global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint()
 
-	//heap_log()
-
 	let curve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_CurveList_new(n)
 	while (curve_list_raw_p == 0) {
 		grow_heap()
 		curve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_CurveList_new(n)
 	}
-
-	//console.log("CL ------------> ",global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 
 	for (let i=0;i<n;i++) {
 		let symbol = global.chart_symbols[i]
@@ -941,58 +937,39 @@ function run_extremal_depth_algorithm()
 		symbols_ed.push(symbol)
 
 		let m = ts_current_values.length
-		//console.log("time points", m)
+
 		let curve_raw_p  = global.tsvis_wasm_module.exports.tsvis_Curve_new(m)
 		while (curve_raw_p == 0) {
 			grow_heap()
 			curve_raw_p = global.tsvis_wasm_module.exports.tsvis_Curve_new(m)
 		}
-		//console.log("CV ------------> ",global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
-		//console.log("curve_raw_p",curve_raw_p)
+
 		let values_raw_p = global.tsvis_wasm_module.exports.tsvis_Curve_values(curve_raw_p)
-		//console.log("values_raw_p",values_raw_p)
 
 		const c_curve_values = new Float64Array(global.tsvis_wasm_module.exports.memory.buffer, values_raw_p, m);
-
 		c_curve_values.set(ts_current_values)
-
-		//console.log("sum", global.tsvis_wasm_module.exports.sum_f64(values_raw_p,m))
 
 		let ok = global.tsvis_wasm_module.exports.tsvis_CurveList_append(curve_list_raw_p, curve_raw_p)
 	}
-
-	//console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 
 	let ed_raw_p = global.tsvis_wasm_module.exports.ed_extremal_depth_run(curve_list_raw_p)
 	while (ed_raw_p == 0) {
 		grow_heap()
 		ed_raw_p = global.tsvis_wasm_module.exports.ed_extremal_depth_run(curve_list_raw_p)
 	}
-	//console.log("ED ------------> ",global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
-
-	//console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 
 	let rank_raw_p = global.tsvis_wasm_module.exports.ed_get_extremal_depth_rank(ed_raw_p)
 
-	//console.log("rank_raw_p",rank_raw_p)
-
-	//console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
-
 	const rank = new Int32Array(global.tsvis_wasm_module.exports.memory.buffer, rank_raw_p, symbols_ed.length);
-
-	//console.log(ed_raw_p)
-
-	// console.log("checksum", global.tsvis_wasm_module.exports.checksum(rank_raw_p,symbols_ed.length))
 
 	global.extremal_depth.ranked_symbols = []
 	for (let i=0;i<symbols_ed.length;i++) {
 		let symbol_rank_i = symbols_ed[rank[i]]
 		symbol_rank_i.ed_rank = i
 		global.extremal_depth.ranked_symbols.push(symbol_rank_i)
-		//console.log(rank[i])
-		//console.log(`Depth rank ${i} is symbol ${symbol_rank_i.name} (from most extremal smaller rank to deeper larger rank)`)
 	}
 	console.log(global.extremal_depth.ranked_symbols)
+
 	//--------------
 	//find values of each band (IQR and maximum non outlying envelope)
 	//--------------
@@ -1039,11 +1016,6 @@ function build_curves_density_matrix() {
 
 	let n = global.chart_symbols.length
 
-	// let curve1 = [1.0, 5.0, 3.0, 4.0]
-	// let curve2 = [5.0, 0.0, 2.0, 0.0]
-	// let curves = [curve1,curve2]
-	// let n = curves.length
-
 	let curve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_CurveList_new(n)
 	while (curve_list_raw_p == 0) {
 		grow_heap()
@@ -1055,8 +1027,6 @@ function build_curves_density_matrix() {
 	for (let i=0;i<n;i++) {
 		let symbol = global.chart_symbols[i]
 		let ts_current_values = symbol.ts_current_values
-
-		// let ts_current_values = curves[i]
 
 		if (ts_current_values == null) {
 			console.log("Discarding symbol ", symbol.name, " on curve density matrix building")
@@ -1085,8 +1055,8 @@ function build_curves_density_matrix() {
 	let ncols 	   = global.viewbox.cols
 	let viewbox_x  = global.viewbox.x
 	let viewbox_y  = global.viewbox.y
-	let viewbox_dx = global.viewbox.width//20
-	let viewbox_dy = global.viewbox.height//30
+	let viewbox_dx = global.viewbox.width
+	let viewbox_dy = global.viewbox.height
 
 	let cdm_raw_p = global.tsvis_wasm_module.exports.curves_density_matrix(curve_list_raw_p, nrows, ncols, viewbox_x, viewbox_y, viewbox_dx, viewbox_dy)
 
@@ -1105,8 +1075,6 @@ function build_curves_density_matrix() {
 	global.denselines.viewbox_dx = viewbox_dx
 	global.denselines.viewbox_dy = viewbox_dy
 	global.denselines.entries    = cdm_entries
-
-	// console.log(cdm_entries)
 
 	global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p)
 
@@ -1349,7 +1317,7 @@ function update_ts()
 	global.viewbox.x 	  = x_min
 	global.viewbox.y 	  = y_min
 	global.viewbox.width  = x_max - x_min
-	global.viewbox.height = y_max -y_min
+	global.viewbox.height = y_max - y_min
 	let resolution = parseInt(global.ui.create_curve_density_matrix_resolution.value)
 	let rows = Math.floor(ts_rect[RECT.HEIGHT] / resolution)
 	let cols = Math.floor(ts_rect[RECT.WIDTH] / resolution)
@@ -1602,7 +1570,7 @@ function update_ts()
 					let x = value * (color_scale.length-1)
 					let x_idx = Math.floor(x)
 					let x_idx_next = Math.min(x_idx+1, color_scale.length-1)
-					let lambda = 0.5//1 - (x - x_idx)
+					let lambda = 1 - (x - x_idx)
 					color = hex_lerp(color_scale[x_idx], color_scale[x_idx_next], lambda)
 				}
 
@@ -1833,7 +1801,8 @@ function update_ts()
 		let record = global.focused_symbol
 		let value = global.focused_symbol.data[global.focused_date]
 		let date = date_offset_to_string(date_start+global.focused_date)
-		let text = `symbol: ${global.focused_symbol.name} // date: ${date} // ED rank: #${global.focused_symbol.ed_rank+1} // MBD rank: #${global.focused_symbol.mbd_rank+1}`
+		let text = `symbol: ${global.focused_symbol.name} // date: ${date} // ED rank: #${global.focused_symbol.ed_rank+1} // `+
+					`MBD rank: #${global.focused_symbol.mbd_rank+1}`
 		ctx.font = '20px Monospace';
 		ctx.textAlign = 'center';
 		ctx.fillText(text, canvas.width/2, 40);
