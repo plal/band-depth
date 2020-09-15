@@ -116,7 +116,7 @@ class TSServer:
 if __name__ == "__main__":
     
     ts_server = TSServer()
-    ON_HEROKU = os.environ.get('DYNO')
+    ON_HEROKU = os.environ.get('ON_HEROKU')
 
     if ON_HEROKU:
         port = int(os.environ.get('PORT', 17995)) 
