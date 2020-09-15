@@ -1314,14 +1314,26 @@ function update_ts()
 		symbol.ts_current_values = ts_current_values
 	}
 
-	if (global.extremal_depth.fbplot.active) {
-		y_max = Math.max.apply(y_max, global.extremal_depth.fbplot.outer_band.upper)
-		y_min = Math.min.apply(y_min, global.extremal_depth.fbplot.outer_band.lower)
-	}
+	// if (global.extremal_depth.fbplot.active) {
+	// 	y_max = Math.max.apply(y_max, global.extremal_depth.fbplot.outer_band.upper)
+	// 	y_min = Math.min.apply(y_min, global.extremal_depth.fbplot.outer_band.lower)
+	// }
+	//
+	// if (global.modified_band_depth.fbplot.active) {
+	// 	y_max = Math.max.apply(y_max, global.modified_band_depth.fbplot.outer_band.upper)
+	// 	y_min = Math.min.apply(y_min, global.modified_band_depth.fbplot.outer_band.lower)
+	// }
 
-	if (global.modified_band_depth.fbplot.active) {
-		y_max = Math.max.apply(y_max, global.modified_band_depth.fbplot.outer_band.upper)
-		y_min = Math.min.apply(y_min, global.modified_band_depth.fbplot.outer_band.lower)
+	if (global.extremal_depth.fbplot.active || global.modified_band_depth.fbplot.active) {
+		let max_outer_bands = Math.max(Math.max.apply(null, global.extremal_depth.fbplot.outer_band.upper),
+									   Math.max.apply(null, global.modified_band_depth.fbplot.outer_band.upper))
+
+		let min_outer_bands = Math.min(Math.min.apply(null, global.extremal_depth.fbplot.outer_band.lower),
+											 Math.min.apply(null, global.modified_band_depth.fbplot.outer_band.lower))
+
+		y_max = Math.max(max_outer_bands, y_max)
+		y_min = Math.min(min_outer_bands, y_min)
+
 	}
 
 	if(y_min == y_max) {
@@ -1608,7 +1620,7 @@ function update_ts()
 				ctx.fillStyle = color
 				ctx.strokeStyle = ctx.fillStyle
 				ctx.beginPath()
-				ctx.rect( starting_x + (cell_width*j), 
+				ctx.rect( starting_x + (cell_width*j),
 					  ts_rect[RECT.HEIGHT] - (i + 1) * cell_height, cell_width, cell_height)
 				ctx.closePath()
 				ctx.fill()
