@@ -51,6 +51,14 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()           
             self.wfile.write(f.read())
             self.wfile.flush()
+        elif path == '/style.css':
+            self.send_response(200)      
+            f = open('style.css', 'rb')
+            self.send_header('Content-Type','text/html')
+            self.send_header('Access-Control-Allow-Origin','*')
+            self.end_headers()           
+            self.wfile.write(f.read())
+            self.wfile.flush()
         elif path == '/tsvis.js':
             self.send_response(200)      
             f = open('tsvis.js', 'rb')
