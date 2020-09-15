@@ -132,6 +132,13 @@ void tsvis_mem_set_checkpoint(void *checkpoint)
 	heap->free = (u32) (((u8*) checkpoint) - heap->data);
 }
 
+void tsvis_zero_block(s8 *buffer, s32 length)
+{
+	for (s32 i=0;i<length;i++) {
+		buffer[i] = 0;
+	}
+}
+
 void *tsvis_malloc(u32 bytes)
 {
 	Heap *heap = tsvis_heap();
@@ -140,16 +147,11 @@ void *tsvis_malloc(u32 bytes)
 		return 0;
 	}
 	void *result = heap->data + heap->free;
+	tsvis_zero_block(result, storage);
 	heap->free += storage;
 	return result;
 }
 
-void tsvis_zero_block(s8 *buffer, s32 length)
-{
-	for (s32 i=0;i<length;i++) {
-		buffer[i] = 0;
-	}
-}
 
 #else
 

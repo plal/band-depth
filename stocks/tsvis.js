@@ -39,7 +39,7 @@ var global = {
 	key_update_end: false,
 	extremal_depth: {fbplot: {active: false, inner_band: {lower:[], upper:[]}, outer_band: {lower:[], upper:[]}, outliers:[] }, ranked_symbols: [] },
 	modified_band_depth: {fbplot: {active: false, inner_band: {lower:[], upper:[]}, outer_band: {lower:[], upper:[]}, outliers:[] }, ranked_symbols: [] },
-	denselines: { active: false },
+	denselines: { active: false, hashcode: 0, entries:[] },
 	viewbox: { x:0, y:0, width:1, height:1, rows:4, cols:4 }
 }
 
@@ -375,6 +375,16 @@ function clear_chart() {
 	global.chart_symbols = []
 	global.chart_colors  = []
 	global.chart_groups	 = []
+}
+
+function hashcode(str) {
+    var hash = 2987407, i, chr;
+    for (i = 0; i < str.length; i++) {
+      chr   = str.charCodeAt(i);
+      hash  = ((hash << 5) - hash) + chr;
+      hash |= 0; // Convert to 32bit integer
+    }
+    return hash;
 }
 
 function prepare_fb_inner_band(depth_type) {
@@ -1004,13 +1014,18 @@ function run_extremal_depth_algorithm()
 
 }
 
+var counter = 0
 function build_curves_density_matrix() {
 
-	if (global.denselines.entries) {
-		for (let i=0; i<global.denselines.entries.length; i++) {
-			global.denselines.entries[i] = 0
-		}
+	let denselines_hashcode = hashcode(JSON.stringify(global.viewbox))
+
+	if (denselines_hashcode == global.denselines.hashcode) {
+		return false
 	}
+
+	global.denselines.hashcode = denselines_hashcode
+	console.log(counter + " " + JSON.stringify(global.viewbox) + " " + denselines_hashcode)
+	counter = counter +1
 
 	let mem_checpoint_raw_p = global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint()
 
@@ -1068,15 +1083,17 @@ function build_curves_density_matrix() {
 	let cdm_entries_raw_p = global.tsvis_wasm_module.exports.matrix_get_data(cdm_raw_p)
 	const cdm_entries = new Float32Array(global.tsvis_wasm_module.exports.memory.buffer, cdm_entries_raw_p, nrows*ncols)
 
-	global.denselines.rows 		 = nrows
-	global.denselines.cols 		 = ncols
-	global.denselines.viewbox_x  = viewbox_x
-	global.denselines.viewbox_y  = viewbox_y
-	global.denselines.viewbox_dx = viewbox_dx
-	global.denselines.viewbox_dy = viewbox_dy
+	// global.denselines.rows 		 = nrows
+	// global.denselines.cols 		 = ncols
+	// global.denselines.viewbox_x  = viewbox_x
+	// global.denselines.viewbox_y  = viewbox_y
+	// global.denselines.viewbox_dx = viewbox_dx
+	// global.denselines.viewbox_dy = viewbox_dy
 	global.denselines.entries    = cdm_entries
 
 	global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p)
+
+	return true
 
 }
 
@@ -1162,7 +1179,6 @@ function process_event_queue()
 				}
 			}
 		} else if (e.event_type == EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM) {
-			//console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
 			global.extremal_depth.fbplot.active = !global.extremal_depth.fbplot.active
 			if (global.extremal_depth.fbplot.active) {
 				run_extremal_depth_algorithm()
@@ -1174,10 +1190,6 @@ function process_event_queue()
 			}
 		} else if (e.event_type == EVENT.BUILD_CURVES_DENSITY_MATRIX) {
 			global.denselines.active = !global.denselines.active
-			if (global.denselines.active) {
-				build_curves_density_matrix()
-			}
-			// console.log(global.denselines)
 		}
 	}
 	global.events.length = 0
@@ -1293,17 +1305,17 @@ function update_ts()
 		}
 		symbol.ts_current_values = ts_current_values
 	}
-	if (global.extremal_depth.fbplot.active || global.modified_band_depth.fbplot.active) {
-		let max_outer_bands = Math.max(Math.max.apply(null, global.extremal_depth.fbplot.outer_band.upper),
-									   Math.max.apply(null, global.modified_band_depth.fbplot.outer_band.upper))
 
-		let min_outer_bands = Math.min(Math.min.apply(null, global.extremal_depth.fbplot.outer_band.lower),
-											 Math.min.apply(null, global.modified_band_depth.fbplot.outer_band.lower))
-
-		y_max = Math.max(max_outer_bands, y_max)
-		y_min = Math.min(min_outer_bands, y_min)
-
+	if (global.extremal_depth.fbplot.active) {
+		y_max = Math.max.apply(y_max, global.extremal_depth.fbplot.outer_band.upper)
+		y_min = Math.min.apply(y_min, global.extremal_depth.fbplot.outer_band.lower)
 	}
+
+	if (global.modified_band_depth.fbplot.active) {
+		y_max = Math.max.apply(y_max, global.modified_band_depth.fbplot.outer_band.upper)
+		y_min = Math.min.apply(y_min, global.modified_band_depth.fbplot.outer_band.lower)
+	}
+
 	if(y_min == y_max) {
 		y_min = y_max-1
 	}
@@ -1321,6 +1333,7 @@ function update_ts()
 	let resolution = parseInt(global.ui.create_curve_density_matrix_resolution.value)
 	let rows = Math.floor(ts_rect[RECT.HEIGHT] / resolution)
 	let cols = Math.floor(ts_rect[RECT.WIDTH] / resolution)
+	global.viewbox.resolution = resolution
 	global.viewbox.rows = rows
 	global.viewbox.cols = cols
 
@@ -1505,12 +1518,21 @@ function update_ts()
 
 
 	if (global.denselines.active) {
-		let rows = global.denselines.rows
-		let cols = global.denselines.cols
+
+		let updated = build_curves_density_matrix()
+
+		// build_curves_density_matrix()
+
+		rows = global.viewbox.rows
+		cols = global.viewbox.cols
 		let max_value = Math.max.apply(null, global.denselines.entries) / global.chart_symbols.length
 
-		let cell_width   = ts_rect[RECT.WIDTH] / global.denselines.cols
-		let cell_height  = ts_rect[RECT.HEIGHT] / global.denselines.rows
+		if (updated) {
+			console.log(global.denselines.entries)
+		}
+
+		let cell_width  = ts_rect[RECT.WIDTH] / global.viewbox.cols
+		let cell_height = ts_rect[RECT.HEIGHT] / global.viewbox.rows
 
 		let starting_x = ts_rect[RECT.LEFT]
 		let starting_y = ts_rect[RECT.TOP]
@@ -1521,7 +1543,6 @@ function update_ts()
 				ordered_matrix.push(global.denselines.entries[j+cols*i])
 			}
 		}
-
 
 		function hex_to_rgb(hexstr) {
 			let r = parseInt(hexstr.slice(1,3),16) / 255.0
@@ -1555,6 +1576,7 @@ function update_ts()
 			return rgb_to_hex(rgb_lerp(hex_to_rgb(a_hex), hex_to_rgb(b_hex), lambda) )
 		}
 
+		ctx.save()
 		for (let i=0; i<rows; i++) {
 			for (let j=0; j<cols; j++) {
 				let value = ordered_matrix[j+cols*i] / global.chart_symbols.length
@@ -1578,10 +1600,12 @@ function update_ts()
 				ctx.strokeStyle = ctx.fillStyle
 				ctx.beginPath()
 				ctx.rect(starting_x + (cell_width*j), starting_y + (cell_height*i), cell_width, cell_height)
+				ctx.closePath()
 				ctx.fill()
 				ctx.stroke()
 			}
 		}
+		ctx.restore()
 	}
 
 	//--------------
@@ -1600,6 +1624,7 @@ function update_ts()
 			let num_timesteps = global.extremal_depth.ranked_symbols[0].ts_current_values.length
 
 			ctx.save()
+
 			ctx.beginPath()
 			let p = map(0,ymin[0])
 			ctx.moveTo(p[0],p[1])
@@ -1614,6 +1639,7 @@ function update_ts()
 			ctx.closePath()
 			ctx.fillStyle="#00FFFF55"
 			ctx.fill()
+
 			ctx.restore()
 
 			//--------------
