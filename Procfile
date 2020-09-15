@@ -1,0 +1,1 @@
+web: cd stocks && python ts_server.py $PORT

@@ -1,0 +1,11 @@
+{
+    "name": "band",
+    "version": "1.0.0",
+    "scripts": {
+        "start": "cd stocks && python ts_server.py"
+    },
+    "dependencies": {},
+    "keywords": [],
+    "author": "",
+    "license": "ISC"
+}

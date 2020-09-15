@@ -15,7 +15,6 @@ import http.server
 # import simplejson as json
 import json
 import os
-
 # import socketserver
 # import http.client
 # import concurrent.futures
@@ -36,7 +35,32 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
         global ts_server
         path = self.path
         # Send the html message
-        if path == '/desc':
+        if path == '/':
+            self.send_response(200)      
+            f = open('index.html', 'rb')
+            self.send_header('Content-Type','text/html')
+            self.send_header('Access-Control-Allow-Origin','*')
+            self.end_headers()           
+            self.wfile.write(f.read())
+            self.wfile.flush()
+        elif path == '/tsvis.wasm':
+            self.send_response(200)      
+            f = open('tsvis.wasm', 'rb')
+            self.send_header('Content-Type','application/wasm')
+            self.send_header('Access-Control-Allow-Origin','*')
+            self.end_headers()           
+            self.wfile.write(f.read())
+            self.wfile.flush()
+        elif path == '/tsvis.js':
+            self.send_response(200)      
+            f = open('tsvis.js', 'rb')
+            self.send_header('Content-Type','application/json')
+            self.send_header('Access-Control-Allow-Origin','*')
+            self.end_headers()           
+            self.wfile.write(f.read())
+            self.wfile.flush()
+
+        elif path == '/desc':
             result = json.dumps(ts_server.symbols).encode('utf-8')
             self.send_response(200)
             self.send_header('Content-Type','application/json')
@@ -85,16 +109,22 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(msg.encode('utf-8'))
             self.wfile.flush()
 
-
-
 class TSServer:
     def __init__(self):
-        self.symbols = os.listdir('data')
+        self.symbols = os.listdir('data')     
 
 if __name__ == "__main__":
+    
     ts_server = TSServer()
-    port = 8888
+    ON_HEROKU = os.environ.get('DYNO')
+
+    if ON_HEROKU:
+        port = int(os.environ.get('PORT', 17995)) 
+        port = 8000
+
     server = http.server.HTTPServer(('', port), CustomHTTPHandler)
-    print ('Started httpserver on port ' , port)
+    print ('Started httpserver on port: ' , port)
     server.serve_forever()
 
+
+    
