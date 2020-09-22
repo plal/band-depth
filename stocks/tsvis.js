@@ -80,7 +80,7 @@ function date_offset_to_string(date_offset)
 function reset_zoom() {
 
 	global.zoom = 0
-
+	global.recompute_viewbox = true
 }
 
 function pick_color() {
