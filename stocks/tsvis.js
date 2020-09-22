@@ -17,7 +17,8 @@ const EVENT= {
 	MOUSEMOVE: "event_mousemove",
 	MOUSEWHEEL: "event_mousewheel",
 	MOUSEDOWN: "event_mousedown",
-	MOUSEUP: "evento_mouseup",
+	MOUSEUP: "event_mouseup",
+	DBCLICK: "event_dbclick",
 	KEYDOWN: "event_keydown"
 }
 
@@ -76,17 +77,10 @@ function date_offset_to_string(date_offset)
 		(x.getUTCDate()).toString().padStart(2,'0')
 }
 
-function zoom(event, scale) {
+function reset_zoom() {
 
-	event.preventDefault();
+	global.zoom = 0
 
-	scale += event.deltaY * -0.01;
-
-	// Restrict scale
-	scale = Math.min(Math.max(.125, scale), 4);
-
-	// Apply scale transform
-	global.ui.ts_canvas.style.transform = `scale(${scale})`;
 }
 
 function pick_color() {
@@ -795,8 +789,9 @@ function prepare_ui()
 	ts_canvas.tabindex = '1'
 	install_event_listener(ts_canvas, "mousemove", ts_canvas, EVENT.MOUSEMOVE)
 	install_event_listener(ts_canvas, "wheel", ts_canvas, EVENT.MOUSEWHEEL)
-	install_event_listener(ts_canvas, "mousedown", ts_canvas, EVENT.MOUSEDOWN)
-	install_event_listener(ts_canvas, "mouseup", ts_canvas, EVENT.MOUSEUP)
+	// install_event_listener(ts_canvas, "mousedown", ts_canvas, EVENT.MOUSEDOWN)
+	// install_event_listener(ts_canvas, "mouseup", ts_canvas, EVENT.MOUSEUP)
+	install_event_listener(ts_canvas, "dblclick", ts_canvas, EVENT.DBCLICK)
 
 	let main_div = document.createElement('div')
 	global.ui.main_div = main_div
@@ -1130,8 +1125,6 @@ function build_curves_density_matrix() {
 const KEY_S = 83
 const KEY_E = 69
 const KEY_N = 78
-const KEY_I = 73
-const KEY_O = 79
 
 //--------------
 //processing events as they arrive
@@ -1213,11 +1206,12 @@ function process_event_queue()
 		} else if (e.event_type == EVENT.MOUSEWHEEL) {
 			if (e.raw.deltaY > 0) {
 				global.zoom = 1
-				// console.log("scrolling down "+e.raw.deltaY)
 			} else if (e.raw.deltaY < 0) {
 				global.zoom = -1
-				// console.log("scrolling up "+e.raw.deltaY)
 			}
+		} else if (e.event_type == EVENT.DBCLICK) {
+			console.log("dbclick")
+			reset_zoom()
 		} else if (e.event_type == EVENT.MOUSEDOWN) {
 			console.log("mousedown position: " + e.raw.x + ", " + e.raw.y)
 		} else if (e.event_type == EVENT.MOUSEUP) {
@@ -1419,7 +1413,7 @@ function update_ts()
 		return [x,y]
 	}
 
-	let factor = 2
+	let factor = 1.1
 	let ref    = inverse_map(local_mouse_pos[0], local_mouse_pos[1])
 	let y_ref  = ref[1]
 	let x_ref  = ref[0]
@@ -1430,26 +1424,28 @@ function update_ts()
 		let h = global.viewbox.height
 		let w = global.viewbox.width
 		let h_, w_
+
 		if (global.zoom > 0) {
 			h_ = h * factor
 			w_ = w * factor
 		} else {
 			h_ = h / factor
-			w_ = w / factor
+			w_ = Math.floor(w / factor)
 		}
-		console.log(w, w_)
+
+		// console.log(w, w_)
 		global.viewbox.y = -((h_*((y_ref-global.viewbox.y)/h))-y_ref)
-		// global.viewbox.x = -((w_*((x_ref-global.viewbox.x)/w))-x_ref)
+		global.viewbox.x = Math.floor(-((w_*((x_ref-global.viewbox.x)/w))-x_ref))
 
 		global.viewbox.height = h_
-		// global.viewbox.width  = w_
+		global.viewbox.width  = w_
 
 		y_min = global.viewbox.y
 		y_max = global.viewbox.y + global.viewbox.height
 
-		// x_min = global.viewbox.x
-		// x_max = global.viewbox.x + global.viewbox.width
-		// console.log(x_min, x_max, x_ref)
+		x_min = global.viewbox.x
+		x_max = global.viewbox.x + global.viewbox.width
+
 		global.zoom = 0
 	}
 
