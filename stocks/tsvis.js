@@ -15,6 +15,9 @@ const EVENT= {
 	RUN_MODIFIED_BAND_DEPTH_ALGORITHM: "event_run_modified_band_depth_algorithm",
 	BUILD_CURVES_DENSITY_MATRIX: "event_build_curves_density_matrix",
 	MOUSEMOVE: "event_mousemove",
+	MOUSEWHEEL: "event_mousewheel",
+	MOUSEDOWN: "event_mousedown",
+	MOUSEUP: "evento_mouseup",
 	KEYDOWN: "event_keydown"
 }
 
@@ -40,7 +43,9 @@ var global = {
 	extremal_depth: {fbplot: {active: false, inner_band: {lower:[], upper:[]}, outer_band: {lower:[], upper:[]}, outliers:[] }, ranked_symbols: [] },
 	modified_band_depth: {fbplot: {active: false, inner_band: {lower:[], upper:[]}, outer_band: {lower:[], upper:[]}, outliers:[] }, ranked_symbols: [] },
 	denselines: { active: false, hashcode: 0, entries:[] },
-	viewbox: { x:0, y:0, width:1, height:1, rows:4, cols:4 }
+	viewbox: { x:0, y:0, width:1, height:1, rows:4, cols:4 },
+	recompute_viewbox: true,
+	zoom: 0
 }
 
 function install_event_listener(component, raw_event_type, context, event_type)
@@ -69,6 +74,19 @@ function date_offset_to_string(date_offset)
 	return ((x.getYear())+1900).toString().padStart(4,'0') + "-" +
 		(x.getMonth()+1).toString().padStart(2,'0') + "-" +
 		(x.getUTCDate()).toString().padStart(2,'0')
+}
+
+function zoom(event, scale) {
+
+	event.preventDefault();
+
+	scale += event.deltaY * -0.01;
+
+	// Restrict scale
+	scale = Math.min(Math.max(.125, scale), 4);
+
+	// Apply scale transform
+	global.ui.ts_canvas.style.transform = `scale(${scale})`;
 }
 
 function pick_color() {
@@ -128,6 +146,7 @@ async function download_symbol_data(symbol)
 			dict[offset] = price
 		}
 		symbol.data = dict
+		global.recompute_viewbox = true
 	} catch (e) {
 		console.log("Fatal Error: couldn't download symbol data" + symbol.name)
 		return
@@ -775,6 +794,9 @@ function prepare_ui()
 	ts_canvas.id = 'ts_canvas'
 	ts_canvas.tabindex = '1'
 	install_event_listener(ts_canvas, "mousemove", ts_canvas, EVENT.MOUSEMOVE)
+	install_event_listener(ts_canvas, "wheel", ts_canvas, EVENT.MOUSEWHEEL)
+	install_event_listener(ts_canvas, "mousedown", ts_canvas, EVENT.MOUSEDOWN)
+	install_event_listener(ts_canvas, "mouseup", ts_canvas, EVENT.MOUSEUP)
 
 	let main_div = document.createElement('div')
 	global.ui.main_div = main_div
@@ -978,7 +1000,7 @@ function run_extremal_depth_algorithm()
 		symbol_rank_i.ed_rank = i
 		global.extremal_depth.ranked_symbols.push(symbol_rank_i)
 	}
-	console.log(global.extremal_depth.ranked_symbols)
+	// console.log(global.extremal_depth.ranked_symbols)
 
 	//--------------
 	//find values of each band (IQR and maximum non outlying envelope)
@@ -1061,7 +1083,7 @@ function build_curves_density_matrix() {
 		const c_curve_values = new Float64Array(global.tsvis_wasm_module.exports.memory.buffer, values_raw_p, m);
 
 		c_curve_values.set(ts_current_values)
-		console.log(ts_current_values)
+		// console.log(ts_current_values)
 
 		let ok = global.tsvis_wasm_module.exports.tsvis_CurveList_append(curve_list_raw_p, curve_raw_p	)
 	}
@@ -1108,6 +1130,8 @@ function build_curves_density_matrix() {
 const KEY_S = 83
 const KEY_E = 69
 const KEY_N = 78
+const KEY_I = 73
+const KEY_O = 79
 
 //--------------
 //processing events as they arrive
@@ -1186,6 +1210,18 @@ function process_event_queue()
 					global.key_update_end = true
 				}
 			}
+		} else if (e.event_type == EVENT.MOUSEWHEEL) {
+			if (e.raw.deltaY > 0) {
+				global.zoom = 1
+				// console.log("scrolling down "+e.raw.deltaY)
+			} else if (e.raw.deltaY < 0) {
+				global.zoom = -1
+				// console.log("scrolling up "+e.raw.deltaY)
+			}
+		} else if (e.event_type == EVENT.MOUSEDOWN) {
+			console.log("mousedown position: " + e.raw.x + ", " + e.raw.y)
+		} else if (e.event_type == EVENT.MOUSEUP) {
+			console.log("mouseup position: " + e.raw.x + ", " + e.raw.y)
 		} else if (e.event_type == EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM) {
 			global.extremal_depth.fbplot.active = !global.extremal_depth.fbplot.active
 			if (global.extremal_depth.fbplot.active) {
@@ -1239,10 +1275,15 @@ function update_ts()
 
 	ctx.clearRect(0,0,canvas.width, canvas.height)
 
+	ctx.save()
+
 	ctx.fillStyle="#2f3233"
 	ctx.moveTo(0,0)
 	ctx.rect(ts_rect[RECT.LEFT],ts_rect[RECT.TOP],ts_rect[RECT.WIDTH],ts_rect[RECT.HEIGHT])
 	ctx.fill()
+	ctx.clip()
+
+	ctx.restore()
 
 	let date_start = date_offset(global.date_start)
 	let date_end   = date_offset(global.date_end)
@@ -1329,7 +1370,7 @@ function update_ts()
 									   Math.max.apply(null, global.modified_band_depth.fbplot.outer_band.upper))
 
 		let min_outer_bands = Math.min(Math.min.apply(null, global.extremal_depth.fbplot.outer_band.lower),
-											 Math.min.apply(null, global.modified_band_depth.fbplot.outer_band.lower))
+							  		   Math.min.apply(null, global.modified_band_depth.fbplot.outer_band.lower))
 
 		y_max = Math.max(max_outer_bands, y_max)
 		y_min = Math.min(min_outer_bands, y_min)
@@ -1346,10 +1387,19 @@ function update_ts()
 	let x_min = 0
 	let x_max = date_end - date_start
 
-	global.viewbox.x 	  = x_min
-	global.viewbox.y 	  = y_min
-	global.viewbox.width  = x_max - x_min
-	global.viewbox.height = y_max - y_min
+	if (global.recompute_viewbox) {
+		global.viewbox.x 	  = x_min
+		global.viewbox.y 	  = y_min
+		global.viewbox.width  = x_max - x_min
+		global.viewbox.height = y_max - y_min
+		global.recompute_viewbox = false
+	} else {
+		x_min = global.viewbox.x
+		y_min = global.viewbox.y
+		x_max = global.viewbox.x + global.viewbox.width
+		y_max = global.viewbox.y + global.viewbox.height
+	}
+
 	let resolution = parseInt(global.ui.create_curve_density_matrix_resolution.value)
 	let rows = Math.floor(ts_rect[RECT.HEIGHT] / resolution)
 	let cols = Math.floor(ts_rect[RECT.WIDTH] / resolution)
@@ -1367,6 +1417,40 @@ function update_ts()
 		let x = (px - ts_rect[RECT.LEFT]) / ts_rect[RECT.WIDTH] * (1.0*(x_max - x_min)) + x_min
 		let y = -((((py - ts_rect[RECT.TOP] - ts_rect[RECT.HEIGHT] + 1) * (1.0 * (y_max - y_min))) / ts_rect[RECT.HEIGHT]) - y_min)
 		return [x,y]
+	}
+
+	let factor = 2
+	let ref    = inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+	let y_ref  = ref[1]
+	let x_ref  = ref[0]
+
+	// console.log(x_min, x_max, x_ref)
+	if (global.zoom != 0) {
+		// console.log("globals: " + global.viewbox.x + " " + global.viewbox.width)
+		let h = global.viewbox.height
+		let w = global.viewbox.width
+		let h_, w_
+		if (global.zoom > 0) {
+			h_ = h * factor
+			w_ = w * factor
+		} else {
+			h_ = h / factor
+			w_ = w / factor
+		}
+		// console.log(w, w_)
+		global.viewbox.y = -((h_*((y_ref-global.viewbox.y)/h))-y_ref)
+		// global.viewbox.x = -((w_*((x_ref-global.viewbox.x)/w))-x_ref)
+
+		global.viewbox.height = h_
+		// global.viewbox.width  = w_
+
+		y_min = global.viewbox.y
+		y_max = global.viewbox.y + global.viewbox.height
+
+		// x_min = global.viewbox.x
+		// x_max = global.viewbox.x + global.viewbox.width
+		// console.log(x_min, x_max, x_ref)
+		global.zoom = 0
 	}
 
 	//--------------
@@ -1536,6 +1620,11 @@ function update_ts()
 		ctx.stroke()
 	}
 
+	ctx.save()
+
+	ctx.moveTo(0,0)
+	ctx.rect(ts_rect[RECT.LEFT],ts_rect[RECT.TOP],ts_rect[RECT.WIDTH],ts_rect[RECT.HEIGHT])
+	ctx.clip()
 
 	if (global.denselines.active) {
 
@@ -1855,6 +1944,8 @@ function update_ts()
 		ctx.textAlign = 'center';
 		ctx.fillText(text, canvas.width/2, 40);
 	}
+
+	ctx.restore()
 
 	//--------------
 	// update focused record
