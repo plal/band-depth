@@ -1437,7 +1437,7 @@ function update_ts()
 			h_ = h / factor
 			w_ = w / factor
 		}
-		// console.log(w, w_)
+		console.log(w, w_)
 		global.viewbox.y = -((h_*((y_ref-global.viewbox.y)/h))-y_ref)
 		// global.viewbox.x = -((w_*((x_ref-global.viewbox.x)/w))-x_ref)
 
@@ -1904,6 +1904,23 @@ function update_ts()
 
 	}
 
+	//--------------
+	// highlight on focused time series
+	//--------------
+	if (global.focused_symbol != null) {
+		draw_timeseries(global.focused_symbol, true)
+
+		let record = global.focused_symbol
+		let value = global.focused_symbol.data[global.focused_date]
+		let date = date_offset_to_string(date_start+global.focused_date)
+		let text = `symbol: ${global.focused_symbol.name} // date: ${date} // ED rank: #${global.focused_symbol.ed_rank+1} // `+
+					`MBD rank: #${global.focused_symbol.mbd_rank+1}`
+		ctx.font = '20px Monospace';
+		ctx.textAlign = 'center';
+		ctx.fillText(text, canvas.width/2, 40);
+	}
+
+	ctx.restore()
 
 	//--------------
 	//auxiliar lines on mouse position to track date and value
@@ -1928,24 +1945,6 @@ function update_ts()
 	ctx.lineTo(x_p1[0], x_p1[1])
 	ctx.stroke()
 	drawTextBG(ctx, pt[1].toFixed(2), x_p0[0], x_p0[1])
-
-	//--------------
-	// highlight on focused time series
-	//--------------
-	if (global.focused_symbol != null) {
-		draw_timeseries(global.focused_symbol, true)
-
-		let record = global.focused_symbol
-		let value = global.focused_symbol.data[global.focused_date]
-		let date = date_offset_to_string(date_start+global.focused_date)
-		let text = `symbol: ${global.focused_symbol.name} // date: ${date} // ED rank: #${global.focused_symbol.ed_rank+1} // `+
-					`MBD rank: #${global.focused_symbol.mbd_rank+1}`
-		ctx.font = '20px Monospace';
-		ctx.textAlign = 'center';
-		ctx.fillText(text, canvas.width/2, 40);
-	}
-
-	ctx.restore()
 
 	//--------------
 	// update focused record
