@@ -99,6 +99,13 @@ function get_local_mouse_pos(component) {
 	return [(global.mouse.position[0] - rect.left), (global.mouse.position[1] - rect.top)]
 }
 
+function get_local_mouse_lastpos(component) {
+	var rect = component.getBoundingClientRect();
+
+	return [(global.mouse.last_position[0] - rect.left), (global.mouse.last_position[1] - rect.top)]
+}
+
+
 function get_local_dragstart_pos(component) {
 	var rect = component.getBoundingClientRect();
 
@@ -1130,10 +1137,11 @@ function build_curves_density_matrix() {
 
 }
 
-const KEY_S = 83
-const KEY_E = 69
-const KEY_N = 78
-
+const KEY_S      = 83
+const KEY_E      = 69
+const KEY_N      = 78
+const KEY_PERIOD = 190
+const KEY_COMMA  = 188
 //--------------
 //processing events as they arrive
 //--------------
@@ -1209,19 +1217,42 @@ function process_event_queue()
 					global.key_update_start = true
 				} else if (e.raw.keyCode == KEY_E) {
 					global.key_update_end = true
+				} else if (e.raw.keyCode == KEY_PERIOD) {
+					global.ui.create_curve_density_matrix_resolution.value = 2 * parseInt(global.ui.create_curve_density_matrix_resolution.value)
+				} else if (e.raw.keyCode == KEY_COMMA) {
+					global.ui.create_curve_density_matrix_resolution.value = Math.max(1, parseInt(global.ui.create_curve_density_matrix_resolution.value) / 2)
 				}
 			}
 		} else if (e.event_type == EVENT.MOUSEWHEEL) {
 			if (e.raw.deltaY > 0) {
 				global.zoom = 1
+				global.zoom_y = 1
+				global.zoom_x = 1
+
+				if (e.raw.getModifierState("Shift") && e.raw.getModifierState("Control")) {
+					global.zoom_x = 0
+				} else if (e.raw.getModifierState("Shift")) {
+					global.zoom_y = 0
+				}
+
 			} else if (e.raw.deltaY < 0) {
 				global.zoom = -1
+				global.zoom_y = -1
+				global.zoom_x = -1
+
+				if (e.raw.getModifierState("Shift") && e.raw.getModifierState("Control")) {
+					global.zoom_x = 0
+				} else if (e.raw.getModifierState("Shift")) {
+					global.zoom_y = 0
+				}
+
 			}
 		} else if (e.event_type == EVENT.DBCLICK) {
 			reset_zoom()
 		} else if (e.event_type == EVENT.MOUSEDOWN) {
 			global.drag.active = true
 			global.drag.startpos = [e.raw.x, e.raw.y]
+			global.drag.startvbox = [global.viewbox.x, global.viewbox.y]
 			// console.log("drag start position: " + e.raw.x + ", " + e.raw.y)
 		} else if (e.event_type == EVENT.MOUSEUP) {
 			global.drag.active = false
@@ -1429,58 +1460,81 @@ function update_ts()
 	let x_ref  = ref[0]
 
 	// console.log(x_min, x_max, x_ref)
-	if (global.zoom != 0) {
+	if (global.zoom_y != 0) {
 		// console.log("globals: " + global.viewbox.x + " " + global.viewbox.width)
 		let h = global.viewbox.height
-		let w = global.viewbox.width
-		let h_, w_
+		// let w = global.viewbox.width
+		let h_//, w_
 
-		if (global.zoom > 0) {
+		if (global.zoom_y > 0) {
 			h_ = h * factor
-			w_ = Math.floor(w * factor)
+			//w_ = Math.floor(w * factor)
 		} else {
 			h_ = h / factor
-			w_ = Math.floor(w / factor)
+			//w_ = Math.floor(w / factor)
 		}
 
 		// console.log(w, w_)
 		global.viewbox.y = -((h_*((y_ref-global.viewbox.y)/h))-y_ref)
-		global.viewbox.x = Math.floor(-((w_*((x_ref-global.viewbox.x)/w))-x_ref))
+		// global.viewbox.x = Math.floor(-((w_*((x_ref-global.viewbox.x)/w))-x_ref))
 
 		global.viewbox.height = h_
-		global.viewbox.width  = w_
+		// global.viewbox.width  = w_
 
 		y_min = global.viewbox.y
 		y_max = global.viewbox.y + global.viewbox.height
 
+		// x_min = global.viewbox.x
+		// x_max = global.viewbox.x + global.viewbox.width
+
+		global.zoom_y = 0
+	}
+
+	if (global.zoom_x != 0) {
+		// console.log("globals: " + global.viewbox.x + " " + global.viewbox.width)
+		// let h = global.viewbox.height
+		let w = global.viewbox.width
+		let w_//, h_
+
+		if (global.zoom_x > 0) {
+			// h_ = h * factor
+			w_ = Math.floor(w * factor)
+		} else {
+			// h_ = h / factor
+			w_ = Math.floor(w / factor)
+		}
+
+		// console.log(w, w_)
+		// global.viewbox.y = -((h_*((y_ref-global.viewbox.y)/h))-y_ref)
+		global.viewbox.x = Math.floor(-((w_*((x_ref-global.viewbox.x)/w))-x_ref))
+
+		// global.viewbox.height = h_
+		global.viewbox.width  = w_
+
+		// y_min = global.viewbox.y
+		// y_max = global.viewbox.y + global.viewbox.height
+
 		x_min = global.viewbox.x
 		x_max = global.viewbox.x + global.viewbox.width
 
-		global.zoom = 0
+		global.zoom_x = 0
 	}
 
 	if (global.drag.active) {
 
-		let start_pos = get_local_dragstart_pos(canvas)
-		start_pos = inverse_map(start_pos[0], start_pos[1])
-		// console.log("start pos: " + start_pos)
+		let local_dragstart_pos = get_local_dragstart_pos(canvas)
+		local_dragstart_pos = inverse_map(local_dragstart_pos[0], local_dragstart_pos[1])
 
-		let mouse_pos = inverse_map(local_mouse_pos[0], local_mouse_pos[1])
-		// console.log("mouse pos: " + pos)
+		let local_currmouse_pos = inverse_map(local_mouse_pos[0], local_mouse_pos[1])
 
-		let x_offset = Math.floor(mouse_pos[0]) - start_pos[0]
-		let y_offset = mouse_pos[1] - start_pos[1]
-
-		console.log("offsets: " + x_offset + " " + y_offset)
-
-		global.viewbox.y = global.viewbox.y - y_offset
-		global.viewbox.x = Math.floor(global.viewbox.x - x_offset)
-
-		y_min = global.viewbox.y
-		y_max = global.viewbox.y + global.viewbox.height
+		global.viewbox.x = global.drag.startvbox[0] - Math.floor(local_currmouse_pos[0] - local_dragstart_pos[0])
+		global.viewbox.y = global.drag.startvbox[1] - (local_currmouse_pos[1] - local_dragstart_pos[1])
 
 		x_min = global.viewbox.x
 		x_max = global.viewbox.x + global.viewbox.width
+
+		y_min = global.viewbox.y
+		y_max = global.viewbox.y + global.viewbox.height
 
 	}
 
