@@ -46,7 +46,8 @@ var global = {
 	denselines: { active: false, hashcode: 0, entries:[] },
 	viewbox: { x:0, y:0, width:1, height:1, rows:4, cols:4 },
 	recompute_viewbox: true,
-	zoom: 0
+	zoom: 0,
+	drag: { active: false, startpos: [0,0] }
 }
 
 function install_event_listener(component, raw_event_type, context, event_type)
@@ -81,6 +82,7 @@ function reset_zoom() {
 
 	global.zoom = 0
 	global.recompute_viewbox = true
+
 }
 
 function pick_color() {
@@ -95,6 +97,12 @@ function get_local_mouse_pos(component) {
 	var rect = component.getBoundingClientRect();
 
 	return [(global.mouse.position[0] - rect.left), (global.mouse.position[1] - rect.top)]
+}
+
+function get_local_dragstart_pos(component) {
+	var rect = component.getBoundingClientRect();
+
+	return [(global.drag.startpos[0] - rect.left), (global.drag.startpos[1] - rect.top)]
 }
 
 function drawTextBG(ctx, txt, x, y) {
@@ -789,8 +797,8 @@ function prepare_ui()
 	ts_canvas.tabindex = '1'
 	install_event_listener(ts_canvas, "mousemove", ts_canvas, EVENT.MOUSEMOVE)
 	install_event_listener(ts_canvas, "wheel", ts_canvas, EVENT.MOUSEWHEEL)
-	// install_event_listener(ts_canvas, "mousedown", ts_canvas, EVENT.MOUSEDOWN)
-	// install_event_listener(ts_canvas, "mouseup", ts_canvas, EVENT.MOUSEUP)
+	install_event_listener(ts_canvas, "mousedown", ts_canvas, EVENT.MOUSEDOWN)
+	install_event_listener(ts_canvas, "mouseup", ts_canvas, EVENT.MOUSEUP)
 	install_event_listener(ts_canvas, "dblclick", ts_canvas, EVENT.DBCLICK)
 
 	let main_div = document.createElement('div')
@@ -1210,12 +1218,14 @@ function process_event_queue()
 				global.zoom = -1
 			}
 		} else if (e.event_type == EVENT.DBCLICK) {
-			console.log("dbclick")
 			reset_zoom()
 		} else if (e.event_type == EVENT.MOUSEDOWN) {
-			console.log("mousedown position: " + e.raw.x + ", " + e.raw.y)
+			global.drag.active = true
+			global.drag.startpos = [e.raw.x, e.raw.y]
+			// console.log("drag start position: " + e.raw.x + ", " + e.raw.y)
 		} else if (e.event_type == EVENT.MOUSEUP) {
-			console.log("mouseup position: " + e.raw.x + ", " + e.raw.y)
+			global.drag.active = false
+			// console.log("drag end position: " + e.raw.x + ", " + e.raw.y)
 		} else if (e.event_type == EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM) {
 			global.extremal_depth.fbplot.active = !global.extremal_depth.fbplot.active
 			if (global.extremal_depth.fbplot.active) {
@@ -1427,7 +1437,7 @@ function update_ts()
 
 		if (global.zoom > 0) {
 			h_ = h * factor
-			w_ = w * factor
+			w_ = Math.floor(w * factor)
 		} else {
 			h_ = h / factor
 			w_ = Math.floor(w / factor)
@@ -1449,6 +1459,31 @@ function update_ts()
 		global.zoom = 0
 	}
 
+	if (global.drag.active) {
+
+		let start_pos = get_local_dragstart_pos(canvas)
+		start_pos = inverse_map(start_pos[0], start_pos[1])
+		// console.log("start pos: " + start_pos)
+
+		let mouse_pos = inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+		// console.log("mouse pos: " + pos)
+
+		let x_offset = Math.floor(mouse_pos[0]) - start_pos[0]
+		let y_offset = mouse_pos[1] - start_pos[1]
+
+		console.log("offsets: " + x_offset + " " + y_offset)
+
+		global.viewbox.y = global.viewbox.y - y_offset
+		global.viewbox.x = Math.floor(global.viewbox.x - x_offset)
+
+		y_min = global.viewbox.y
+		y_max = global.viewbox.y + global.viewbox.height
+
+		x_min = global.viewbox.x
+		x_max = global.viewbox.x + global.viewbox.width
+
+	}
+
 	//--------------
 	//grid lines
 	//--------------
@@ -1462,6 +1497,8 @@ function update_ts()
 		let x_tick = Math.floor(x_min+(i*((x_max-x_min)/(x_num_ticks-1))))
 		x_ticks.push(x_tick)
 	}
+
+	// console.log(x_ticks)
 
 	for(let i=0; i<x_ticks.length; i++) {
 		ctx.strokeStyle = "#555555";
