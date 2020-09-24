@@ -93,23 +93,10 @@ function pick_color() {
 	return color
 }
 
-function get_local_mouse_pos(component) {
-	var rect = component.getBoundingClientRect();
+function get_local_position(global_position, component) {
+	var rect = component.getBoundingClientRect()
 
-	return [(global.mouse.position[0] - rect.left), (global.mouse.position[1] - rect.top)]
-}
-
-function get_local_mouse_lastpos(component) {
-	var rect = component.getBoundingClientRect();
-
-	return [(global.mouse.last_position[0] - rect.left), (global.mouse.last_position[1] - rect.top)]
-}
-
-
-function get_local_dragstart_pos(component) {
-	var rect = component.getBoundingClientRect();
-
-	return [(global.drag.startpos[0] - rect.left), (global.drag.startpos[1] - rect.top)]
+	return [(global_position[0] - rect.left), (global_position[1] - rect.top)]
 }
 
 function drawTextBG(ctx, txt, x, y) {
@@ -1284,7 +1271,7 @@ function update_ts()
 	canvas.width  = global.ui.ts_div.clientWidth;
 	canvas.height = global.ui.ts_div.clientHeight;
 
-	let local_mouse_pos = get_local_mouse_pos(canvas)
+	let local_mouse_pos = get_local_position(global.mouse.position, canvas)
 
 	let rect = [0, 0, canvas.width, canvas.height]
 
@@ -1459,60 +1446,37 @@ function update_ts()
 	let y_ref  = ref[1]
 	let x_ref  = ref[0]
 
-	// console.log(x_min, x_max, x_ref)
 	if (global.zoom_y != 0) {
-		// console.log("globals: " + global.viewbox.x + " " + global.viewbox.width)
 		let h = global.viewbox.height
-		// let w = global.viewbox.width
-		let h_//, w_
+		let h_
 
 		if (global.zoom_y > 0) {
 			h_ = h * factor
-			//w_ = Math.floor(w * factor)
 		} else {
 			h_ = h / factor
-			//w_ = Math.floor(w / factor)
 		}
 
-		// console.log(w, w_)
 		global.viewbox.y = -((h_*((y_ref-global.viewbox.y)/h))-y_ref)
-		// global.viewbox.x = Math.floor(-((w_*((x_ref-global.viewbox.x)/w))-x_ref))
-
 		global.viewbox.height = h_
-		// global.viewbox.width  = w_
 
 		y_min = global.viewbox.y
 		y_max = global.viewbox.y + global.viewbox.height
-
-		// x_min = global.viewbox.x
-		// x_max = global.viewbox.x + global.viewbox.width
 
 		global.zoom_y = 0
 	}
 
 	if (global.zoom_x != 0) {
-		// console.log("globals: " + global.viewbox.x + " " + global.viewbox.width)
-		// let h = global.viewbox.height
 		let w = global.viewbox.width
-		let w_//, h_
+		let w_
 
 		if (global.zoom_x > 0) {
-			// h_ = h * factor
 			w_ = Math.floor(w * factor)
 		} else {
-			// h_ = h / factor
 			w_ = Math.floor(w / factor)
 		}
 
-		// console.log(w, w_)
-		// global.viewbox.y = -((h_*((y_ref-global.viewbox.y)/h))-y_ref)
 		global.viewbox.x = Math.floor(-((w_*((x_ref-global.viewbox.x)/w))-x_ref))
-
-		// global.viewbox.height = h_
 		global.viewbox.width  = w_
-
-		// y_min = global.viewbox.y
-		// y_max = global.viewbox.y + global.viewbox.height
 
 		x_min = global.viewbox.x
 		x_max = global.viewbox.x + global.viewbox.width
@@ -1522,7 +1486,7 @@ function update_ts()
 
 	if (global.drag.active) {
 
-		let local_dragstart_pos = get_local_dragstart_pos(canvas)
+		let local_dragstart_pos = get_local_position(global.drag.startpos, canvas)
 		local_dragstart_pos = inverse_map(local_dragstart_pos[0], local_dragstart_pos[1])
 
 		let local_currmouse_pos = inverse_map(local_mouse_pos[0], local_mouse_pos[1])
