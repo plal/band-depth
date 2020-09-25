@@ -234,12 +234,14 @@ function update_groups_table() {
 function create_group() {
 	let symbols = global.symbols
 
-	let group = {}
+	let group 	   = {}
 	let group_name = window.prompt("Enter group name", "Group " + global.group_count)
-	group.name = group_name
-	group.color = pick_color()
+	group.name 	   = group_name
+	group.color    = pick_color()
 	group.on_chart = false
-	group.members = []
+	group.members  = []
+	group.fbed 	   = { active:false, inner_band: { lower:[], upper:[] }, outer_band: { lower:[], upper:[] }, outliers:[], ranked_symbols: [] }
+	group.fbmbd    = { active:false, inner_band: { lower:[], upper:[] }, outer_band: { lower:[], upper:[] }, outliers:[], ranked_symbols: [] }
 
 	for (let i=0; i<symbols.length; i++) {
 		let symbol = symbols[i]
@@ -402,7 +404,7 @@ function hashcode(str) {
     return hash;
 }
 
-function prepare_fb_inner_band(depth_type) {
+function prepare_fb_inner_band(depth_type, group) {
 
 	let depth;
 
@@ -412,7 +414,18 @@ function prepare_fb_inner_band(depth_type) {
 		depth   = global.modified_band_depth
 	}
 
-	let ranked_symbols = depth.ranked_symbols
+	let ranked_symbols = null
+	if (typeof group !== "undefined") {
+		if (depth_type == "ed") {
+			ranked_symbols = group.fbed.ranked_symbols
+		} else if (depth_type == "mbd") {
+			ranked_symbols = group.fbmbd.ranked_symbols
+		}
+
+	} else {
+		ranked_symbols = depth.ranked_symbols
+	}
+
 	let n = ranked_symbols.length
 	let n_timesteps = ranked_symbols[0].ts_current_values.length //symbol.ts_current_values
 
@@ -433,12 +446,22 @@ function prepare_fb_inner_band(depth_type) {
 		}
 	}
 
-	depth.fbplot.inner_band.lower = ymin
-	depth.fbplot.inner_band.upper = ymax
+	if (typeof group !== "undefined") {
+		if (depth_type == "ed") {
+			group.fbed.inner_band.lower = ymin
+			group.fbed.inner_band.upper = ymax
+		} else if (depth_type == "mbd") {
+			group.fbmbd.inner_band.lower = ymin
+			group.fbmbd.inner_band.upper = ymax
+		}
+	} else {
+		depth.fbplot.inner_band.lower = ymin
+		depth.fbplot.inner_band.upper = ymax
+	}
 
 }
 
-function prepare_fb_outer_band(depth_type) {
+function prepare_fb_outer_band(depth_type, group) {
 
 	let depth;
 
@@ -448,8 +471,21 @@ function prepare_fb_outer_band(depth_type) {
 		depth = global.modified_band_depth
 	}
 
-	let ymin = depth.fbplot.inner_band.lower
-	let ymax = depth.fbplot.inner_band.upper
+	let ymin = null
+	let ymax = null
+	if (typeof group !== "undefined") {
+		if (depth_type == "ed") {
+			ymin = group.fbed.inner_band.lower
+			ymax = group.fbed.inner_band.upper
+		} else if (depth_type == "mbd") {
+			ymin = group.fbmbd.inner_band.lower
+			ymax = group.fbmbd.inner_band.upper
+		}
+
+	} else {
+		ymin = depth.fbplot.inner_band.lower
+		ymax = depth.fbplot.inner_band.upper
+	}
 
 	let n_timesteps = ymin.length
 
@@ -466,12 +502,22 @@ function prepare_fb_outer_band(depth_type) {
 
 	}
 
-	depth.fbplot.outer_band.lower = ymin_outer
-	depth.fbplot.outer_band.upper = ymax_outer
+	if (typeof group !== "undefined") {
+		if (depth_type == "ed") {
+			group.fbed.outer_band.lower = ymin_outer
+			group.fbed.outer_band.upper = ymax_outer
+		} else if (depth_type == "mbd") {
+			group.fbmbd.outer_band.lower = ymin_outer
+			group.fbmbd.outer_band.upper = ymax_outer
+		}
+	} else {
+		depth.fbplot.outer_band.lower = ymin_outer
+		depth.fbplot.outer_band.upper = ymax_outer
+	}
 
 }
 
-function prepare_fb_outliers(depth_type) {
+function prepare_fb_outliers(depth_type, group) {
 
 	let depth
 
@@ -481,13 +527,30 @@ function prepare_fb_outliers(depth_type) {
 		depth = global.modified_band_depth
 	}
 
-	let ranked_symbols = depth.ranked_symbols
-	let outer_band     = depth.fbplot.outer_band
+	let ranked_symbols = null
+	let outer_band     = null
+	let outliers	   = []
+
+	if (typeof group !== "undefined") {
+		if (depth_type == "ed") {
+			ranked_symbols = group.fbed.ranked_symbols
+			outer_band 	   = group.fbed.outer_band
+			outliers 	   = group.fbed.outliers
+		} else if (depth_type == "mbd") {
+			ranked_symbols = group.fbmbd.ranked_symbols
+			outer_band 	   = group.fbmbd.outer_band
+			outliers 	   = group.fbmbd.outliers
+		}
+
+	} else {
+		ranked_symbols = depth.ranked_symbols
+		outer_band     = depth.fbplot.outer_band
+		outliers 	   = depth.fbplot.outliers
+	}
 
 	let n_timesteps = ranked_symbols[0].ts_current_values.length
 	let n 		 	= ranked_symbols.length
 
-	let outliers = depth.fbplot.outliers
 	outliers = []
 
 	for(let i=0; i<n; i++) {
@@ -502,7 +565,15 @@ function prepare_fb_outliers(depth_type) {
 
 	}
 
-	depth.fbplot.outliers = outliers
+	if (typeof group !== "undefined") {
+		if (depth_type == "ed") {
+			group.fbed.outliers = outliers
+		} else if (depth_type == "mbd") {
+			group.fbmbd.outliers = outliers
+		}
+	} else {
+		depth.fbplot.outliers = outliers
+	}
 }
 
 function prepare_ui()
@@ -1033,6 +1104,125 @@ function run_extremal_depth_algorithm()
 
 }
 
+function run_depth_algorithm_group(group, depth_type)
+{
+
+	if (group.members.length == 0) {
+		window.alert("No members!")
+		return
+	}
+
+	let n = group.members.length
+
+	let symbols = []
+
+	let mem_checpoint_raw_p = global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint()
+
+	let curve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_CurveList_new(n)
+	while (curve_list_raw_p == 0) {
+		grow_heap()
+		curve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_CurveList_new(n)
+	}
+
+	for (let i=0;i<n;i++) {
+		let symbol = group.members[i]
+		let ts_current_values = symbol.ts_current_values
+		if (ts_current_values == null) {
+			console.log("Discarding symbol ", symbol.name, " on extremal depth computation")
+		}
+		symbols.push(symbol)
+
+		let m = ts_current_values.length
+
+		let curve_raw_p  = global.tsvis_wasm_module.exports.tsvis_Curve_new(m)
+		while (curve_raw_p == 0) {
+			grow_heap()
+			curve_raw_p = global.tsvis_wasm_module.exports.tsvis_Curve_new(m)
+		}
+
+		let values_raw_p = global.tsvis_wasm_module.exports.tsvis_Curve_values(curve_raw_p)
+
+		const c_curve_values = new Float64Array(global.tsvis_wasm_module.exports.memory.buffer, values_raw_p, m);
+		c_curve_values.set(ts_current_values)
+
+		let ok = global.tsvis_wasm_module.exports.tsvis_CurveList_append(curve_list_raw_p, curve_raw_p)
+	}
+
+
+	// let ed_raw_p = global.tsvis_wasm_module.exports.ed_extremal_depth_run(curve_list_raw_p)
+	// let rank_raw_p = global.tsvis_wasm_module.exports.ed_get_extremal_depth_rank(ed_raw_p)
+
+	let d_raw_p    = null
+	let rank_raw_p = null
+	if (depth_type == "ed") {
+		d_raw_p = global.tsvis_wasm_module.exports.ed_extremal_depth_run(curve_list_raw_p)
+		while (d_raw_p == 0) {
+			grow_heap()
+			d_raw_p = global.tsvis_wasm_module.exports.ed_extremal_depth_run(curve_list_raw_p)
+		}
+		rank_raw_p = global.tsvis_wasm_module.exports.ed_get_extremal_depth_rank(d_raw_p)
+	} else if (depth_type == "mbd") {
+		d_raw_p = global.tsvis_wasm_module.exports.mbd_modified_band_depth_run(curve_list_raw_p)
+		while (d_raw_p == 0) {
+			grow_heap()
+			d_raw_p = global.tsvis_wasm_module.exports.mbd_modified_band_depth_run(curve_list_raw_p)
+		}
+		rank_raw_p = global.tsvis_wasm_module.exports.mbd_get_modified_band_depth_rank_(d_raw_p)
+	}
+
+	const rank = new Int32Array(global.tsvis_wasm_module.exports.memory.buffer, rank_raw_p, symbols.length);
+
+	let group_depth = null
+	if (depth_type == "ed") {
+		group_depth = group.fbed
+	} else if (depth_type == "mbd") {
+		group_depth = group.fbmbd
+	}
+
+	group_depth.ranked_symbols = []
+	for (let i=0;i<symbols.length;i++) {
+		let symbol_rank_i = symbols[rank[i]]
+		symbol_rank_i.ed_rank = i
+		group_depth.ranked_symbols.push(symbol_rank_i)
+	}
+
+	//--------------
+	//find values of each band (IQR and maximum non outlying envelope)
+	//--------------
+	prepare_fb_inner_band(depth_type, group)
+	prepare_fb_outer_band(depth_type, group)
+	prepare_fb_outliers(depth_type, group)
+
+	global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p)
+
+	//
+	// global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p)
+	//
+	// //--------------
+	// // sort symbols by ed_rank
+	// //--------------
+	// global.symbols.sort((a,b) => {
+	// 	if (a.ed_rank != null && b.ed_rank != null) {
+	// 		return a.ed_rank - b.ed_rank
+	// 	} else if (a.ed_rank != null) {
+	// 		return -1
+	// 	} else if (b.ed_rank != null ) {
+	// 		return 1
+	// 	} else {
+	// 		return -1
+	// 	}
+	// })
+	// let parent = global.ui.symbols_table
+	// while (parent.firstChild) {
+	//     parent.firstChild.remove();
+	// }
+	// for (let i=0;i<global.symbols.length;i++) {
+	// 	let symbol = global.symbols[i]
+	// 	global.ui.symbols_table.appendChild(symbol.ui_row)
+	// }
+
+}
+
 var counter = 0
 function build_curves_density_matrix() {
 
@@ -1177,7 +1367,24 @@ function process_event_queue()
 			let group = e.context
 			if (!group.on_chart) {
 				add_group_to_chart(group)
+				if (e.raw.getModifierState("Shift")) {
+					group.fbed.active = !group.fbed.active
+					if(group.fbed.active) {
+						console.log("ran ed algorithm with group " + group.name)
+						run_depth_algorithm_group(group, "ed")
+						// console.log(group)
+					}
+				}
+				if (e.raw.getModifierState("Control")) {
+					group.fbmbd.active = !group.fbmbd.active
+					if(group.fbmbd.active) {
+						run_depth_algorithm_group(group, "mbd")
+						// console.log(group)
+					}
+				}
 			} else {
+				group.fbed.active  = false
+				group.fbmbd.active = false
 				remove_group_from_chart(group)
 			}
 		} else if (e.event_type == EVENT.REMOVE_ACTIVE_GROUPS) {
@@ -1681,15 +1888,9 @@ function update_ts()
 
 		let updated = build_curves_density_matrix()
 
-		// build_curves_density_matrix()
-
 		rows = global.viewbox.rows
 		cols = global.viewbox.cols
 		let max_value = Math.max.apply(null, global.denselines.entries)
-
-		// if (updated) {
-		// 	console.log(global.denselines.entries)
-		// }
 
 		let cell_width  = ts_rect[RECT.WIDTH] / global.viewbox.cols
 		let cell_height = ts_rect[RECT.HEIGHT] / global.viewbox.rows
@@ -1698,12 +1899,6 @@ function update_ts()
 		let starting_y = ts_rect[RECT.TOP]
 
 		let matrix = global.denselines.entries
-		// let ordered_matrix = []
-		// for (let i=rows-1; i>=0; i--) {
-		// 	for (let j=0; j<cols; j++) {
-		// 		ordered_matrix.push(global.denselines.entries[j+cols*i])
-		// 	}
-		// }
 
 		function hex_to_rgb(hexstr) {
 			let r = parseInt(hexstr.slice(1,3),16) / 255.0
@@ -1953,6 +2148,81 @@ function update_ts()
 		}
 
 
+	}
+
+	function draw_group_fbplot(group, depth_type) {
+		//--------------
+		// drawing inner band
+		//--------------
+		let group_depth = null
+		if(depth_type == "ed") {
+			group_depth = group.fbed
+		}
+
+		if (depth_type == "mbd") {
+			console.log(depth_type)
+			group_depth = group.fbmbd
+		}
+
+		let ymin = group_depth.inner_band.lower
+		let ymax = group_depth.inner_band.upper
+		let num_timesteps = group_depth.ranked_symbols[0].ts_current_values.length
+
+		ctx.save()
+		ctx.beginPath()
+		let p = map(0,ymin[0])
+		ctx.moveTo(p[0],p[1])
+		for (let j=1;j<num_timesteps;j++) {
+			p = map(j,ymin[j])
+			ctx.lineTo(p[0],p[1])
+		}
+		for (let j=num_timesteps-1;j>=0;j--) {
+			p = map(j,ymax[j])
+			ctx.lineTo(p[0],p[1])
+		}
+		ctx.closePath()
+		ctx.fillStyle = group.color + "55"
+		ctx.fill()
+		ctx.restore()
+
+		//--------------
+		// drawing outer band
+		//--------------
+		let ymin_outer = group_depth.outer_band.lower
+		let ymax_outer = group_depth.outer_band.upper
+
+		ctx.save()
+		ctx.strokeStyle = group.color + "DD"
+		ctx.setLineDash([5, 3])
+		ctx.beginPath()
+		p = map(0,ymin_outer[0])
+		ctx.moveTo(p[0],p[1])
+		for (let j=1;j<num_timesteps;j++) {
+			p = map(j,ymin_outer[j])
+			ctx.lineTo(p[0],p[1])
+		}
+		for (let j=num_timesteps-1;j>=0;j--) {
+			p = map(j,ymax_outer[j])
+			ctx.lineTo(p[0],p[1])
+		}
+		ctx.stroke()
+		ctx.restore()
+
+		//--------------
+		// drawing median curve
+		//--------------
+		let median_symbol = group_depth.ranked_symbols[group_depth.ranked_symbols.length - 1]
+		draw_timeseries(median_symbol, false, group.color)
+	}
+
+	for (let i=0; i<global.chart_groups.length; i++) {
+		let group   = global.chart_groups[i]
+		if (group.fbed.active) {
+			draw_group_fbplot(group, "ed")
+		}
+		if(group.fbmbd.active) {
+			draw_group_fbplot(group, "mbd")
+		}
 	}
 
 	//--------------
