@@ -15,6 +15,10 @@ const EVENT= {
 	RUN_MODIFIED_BAND_DEPTH_ALGORITHM: "event_run_modified_band_depth_algorithm",
 	BUILD_CURVES_DENSITY_MATRIX: "event_build_curves_density_matrix",
 	MOUSEMOVE: "event_mousemove",
+	MOUSEWHEEL: "event_mousewheel",
+	MOUSEDOWN: "event_mousedown",
+	MOUSEUP: "event_mouseup",
+	DBCLICK: "event_dbclick",
 	KEYDOWN: "event_keydown"
 }
 
@@ -40,7 +44,10 @@ var global = {
 	extremal_depth: {fbplot: {active: false, inner_band: {lower:[], upper:[]}, outer_band: {lower:[], upper:[]}, outliers:[] }, ranked_symbols: [] },
 	modified_band_depth: {fbplot: {active: false, inner_band: {lower:[], upper:[]}, outer_band: {lower:[], upper:[]}, outliers:[] }, ranked_symbols: [] },
 	denselines: { active: false, hashcode: 0, entries:[] },
-	viewbox: { x:0, y:0, width:1, height:1, rows:4, cols:4 }
+	viewbox: { x:0, y:0, width:1, height:1, rows:4, cols:4 },
+	recompute_viewbox: true,
+	zoom: 0,
+	drag: { active: false, startpos: [0,0] }
 }
 
 function install_event_listener(component, raw_event_type, context, event_type)
@@ -71,6 +78,13 @@ function date_offset_to_string(date_offset)
 		(x.getUTCDate()).toString().padStart(2,'0')
 }
 
+function reset_zoom() {
+
+	global.zoom = 0
+	global.recompute_viewbox = true
+
+}
+
 function pick_color() {
 	let idx = global.color.counter%global.color.colors.length
 	let color 	= global.color.colors[idx]
@@ -79,10 +93,10 @@ function pick_color() {
 	return color
 }
 
-function get_local_mouse_pos(component) {
-	var rect = component.getBoundingClientRect();
+function get_local_position(global_position, component) {
+	var rect = component.getBoundingClientRect()
 
-	return [(global.mouse.position[0] - rect.left), (global.mouse.position[1] - rect.top)]
+	return [(global_position[0] - rect.left), (global_position[1] - rect.top)]
 }
 
 function drawTextBG(ctx, txt, x, y) {
@@ -128,6 +142,7 @@ async function download_symbol_data(symbol)
 			dict[offset] = price
 		}
 		symbol.data = dict
+		global.recompute_viewbox = true
 	} catch (e) {
 		console.log("Fatal Error: couldn't download symbol data" + symbol.name)
 		return
@@ -219,12 +234,14 @@ function update_groups_table() {
 function create_group() {
 	let symbols = global.symbols
 
-	let group = {}
+	let group 	   = {}
 	let group_name = window.prompt("Enter group name", "Group " + global.group_count)
-	group.name = group_name
-	group.color = pick_color()
+	group.name 	   = group_name
+	group.color    = pick_color()
 	group.on_chart = false
-	group.members = []
+	group.members  = []
+	group.fbed 	   = { active:false, inner_band: { lower:[], upper:[] }, outer_band: { lower:[], upper:[] }, outliers:[], ranked_symbols: [] }
+	group.fbmbd    = { active:false, inner_band: { lower:[], upper:[] }, outer_band: { lower:[], upper:[] }, outliers:[], ranked_symbols: [] }
 
 	for (let i=0; i<symbols.length; i++) {
 		let symbol = symbols[i]
@@ -387,7 +404,7 @@ function hashcode(str) {
     return hash;
 }
 
-function prepare_fb_inner_band(depth_type) {
+function prepare_fb_inner_band(depth_type, group) {
 
 	let depth;
 
@@ -397,7 +414,18 @@ function prepare_fb_inner_band(depth_type) {
 		depth   = global.modified_band_depth
 	}
 
-	let ranked_symbols = depth.ranked_symbols
+	let ranked_symbols = null
+	if (typeof group !== "undefined") {
+		if (depth_type == "ed") {
+			ranked_symbols = group.fbed.ranked_symbols
+		} else if (depth_type == "mbd") {
+			ranked_symbols = group.fbmbd.ranked_symbols
+		}
+
+	} else {
+		ranked_symbols = depth.ranked_symbols
+	}
+
 	let n = ranked_symbols.length
 	let n_timesteps = ranked_symbols[0].ts_current_values.length //symbol.ts_current_values
 
@@ -418,12 +446,22 @@ function prepare_fb_inner_band(depth_type) {
 		}
 	}
 
-	depth.fbplot.inner_band.lower = ymin
-	depth.fbplot.inner_band.upper = ymax
+	if (typeof group !== "undefined") {
+		if (depth_type == "ed") {
+			group.fbed.inner_band.lower = ymin
+			group.fbed.inner_band.upper = ymax
+		} else if (depth_type == "mbd") {
+			group.fbmbd.inner_band.lower = ymin
+			group.fbmbd.inner_band.upper = ymax
+		}
+	} else {
+		depth.fbplot.inner_band.lower = ymin
+		depth.fbplot.inner_band.upper = ymax
+	}
 
 }
 
-function prepare_fb_outer_band(depth_type) {
+function prepare_fb_outer_band(depth_type, group) {
 
 	let depth;
 
@@ -433,8 +471,21 @@ function prepare_fb_outer_band(depth_type) {
 		depth = global.modified_band_depth
 	}
 
-	let ymin = depth.fbplot.inner_band.lower
-	let ymax = depth.fbplot.inner_band.upper
+	let ymin = null
+	let ymax = null
+	if (typeof group !== "undefined") {
+		if (depth_type == "ed") {
+			ymin = group.fbed.inner_band.lower
+			ymax = group.fbed.inner_band.upper
+		} else if (depth_type == "mbd") {
+			ymin = group.fbmbd.inner_band.lower
+			ymax = group.fbmbd.inner_band.upper
+		}
+
+	} else {
+		ymin = depth.fbplot.inner_band.lower
+		ymax = depth.fbplot.inner_band.upper
+	}
 
 	let n_timesteps = ymin.length
 
@@ -451,12 +502,22 @@ function prepare_fb_outer_band(depth_type) {
 
 	}
 
-	depth.fbplot.outer_band.lower = ymin_outer
-	depth.fbplot.outer_band.upper = ymax_outer
+	if (typeof group !== "undefined") {
+		if (depth_type == "ed") {
+			group.fbed.outer_band.lower = ymin_outer
+			group.fbed.outer_band.upper = ymax_outer
+		} else if (depth_type == "mbd") {
+			group.fbmbd.outer_band.lower = ymin_outer
+			group.fbmbd.outer_band.upper = ymax_outer
+		}
+	} else {
+		depth.fbplot.outer_band.lower = ymin_outer
+		depth.fbplot.outer_band.upper = ymax_outer
+	}
 
 }
 
-function prepare_fb_outliers(depth_type) {
+function prepare_fb_outliers(depth_type, group) {
 
 	let depth
 
@@ -466,13 +527,30 @@ function prepare_fb_outliers(depth_type) {
 		depth = global.modified_band_depth
 	}
 
-	let ranked_symbols = depth.ranked_symbols
-	let outer_band     = depth.fbplot.outer_band
+	let ranked_symbols = null
+	let outer_band     = null
+	let outliers	   = []
+
+	if (typeof group !== "undefined") {
+		if (depth_type == "ed") {
+			ranked_symbols = group.fbed.ranked_symbols
+			outer_band 	   = group.fbed.outer_band
+			outliers 	   = group.fbed.outliers
+		} else if (depth_type == "mbd") {
+			ranked_symbols = group.fbmbd.ranked_symbols
+			outer_band 	   = group.fbmbd.outer_band
+			outliers 	   = group.fbmbd.outliers
+		}
+
+	} else {
+		ranked_symbols = depth.ranked_symbols
+		outer_band     = depth.fbplot.outer_band
+		outliers 	   = depth.fbplot.outliers
+	}
 
 	let n_timesteps = ranked_symbols[0].ts_current_values.length
 	let n 		 	= ranked_symbols.length
 
-	let outliers = depth.fbplot.outliers
 	outliers = []
 
 	for(let i=0; i<n; i++) {
@@ -487,7 +565,15 @@ function prepare_fb_outliers(depth_type) {
 
 	}
 
-	depth.fbplot.outliers = outliers
+	if (typeof group !== "undefined") {
+		if (depth_type == "ed") {
+			group.fbed.outliers = outliers
+		} else if (depth_type == "mbd") {
+			group.fbmbd.outliers = outliers
+		}
+	} else {
+		depth.fbplot.outliers = outliers
+	}
 }
 
 function prepare_ui()
@@ -775,6 +861,10 @@ function prepare_ui()
 	ts_canvas.id = 'ts_canvas'
 	ts_canvas.tabindex = '1'
 	install_event_listener(ts_canvas, "mousemove", ts_canvas, EVENT.MOUSEMOVE)
+	install_event_listener(ts_canvas, "wheel", ts_canvas, EVENT.MOUSEWHEEL)
+	install_event_listener(ts_canvas, "mousedown", ts_canvas, EVENT.MOUSEDOWN)
+	install_event_listener(ts_canvas, "mouseup", ts_canvas, EVENT.MOUSEUP)
+	install_event_listener(ts_canvas, "dblclick", ts_canvas, EVENT.DBCLICK)
 
 	let main_div = document.createElement('div')
 	global.ui.main_div = main_div
@@ -978,6 +1068,7 @@ function run_extremal_depth_algorithm()
 		symbol_rank_i.ed_rank = i
 		global.extremal_depth.ranked_symbols.push(symbol_rank_i)
 	}
+
 	//console.log(global.extremal_depth.ranked_symbols)
 
 	//--------------
@@ -1011,6 +1102,125 @@ function run_extremal_depth_algorithm()
 		let symbol = global.symbols[i]
 		global.ui.symbols_table.appendChild(symbol.ui_row)
 	}
+
+}
+
+function run_depth_algorithm_group(group, depth_type)
+{
+
+	if (group.members.length == 0) {
+		window.alert("No members!")
+		return
+	}
+
+	let n = group.members.length
+
+	let symbols = []
+
+	let mem_checpoint_raw_p = global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint()
+
+	let curve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_CurveList_new(n)
+	while (curve_list_raw_p == 0) {
+		grow_heap()
+		curve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_CurveList_new(n)
+	}
+
+	for (let i=0;i<n;i++) {
+		let symbol = group.members[i]
+		let ts_current_values = symbol.ts_current_values
+		if (ts_current_values == null) {
+			console.log("Discarding symbol ", symbol.name, " on extremal depth computation")
+		}
+		symbols.push(symbol)
+
+		let m = ts_current_values.length
+
+		let curve_raw_p  = global.tsvis_wasm_module.exports.tsvis_Curve_new(m)
+		while (curve_raw_p == 0) {
+			grow_heap()
+			curve_raw_p = global.tsvis_wasm_module.exports.tsvis_Curve_new(m)
+		}
+
+		let values_raw_p = global.tsvis_wasm_module.exports.tsvis_Curve_values(curve_raw_p)
+
+		const c_curve_values = new Float64Array(global.tsvis_wasm_module.exports.memory.buffer, values_raw_p, m);
+		c_curve_values.set(ts_current_values)
+
+		let ok = global.tsvis_wasm_module.exports.tsvis_CurveList_append(curve_list_raw_p, curve_raw_p)
+	}
+
+
+	// let ed_raw_p = global.tsvis_wasm_module.exports.ed_extremal_depth_run(curve_list_raw_p)
+	// let rank_raw_p = global.tsvis_wasm_module.exports.ed_get_extremal_depth_rank(ed_raw_p)
+
+	let d_raw_p    = null
+	let rank_raw_p = null
+	if (depth_type == "ed") {
+		d_raw_p = global.tsvis_wasm_module.exports.ed_extremal_depth_run(curve_list_raw_p)
+		while (d_raw_p == 0) {
+			grow_heap()
+			d_raw_p = global.tsvis_wasm_module.exports.ed_extremal_depth_run(curve_list_raw_p)
+		}
+		rank_raw_p = global.tsvis_wasm_module.exports.ed_get_extremal_depth_rank(d_raw_p)
+	} else if (depth_type == "mbd") {
+		d_raw_p = global.tsvis_wasm_module.exports.mbd_modified_band_depth_run(curve_list_raw_p)
+		while (d_raw_p == 0) {
+			grow_heap()
+			d_raw_p = global.tsvis_wasm_module.exports.mbd_modified_band_depth_run(curve_list_raw_p)
+		}
+		rank_raw_p = global.tsvis_wasm_module.exports.mbd_get_modified_band_depth_rank_(d_raw_p)
+	}
+
+	const rank = new Int32Array(global.tsvis_wasm_module.exports.memory.buffer, rank_raw_p, symbols.length);
+
+	let group_depth = null
+	if (depth_type == "ed") {
+		group_depth = group.fbed
+	} else if (depth_type == "mbd") {
+		group_depth = group.fbmbd
+	}
+
+	group_depth.ranked_symbols = []
+	for (let i=0;i<symbols.length;i++) {
+		let symbol_rank_i = symbols[rank[i]]
+		symbol_rank_i.ed_rank = i
+		group_depth.ranked_symbols.push(symbol_rank_i)
+	}
+
+	//--------------
+	//find values of each band (IQR and maximum non outlying envelope)
+	//--------------
+	prepare_fb_inner_band(depth_type, group)
+	prepare_fb_outer_band(depth_type, group)
+	prepare_fb_outliers(depth_type, group)
+
+	global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p)
+
+	//
+	// global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p)
+	//
+	// //--------------
+	// // sort symbols by ed_rank
+	// //--------------
+	// global.symbols.sort((a,b) => {
+	// 	if (a.ed_rank != null && b.ed_rank != null) {
+	// 		return a.ed_rank - b.ed_rank
+	// 	} else if (a.ed_rank != null) {
+	// 		return -1
+	// 	} else if (b.ed_rank != null ) {
+	// 		return 1
+	// 	} else {
+	// 		return -1
+	// 	}
+	// })
+	// let parent = global.ui.symbols_table
+	// while (parent.firstChild) {
+	//     parent.firstChild.remove();
+	// }
+	// for (let i=0;i<global.symbols.length;i++) {
+	// 	let symbol = global.symbols[i]
+	// 	global.ui.symbols_table.appendChild(symbol.ui_row)
+	// }
 
 }
 
@@ -1061,6 +1271,7 @@ function build_curves_density_matrix() {
 		const c_curve_values = new Float64Array(global.tsvis_wasm_module.exports.memory.buffer, values_raw_p, m);
 
 		c_curve_values.set(ts_current_values)
+
 		//console.log(ts_current_values)
 
 		let ok = global.tsvis_wasm_module.exports.tsvis_CurveList_append(curve_list_raw_p, curve_raw_p	)
@@ -1105,10 +1316,11 @@ function build_curves_density_matrix() {
 
 }
 
-const KEY_S = 83
-const KEY_E = 69
-const KEY_N = 78
-
+const KEY_S      = 83
+const KEY_E      = 69
+const KEY_N      = 78
+const KEY_PERIOD = 190
+const KEY_COMMA  = 188
 //--------------
 //processing events as they arrive
 //--------------
@@ -1157,7 +1369,24 @@ function process_event_queue()
 			let group = e.context
 			if (!group.on_chart) {
 				add_group_to_chart(group)
+				if (e.raw.getModifierState("Shift")) {
+					group.fbed.active = !group.fbed.active
+					if(group.fbed.active) {
+						console.log("ran ed algorithm with group " + group.name)
+						run_depth_algorithm_group(group, "ed")
+						// console.log(group)
+					}
+				}
+				if (e.raw.getModifierState("Control")) {
+					group.fbmbd.active = !group.fbmbd.active
+					if(group.fbmbd.active) {
+						run_depth_algorithm_group(group, "mbd")
+						// console.log(group)
+					}
+				}
 			} else {
+				group.fbed.active  = false
+				group.fbmbd.active = false
 				remove_group_from_chart(group)
 			}
 		} else if (e.event_type == EVENT.REMOVE_ACTIVE_GROUPS) {
@@ -1184,8 +1413,46 @@ function process_event_queue()
 					global.key_update_start = true
 				} else if (e.raw.keyCode == KEY_E) {
 					global.key_update_end = true
+				} else if (e.raw.keyCode == KEY_PERIOD) {
+					global.ui.create_curve_density_matrix_resolution.value = 2 * parseInt(global.ui.create_curve_density_matrix_resolution.value)
+				} else if (e.raw.keyCode == KEY_COMMA) {
+					global.ui.create_curve_density_matrix_resolution.value = Math.max(1, parseInt(global.ui.create_curve_density_matrix_resolution.value) / 2)
 				}
 			}
+		} else if (e.event_type == EVENT.MOUSEWHEEL) {
+			if (e.raw.deltaY > 0) {
+				global.zoom = 1
+				global.zoom_y = 1
+				global.zoom_x = 1
+
+				if (e.raw.getModifierState("Shift") && e.raw.getModifierState("Control")) {
+					global.zoom_x = 0
+				} else if (e.raw.getModifierState("Shift")) {
+					global.zoom_y = 0
+				}
+
+			} else if (e.raw.deltaY < 0) {
+				global.zoom = -1
+				global.zoom_y = -1
+				global.zoom_x = -1
+
+				if (e.raw.getModifierState("Shift") && e.raw.getModifierState("Control")) {
+					global.zoom_x = 0
+				} else if (e.raw.getModifierState("Shift")) {
+					global.zoom_y = 0
+				}
+
+			}
+		} else if (e.event_type == EVENT.DBCLICK) {
+			reset_zoom()
+		} else if (e.event_type == EVENT.MOUSEDOWN) {
+			global.drag.active = true
+			global.drag.startpos = [e.raw.x, e.raw.y]
+			global.drag.startvbox = [global.viewbox.x, global.viewbox.y]
+			// console.log("drag start position: " + e.raw.x + ", " + e.raw.y)
+		} else if (e.event_type == EVENT.MOUSEUP) {
+			global.drag.active = false
+			// console.log("drag end position: " + e.raw.x + ", " + e.raw.y)
 		} else if (e.event_type == EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM) {
 			global.extremal_depth.fbplot.active = !global.extremal_depth.fbplot.active
 			if (global.extremal_depth.fbplot.active) {
@@ -1213,7 +1480,7 @@ function update_ts()
 	canvas.width  = global.ui.ts_div.clientWidth;
 	canvas.height = global.ui.ts_div.clientHeight;
 
-	let local_mouse_pos = get_local_mouse_pos(canvas)
+	let local_mouse_pos = get_local_position(global.mouse.position, canvas)
 
 	let rect = [0, 0, canvas.width, canvas.height]
 
@@ -1239,10 +1506,15 @@ function update_ts()
 
 	ctx.clearRect(0,0,canvas.width, canvas.height)
 
+	ctx.save()
+
 	ctx.fillStyle="#2f3233"
 	ctx.moveTo(0,0)
 	ctx.rect(ts_rect[RECT.LEFT],ts_rect[RECT.TOP],ts_rect[RECT.WIDTH],ts_rect[RECT.HEIGHT])
 	ctx.fill()
+	ctx.clip()
+
+	ctx.restore()
 
 	let date_start = date_offset(global.date_start)
 	let date_end   = date_offset(global.date_end)
@@ -1329,7 +1601,7 @@ function update_ts()
 									   Math.max.apply(null, global.modified_band_depth.fbplot.outer_band.upper))
 
 		let min_outer_bands = Math.min(Math.min.apply(null, global.extremal_depth.fbplot.outer_band.lower),
-											 Math.min.apply(null, global.modified_band_depth.fbplot.outer_band.lower))
+							  		   Math.min.apply(null, global.modified_band_depth.fbplot.outer_band.lower))
 
 		y_max = Math.max(max_outer_bands, y_max)
 		y_min = Math.min(min_outer_bands, y_min)
@@ -1346,10 +1618,19 @@ function update_ts()
 	let x_min = 0
 	let x_max = date_end - date_start
 
-	global.viewbox.x 	  = x_min
-	global.viewbox.y 	  = y_min
-	global.viewbox.width  = x_max - x_min
-	global.viewbox.height = y_max - y_min
+	if (global.recompute_viewbox) {
+		global.viewbox.x 	  = x_min
+		global.viewbox.y 	  = y_min
+		global.viewbox.width  = x_max - x_min
+		global.viewbox.height = y_max - y_min
+		global.recompute_viewbox = false
+	} else {
+		x_min = global.viewbox.x
+		y_min = global.viewbox.y
+		x_max = global.viewbox.x + global.viewbox.width
+		y_max = global.viewbox.y + global.viewbox.height
+	}
+
 	let resolution = parseInt(global.ui.create_curve_density_matrix_resolution.value)
 	let rows = Math.floor(ts_rect[RECT.HEIGHT] / resolution)
 	let cols = Math.floor(ts_rect[RECT.WIDTH] / resolution)
@@ -1369,6 +1650,67 @@ function update_ts()
 		return [x,y]
 	}
 
+	let factor = 1.1
+	let ref    = inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+	let y_ref  = ref[1]
+	let x_ref  = ref[0]
+
+	if (global.zoom_y != 0) {
+		let h = global.viewbox.height
+		let h_
+
+		if (global.zoom_y > 0) {
+			h_ = h * factor
+		} else {
+			h_ = h / factor
+		}
+
+		global.viewbox.y = -((h_*((y_ref-global.viewbox.y)/h))-y_ref)
+		global.viewbox.height = h_
+
+		y_min = global.viewbox.y
+		y_max = global.viewbox.y + global.viewbox.height
+
+		global.zoom_y = 0
+	}
+
+	if (global.zoom_x != 0) {
+		let w = global.viewbox.width
+		let w_
+
+		if (global.zoom_x > 0) {
+			w_ = Math.floor(w * factor)
+		} else {
+			w_ = Math.floor(w / factor)
+		}
+
+		global.viewbox.x = Math.floor(-((w_*((x_ref-global.viewbox.x)/w))-x_ref))
+		global.viewbox.width  = w_
+
+		x_min = global.viewbox.x
+		x_max = global.viewbox.x + global.viewbox.width
+
+		global.zoom_x = 0
+	}
+
+	if (global.drag.active) {
+
+		let local_dragstart_pos = get_local_position(global.drag.startpos, canvas)
+		local_dragstart_pos = inverse_map(local_dragstart_pos[0], local_dragstart_pos[1])
+
+		let local_currmouse_pos = inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+
+		global.viewbox.x = global.drag.startvbox[0] - Math.floor(local_currmouse_pos[0] - local_dragstart_pos[0])
+		global.viewbox.y = global.drag.startvbox[1] - (local_currmouse_pos[1] - local_dragstart_pos[1])
+
+		x_min = global.viewbox.x
+		x_max = global.viewbox.x + global.viewbox.width
+
+		y_min = global.viewbox.y
+		y_max = global.viewbox.y + global.viewbox.height
+
+	}
+
 	//--------------
 	//grid lines
 	//--------------
@@ -1382,6 +1724,8 @@ function update_ts()
 		let x_tick = Math.floor(x_min+(i*((x_max-x_min)/(x_num_ticks-1))))
 		x_ticks.push(x_tick)
 	}
+
+	// console.log(x_ticks)
 
 	for(let i=0; i<x_ticks.length; i++) {
 		ctx.strokeStyle = "#555555";
@@ -1536,20 +1880,19 @@ function update_ts()
 		ctx.stroke()
 	}
 
+	ctx.save()
+
+	ctx.moveTo(0,0)
+	ctx.rect(ts_rect[RECT.LEFT],ts_rect[RECT.TOP],ts_rect[RECT.WIDTH],ts_rect[RECT.HEIGHT])
+	ctx.clip()
 
 	if (global.denselines.active) {
 
 		let updated = build_curves_density_matrix()
 
-		// build_curves_density_matrix()
-
 		rows = global.viewbox.rows
 		cols = global.viewbox.cols
 		let max_value = Math.max.apply(null, global.denselines.entries)
-
-		// if (updated) {
-		// 	console.log(global.denselines.entries)
-		// }
 
 		let cell_width  = ts_rect[RECT.WIDTH] / global.viewbox.cols
 		let cell_height = ts_rect[RECT.HEIGHT] / global.viewbox.rows
@@ -1558,12 +1901,6 @@ function update_ts()
 		let starting_y = ts_rect[RECT.TOP]
 
 		let matrix = global.denselines.entries
-		// let ordered_matrix = []
-		// for (let i=rows-1; i>=0; i--) {
-		// 	for (let j=0; j<cols; j++) {
-		// 		ordered_matrix.push(global.denselines.entries[j+cols*i])
-		// 	}
-		// }
 
 		function hex_to_rgb(hexstr) {
 			let r = parseInt(hexstr.slice(1,3),16) / 255.0
@@ -1815,6 +2152,98 @@ function update_ts()
 
 	}
 
+	function draw_group_fbplot(group, depth_type) {
+		//--------------
+		// drawing inner band
+		//--------------
+		let group_depth = null
+		if(depth_type == "ed") {
+			group_depth = group.fbed
+		}
+
+		if (depth_type == "mbd") {
+			console.log(depth_type)
+			group_depth = group.fbmbd
+		}
+
+		let ymin = group_depth.inner_band.lower
+		let ymax = group_depth.inner_band.upper
+		let num_timesteps = group_depth.ranked_symbols[0].ts_current_values.length
+
+		ctx.save()
+		ctx.beginPath()
+		let p = map(0,ymin[0])
+		ctx.moveTo(p[0],p[1])
+		for (let j=1;j<num_timesteps;j++) {
+			p = map(j,ymin[j])
+			ctx.lineTo(p[0],p[1])
+		}
+		for (let j=num_timesteps-1;j>=0;j--) {
+			p = map(j,ymax[j])
+			ctx.lineTo(p[0],p[1])
+		}
+		ctx.closePath()
+		ctx.fillStyle = group.color + "55"
+		ctx.fill()
+		ctx.restore()
+
+		//--------------
+		// drawing outer band
+		//--------------
+		let ymin_outer = group_depth.outer_band.lower
+		let ymax_outer = group_depth.outer_band.upper
+
+		ctx.save()
+		ctx.strokeStyle = group.color + "DD"
+		ctx.setLineDash([5, 3])
+		ctx.beginPath()
+		p = map(0,ymin_outer[0])
+		ctx.moveTo(p[0],p[1])
+		for (let j=1;j<num_timesteps;j++) {
+			p = map(j,ymin_outer[j])
+			ctx.lineTo(p[0],p[1])
+		}
+		for (let j=num_timesteps-1;j>=0;j--) {
+			p = map(j,ymax_outer[j])
+			ctx.lineTo(p[0],p[1])
+		}
+		ctx.stroke()
+		ctx.restore()
+
+		//--------------
+		// drawing median curve
+		//--------------
+		let median_symbol = group_depth.ranked_symbols[group_depth.ranked_symbols.length - 1]
+		draw_timeseries(median_symbol, false, group.color)
+	}
+
+	for (let i=0; i<global.chart_groups.length; i++) {
+		let group   = global.chart_groups[i]
+		if (group.fbed.active) {
+			draw_group_fbplot(group, "ed")
+		}
+		if(group.fbmbd.active) {
+			draw_group_fbplot(group, "mbd")
+		}
+	}
+
+	//--------------
+	// highlight on focused time series
+	//--------------
+	if (global.focused_symbol != null) {
+		draw_timeseries(global.focused_symbol, true)
+
+		let record = global.focused_symbol
+		let value = global.focused_symbol.data[global.focused_date]
+		let date = date_offset_to_string(date_start+global.focused_date)
+		let text = `symbol: ${global.focused_symbol.name} // date: ${date} // ED rank: #${global.focused_symbol.ed_rank+1} // `+
+					`MBD rank: #${global.focused_symbol.mbd_rank+1}`
+		ctx.font = '20px Monospace';
+		ctx.textAlign = 'center';
+		ctx.fillText(text, canvas.width/2, 40);
+	}
+
+	ctx.restore()
 
 	//--------------
 	//auxiliar lines on mouse position to track date and value
@@ -1839,22 +2268,6 @@ function update_ts()
 	ctx.lineTo(x_p1[0], x_p1[1])
 	ctx.stroke()
 	drawTextBG(ctx, pt[1].toFixed(2), x_p0[0], x_p0[1])
-
-	//--------------
-	// highlight on focused time series
-	//--------------
-	if (global.focused_symbol != null) {
-		draw_timeseries(global.focused_symbol, true)
-
-		let record = global.focused_symbol
-		let value = global.focused_symbol.data[global.focused_date]
-		let date = date_offset_to_string(date_start+global.focused_date)
-		let text = `symbol: ${global.focused_symbol.name} // date: ${date} // ED rank: #${global.focused_symbol.ed_rank+1} // `+
-					`MBD rank: #${global.focused_symbol.mbd_rank+1}`
-		ctx.font = '20px Monospace';
-		ctx.textAlign = 'center';
-		ctx.fillText(text, canvas.width/2, 40);
-	}
 
 	//--------------
 	// update focused record
