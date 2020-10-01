@@ -117,7 +117,7 @@ function drawTextBG(ctx, txt, x, y) {
     var width = ctx.measureText(txt).width;
 
     /// draw background rect assuming height of font
-    ctx.fillRect(x-width, y, width, parseInt(ctx.font, 12));
+    ctx.fillRect(x-width-3, y-3, width+6, parseInt(ctx.font, 12)+6);
 
     /// text color
     ctx.fillStyle = '#FFFFFF';
@@ -290,11 +290,12 @@ function add_group_to_chart(group) {
 
 		if (!member.on_chart) {
 			// add member to chart
-			member.on_chart = true
-			global.chart_symbols.push(member)
-			global.chart_colors.push(group.color)
-			member.ui_col.style.color = group.color
-			member.ui_col.style.fontWeight = 'bold'
+			// member.on_chart = true
+			// global.chart_symbols.push(member)
+			// global.chart_colors.push(group.color)
+			// member.ui_col.style.color = group.color
+			// member.ui_col.style.fontWeight = 'bold'
+			add_symbol_to_chart(member)
 		}
 
 	}
@@ -628,7 +629,7 @@ function prepare_ui()
 	norm_date_input.defaultValue = global.date_norm
 	norm_date_input.classList.add('date_input')
 	norm_date_input.id = 'norm_date_input'
-	install_event_listener(norm_date_input, 'change', norm_date_input, EVENT.UPDATE_NORM_DATE)
+	install_event_listener(norm_date_input, 'change', norm_date_input, EVENT.UPDATE)
 
 	let norm_date_label = document.createElement('label')
 	global.ui.norm_date_label = norm_date_label
@@ -740,6 +741,25 @@ function prepare_ui()
 	ed_draw_outliers_grid.appendChild(ed_draw_outliers_lbl)
 	ed_draw_outliers_grid.appendChild(ed_draw_outliers_btn)
 
+	let draw_ed_dcdf_curves_btn = document.createElement('input')
+	global.ui.draw_ed_dcdf_curves_btn = draw_ed_dcdf_curves_btn
+	// draw_ed_dcdf_curves_btn.checked = 'false'
+	draw_ed_dcdf_curves_btn.type = "checkbox"
+
+	let draw_ed_dcdf_curves_lbl = document.createElement('label')
+	global.ui.draw_ed_dcdf_curves_lbl = draw_ed_dcdf_curves_lbl
+	draw_ed_dcdf_curves_lbl.setAttribute("for", draw_ed_dcdf_curves_btn)
+	draw_ed_dcdf_curves_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
+	//extremal_depth_lbl.classList.add('checkbox_input_label')
+	draw_ed_dcdf_curves_lbl.innerHTML = '- Draw d-cdfs'
+
+	let draw_ed_dcdf_curves_grid = document.createElement('div')
+	global.ui.draw_ed_dcdf_curves_grid = draw_ed_dcdf_curves_grid
+	draw_ed_dcdf_curves_grid.id = draw_ed_dcdf_curves_grid
+	draw_ed_dcdf_curves_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around;' //justify-content:flex-end'
+	draw_ed_dcdf_curves_grid.appendChild(draw_ed_dcdf_curves_lbl)
+	draw_ed_dcdf_curves_grid.appendChild(draw_ed_dcdf_curves_btn)
+
 	let filter_input = document.createElement('input')
 	global.ui.filter_input = filter_input
 	filter_input.setAttribute("type","text")
@@ -824,6 +844,7 @@ function prepare_ui()
 	left_panel.appendChild(mbd_draw_outliers_grid)
 	left_panel.appendChild(extremal_depth_grid)
 	left_panel.appendChild(ed_draw_outliers_grid)
+	left_panel.appendChild(draw_ed_dcdf_curves_grid)
 	left_panel.appendChild(draw_curves_grid)
 	left_panel.appendChild(create_curve_density_matrix_grid)
 	left_panel.appendChild(filter_input)
@@ -915,8 +936,6 @@ function run_modified_band_depth_algorithm() {
 
 	let mem_checpoint_raw_p = global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint()
 
-	//heap_log()
-
 	let curve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_CurveList_new(n)
 	while (curve_list_raw_p == 0) {
 		grow_heap()
@@ -932,22 +951,16 @@ function run_modified_band_depth_algorithm() {
 		symbols_mbd.push(symbol)
 
 		let m = ts_current_values.length
-		//console.log("time points", m)
 		let curve_raw_p  = global.tsvis_wasm_module.exports.tsvis_Curve_new(m)
 		while (curve_raw_p == 0) {
 			grow_heap()
 			curve_raw_p = global.tsvis_wasm_module.exports.tsvis_Curve_new(m)
 		}
-		//console.log("CV ------------> ",global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
-		//console.log("curve_raw_p",curve_raw_p)
-		let values_raw_p = global.tsvis_wasm_module.exports.tsvis_Curve_values(curve_raw_p)
-		//console.log("values_raw_p",values_raw_p)
 
+		let values_raw_p = global.tsvis_wasm_module.exports.tsvis_Curve_values(curve_raw_p)
 		const c_curve_values = new Float64Array(global.tsvis_wasm_module.exports.memory.buffer, values_raw_p, m);
 
 		c_curve_values.set(ts_current_values)
-
-		//console.log("sum", global.tsvis_wasm_module.exports.sum_f64(values_raw_p,m))
 
 		let ok = global.tsvis_wasm_module.exports.tsvis_CurveList_append(curve_list_raw_p, curve_raw_p)
 	}
@@ -959,21 +972,12 @@ function run_modified_band_depth_algorithm() {
 	}
 
 	let rank_raw_p = global.tsvis_wasm_module.exports.mbd_get_modified_band_depth_rank_(mbd_raw_p)
-
-	//console.log("rank_raw_p",rank_raw_p)
-
-	//console.log(global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint())
-
 	const rank = new Int32Array(global.tsvis_wasm_module.exports.memory.buffer, rank_raw_p, symbols_mbd.length);
-
-	//console.log(rank)
 
 	for (let i=0;i<symbols_mbd.length;i++) {
 		let symbol_rank_i = symbols_mbd[rank[i]]
 		symbol_rank_i.mbd_rank = i
 		global.modified_band_depth.ranked_symbols.push(symbol_rank_i)
-		//console.log(rank[i])
-		//console.log(`Depth rank ${i} is symbol ${symbol_rank_i.name} (from most extremal smaller rank to deeper larger rank)`)
 	}
 
 	prepare_fb_inner_band("mbd")
@@ -981,8 +985,6 @@ function run_modified_band_depth_algorithm() {
 	prepare_fb_outliers("mbd")
 
 	global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p)
-
-	//console.log(global.modified_band_depth.ranked_symbols)
 
 	//--------------
 	// sort symbols by mbd_rank
@@ -1058,17 +1060,32 @@ function run_extremal_depth_algorithm()
 		ed_raw_p = global.tsvis_wasm_module.exports.ed_extremal_depth_run(curve_list_raw_p)
 	}
 
-	let rank_raw_p = global.tsvis_wasm_module.exports.ed_get_extremal_depth_rank(ed_raw_p)
+	let rank_raw_p 		 	 		= global.tsvis_wasm_module.exports.ed_get_extremal_depth_rank(ed_raw_p)
+	let cdf_matrix_raw_p 	  		= global.tsvis_wasm_module.exports.ed_get_cdf_matrix(ed_raw_p)
+	let n_of_pwdepth_unique_values  = global.tsvis_wasm_module.exports.ed_get_pointwise_depth_unique_values(ed_raw_p)
+	let n_of_points 				= global.tsvis_wasm_module.exports.ed_get_number_of_points(ed_raw_p)
+
+	// console.log(n_of_pwdepth_unique_values)
+	// console.log(n_of_points)
 
 	const rank = new Int32Array(global.tsvis_wasm_module.exports.memory.buffer, rank_raw_p, symbols_ed.length);
+	const cdf_matrix = new Int32Array(global.tsvis_wasm_module.exports.memory.buffer, cdf_matrix_raw_p, n * n_of_pwdepth_unique_values)
+
+	// console.log(cdf_matrix)
 
 	global.extremal_depth.ranked_symbols = []
 	for (let i=0;i<symbols_ed.length;i++) {
 		let symbol_rank_i = symbols_ed[rank[i]]
 		symbol_rank_i.ed_rank = i
+		let cdf_row = []
+		for (let j=0; j<n_of_pwdepth_unique_values; j++) {
+			let value = cdf_matrix[(n_of_pwdepth_unique_values*i)+j] / n_of_points
+			cdf_row.push(value)
+		}
+		symbol_rank_i.cdf_matrix_row = cdf_row
+		console.log(symbol_rank_i)
 		global.extremal_depth.ranked_symbols.push(symbol_rank_i)
 	}
-	// console.log(global.extremal_depth.ranked_symbols)
 
 	//--------------
 	//find values of each band (IQR and maximum non outlying envelope)
@@ -1148,10 +1165,6 @@ function run_depth_algorithm_group(group, depth_type)
 		let ok = global.tsvis_wasm_module.exports.tsvis_CurveList_append(curve_list_raw_p, curve_raw_p)
 	}
 
-
-	// let ed_raw_p = global.tsvis_wasm_module.exports.ed_extremal_depth_run(curve_list_raw_p)
-	// let rank_raw_p = global.tsvis_wasm_module.exports.ed_get_extremal_depth_rank(ed_raw_p)
-
 	let d_raw_p    = null
 	let rank_raw_p = null
 	if (depth_type == "ed") {
@@ -1195,32 +1208,6 @@ function run_depth_algorithm_group(group, depth_type)
 
 	global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p)
 
-	//
-	// global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p)
-	//
-	// //--------------
-	// // sort symbols by ed_rank
-	// //--------------
-	// global.symbols.sort((a,b) => {
-	// 	if (a.ed_rank != null && b.ed_rank != null) {
-	// 		return a.ed_rank - b.ed_rank
-	// 	} else if (a.ed_rank != null) {
-	// 		return -1
-	// 	} else if (b.ed_rank != null ) {
-	// 		return 1
-	// 	} else {
-	// 		return -1
-	// 	}
-	// })
-	// let parent = global.ui.symbols_table
-	// while (parent.firstChild) {
-	//     parent.firstChild.remove();
-	// }
-	// for (let i=0;i<global.symbols.length;i++) {
-	// 	let symbol = global.symbols[i]
-	// 	global.ui.symbols_table.appendChild(symbol.ui_row)
-	// }
-
 }
 
 var counter = 0
@@ -1233,7 +1220,6 @@ function build_curves_density_matrix() {
 	}
 
 	global.denselines.hashcode = denselines_hashcode
-	// console.log(counter + " " + JSON.stringify(global.viewbox) + " " + denselines_hashcode)
 	counter = counter + 1
 
 	let mem_checpoint_raw_p = global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint()
@@ -1270,7 +1256,6 @@ function build_curves_density_matrix() {
 		const c_curve_values = new Float64Array(global.tsvis_wasm_module.exports.memory.buffer, values_raw_p, m);
 
 		c_curve_values.set(ts_current_values)
-		// console.log(ts_current_values)
 
 		let ok = global.tsvis_wasm_module.exports.tsvis_CurveList_append(curve_list_raw_p, curve_raw_p	)
 	}
@@ -1299,14 +1284,7 @@ function build_curves_density_matrix() {
 		normalized_matrix.push(cdm_entries[i] / n)
 	}
 
-	// global.denselines.rows 		 = nrows
-	// global.denselines.cols 		 = ncols
-	// global.denselines.viewbox_x  = viewbox_x
-	// global.denselines.viewbox_y  = viewbox_y
-	// global.denselines.viewbox_dx = viewbox_dx
-	// global.denselines.viewbox_dy = viewbox_dy
 	global.denselines.entries = normalized_matrix
-	// cdm_entries
 
 	global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p)
 
@@ -1480,8 +1458,6 @@ function update_ts()
 
 	let local_mouse_pos = get_local_position(global.mouse.position, canvas)
 
-	let rect = [0, 0, canvas.width, canvas.height]
-
 	const SIDE = {
 		BOTTOM: 0,
 		LEFT:1,
@@ -1496,492 +1472,707 @@ function update_ts()
 		HEIGHT:3
 	}
 
+	let rect = [0, 0, canvas.width, canvas.height]
+	let dcdf_rect_inf = null
+	if (global.ui.draw_ed_dcdf_curves_btn.checked) {
+		global.recompute_viewbox = true
+		rect = [0, 0, canvas.width/2, canvas.height]
+		dcdf_rect_inf = [canvas.width/2, 0, canvas.width/2, canvas.height]
+	}
+
 	let margin = [ 100, 50, 5, 5 ]
+
 	let ts_rect = [ rect[0] + margin[SIDE.LEFT],
 		        	rect[1] + margin[SIDE.TOP],
 		        	rect[2] - margin[SIDE.LEFT] - margin[SIDE.RIGHT],
 		        	rect[3] - margin[SIDE.BOTTOM] - margin[SIDE.TOP] ]
 
+	let dcdf_rect = null
+	if (global.ui.draw_ed_dcdf_curves_btn.checked) {
+		dcdf_rect = [ dcdf_rect_inf[0] + 20,
+					  dcdf_rect_inf[1] + 5,
+					  dcdf_rect_inf[2] - 20 - 5,
+					  dcdf_rect_inf[3] - 100 - 5 ]
+	}
+
+
 	ctx.clearRect(0,0,canvas.width, canvas.height)
 
-	ctx.save()
+	{
+		ctx.save()
 
-	ctx.fillStyle="#2f3233"
-	ctx.moveTo(0,0)
-	ctx.rect(ts_rect[RECT.LEFT],ts_rect[RECT.TOP],ts_rect[RECT.WIDTH],ts_rect[RECT.HEIGHT])
-	ctx.fill()
-	ctx.clip()
+		ctx.fillStyle="#2f3233"
 
-	ctx.restore()
+		ctx.moveTo(0,0)
+		ctx.rect(ts_rect[RECT.LEFT],ts_rect[RECT.TOP],ts_rect[RECT.WIDTH],ts_rect[RECT.HEIGHT])
+		ctx.fill()
 
-	let date_start = date_offset(global.date_start)
-	let date_end   = date_offset(global.date_end)
-	let date_norm  = date_offset(global.date_norm)
-
-	ctx.font = "bold 14pt Courier"
-	ctx.fillStyle = "#FFFFFF";
-	ctx.textAlign = "center";
-
-	//--------------
-	//drawing axis strokes
-	//--------------
-	ctx.save()
-	ctx.strokeStyle = "#FFFFFF";
-	ctx.lineWidth   = 2;
-
-	ctx.beginPath()
-	//y axis
-	ctx.moveTo(margin[SIDE.LEFT], margin[SIDE.TOP])
-	ctx.lineTo(margin[SIDE.LEFT], canvas.height-margin[SIDE.BOTTOM]+6)
-	//x axis
-	ctx.moveTo(margin[SIDE.LEFT]-6, canvas.height-margin[SIDE.BOTTOM])
-	ctx.lineTo(canvas.width-margin[SIDE.RIGHT], canvas.height-margin[SIDE.BOTTOM])
-	ctx.stroke()
-
-	ctx.restore()
-
-
-	//--------------
-	// find y range
-	//--------------
-	let y_min = 1.0
-	let y_max = 1.0
-	let last_valid_value = 1
-
-	for (let i=0;i<global.chart_symbols.length;i++) {
-		let symbol = global.chart_symbols[i]
-		symbol.ts_current_values = null
-		if (symbol.data == null) {
-			continue
+		if (global.ui.draw_ed_dcdf_curves_btn.checked) {
+			ctx.moveTo(dcdf_rect_inf[0], dcdf_rect_inf[1])
+			ctx.rect(dcdf_rect[RECT.LEFT], dcdf_rect[RECT.TOP], dcdf_rect[RECT.WIDTH], dcdf_rect[RECT.HEIGHT])
+			ctx.fill()
 		}
-		let norm_value = undefined
-		let k = date_end - date_start
-		let offset = date_norm - date_start
-		for (let j=0;j<k;j++) {
-			// 0 1 2 3 4 5 * 7 8
-			norm_value = symbol.data[date_start + ((offset + j) % k)]
-			if (norm_value != undefined) {
-				break;
+		ctx.clip()
+
+
+
+		ctx.restore()
+
+		let date_start = date_offset(global.date_start)
+		let date_end   = date_offset(global.date_end)
+		let date_norm  = date_offset(global.date_norm)
+
+		ctx.font = "bold 14pt Courier"
+		ctx.fillStyle = "#FFFFFF";
+		ctx.textAlign = "center";
+
+		//--------------
+		//drawing axis strokes
+		//--------------
+		ctx.save()
+		ctx.strokeStyle = "#FFFFFF";
+		ctx.lineWidth   = 2;
+
+		ctx.beginPath()
+		//y axis
+		ctx.moveTo(margin[SIDE.LEFT], margin[SIDE.TOP])
+		ctx.lineTo(margin[SIDE.LEFT], canvas.height-margin[SIDE.BOTTOM]+6)
+		//x axis
+		ctx.moveTo(margin[SIDE.LEFT]-6, canvas.height-margin[SIDE.BOTTOM])
+		ctx.lineTo(canvas.width-margin[SIDE.RIGHT], canvas.height-margin[SIDE.BOTTOM])
+		ctx.stroke()
+
+		ctx.restore()
+
+
+		//--------------
+		// find y range
+		//--------------
+		let y_min = 1.0
+		let y_max = 1.0
+		let last_valid_value = 1
+
+		for (let i=0;i<global.chart_symbols.length;i++) {
+			let symbol = global.chart_symbols[i]
+			symbol.ts_current_values = null
+			if (symbol.data == null) {
+				continue
 			}
+			let norm_value = undefined
+			let k = date_end - date_start
+			let offset = date_norm - date_start
+			for (let j=0;j<k;j++) {
+				// 0 1 2 3 4 5 * 7 8
+				norm_value = symbol.data[date_start + ((offset + j) % k)]
+				if (norm_value != undefined) {
+					break;
+				}
+			}
+			if (norm_value == undefined) {
+				console.log("no price for symbol " + symbol.name + " on norm date")
+			}
+			let ts_current_values = []
+			for (let j=date_start;j<=date_end;j++) {
+				let value = symbol.data[j]
+				if (value == undefined) {
+					value = last_valid_value
+				} else {
+					value = value / norm_value
+				}
+				// value = i
+				ts_current_values.push(value)
+				last_valid_value = value
+				y_min = Math.min(y_min, value)
+				y_max = Math.max(y_max, value)
+			}
+			symbol.ts_current_values = ts_current_values
 		}
-		if (norm_value == undefined) {
-			console.log("no price for symbol " + symbol.name + " on norm date")
+
+		// if (global.extremal_depth.fbplot.active) {
+		// 	y_max = Math.max.apply(y_max, global.extremal_depth.fbplot.outer_band.upper)
+		// 	y_min = Math.min.apply(y_min, global.extremal_depth.fbplot.outer_band.lower)
+		// }
+		//
+		// if (global.modified_band_depth.fbplot.active) {
+		// 	y_max = Math.max.apply(y_max, global.modified_band_depth.fbplot.outer_band.upper)
+		// 	y_min = Math.min.apply(y_min, global.modified_band_depth.fbplot.outer_band.lower)
+		// }
+
+		if (global.extremal_depth.fbplot.active || global.modified_band_depth.fbplot.active) {
+			let max_outer_bands = Math.max(Math.max.apply(null, global.extremal_depth.fbplot.outer_band.upper),
+										   Math.max.apply(null, global.modified_band_depth.fbplot.outer_band.upper))
+
+			let min_outer_bands = Math.min(Math.min.apply(null, global.extremal_depth.fbplot.outer_band.lower),
+								  		   Math.min.apply(null, global.modified_band_depth.fbplot.outer_band.lower))
+
+			y_max = Math.max(max_outer_bands, y_max)
+			y_min = Math.min(min_outer_bands, y_min)
+
 		}
-		let ts_current_values = []
-		for (let j=date_start;j<=date_end;j++) {
-			let value = symbol.data[j]
-			if (value == undefined) {
-				value = last_valid_value
+
+		if(y_min == y_max) {
+			y_min = y_max-1
+		}
+
+		//--------------
+		// x range
+		//--------------
+		let x_min = 0
+		let x_max = date_end - date_start
+
+		if (global.recompute_viewbox) {
+			global.viewbox.x 	  = x_min
+			global.viewbox.y 	  = y_min
+			global.viewbox.width  = x_max - x_min
+			global.viewbox.height = y_max - y_min
+			global.recompute_viewbox = false
+		} else {
+			x_min = global.viewbox.x
+			y_min = global.viewbox.y
+			x_max = global.viewbox.x + global.viewbox.width
+			y_max = global.viewbox.y + global.viewbox.height
+		}
+
+		let resolution = parseInt(global.ui.create_curve_density_matrix_resolution.value)
+		let rows = Math.floor(ts_rect[RECT.HEIGHT] / resolution)
+		let cols = Math.floor(ts_rect[RECT.WIDTH] / resolution)
+		global.viewbox.resolution = resolution
+		global.viewbox.rows = rows
+		global.viewbox.cols = cols
+
+		function map(x, y) {
+			let px = ts_rect[RECT.LEFT] + (1.0 * (x - x_min) / (x_max - x_min)) * ts_rect[RECT.WIDTH]
+			let py = ts_rect[RECT.TOP] + (ts_rect[RECT.HEIGHT] - 1 - (1.0 * (y - y_min) / (y_max - y_min)) * ts_rect[RECT.HEIGHT])
+			return [px,py]
+		}
+
+		function inverse_map(px, py) {
+			let x = (px - ts_rect[RECT.LEFT]) / ts_rect[RECT.WIDTH] * (1.0*(x_max - x_min)) + x_min
+			let y = -((((py - ts_rect[RECT.TOP] - ts_rect[RECT.HEIGHT] + 1) * (1.0 * (y_max - y_min))) / ts_rect[RECT.HEIGHT]) - y_min)
+			return [x,y]
+		}
+
+		let factor = 1.1
+		let ref    = inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+		let y_ref  = ref[1]
+		let x_ref  = ref[0]
+
+		if (global.zoom_y != 0) {
+			let h = global.viewbox.height
+			let h_
+
+			if (global.zoom_y > 0) {
+				h_ = h * factor
 			} else {
-				value = value / norm_value
+				h_ = h / factor
 			}
-			// value = i
-			ts_current_values.push(value)
-			last_valid_value = value
-			y_min = Math.min(y_min, value)
-			y_max = Math.max(y_max, value)
-		}
-		symbol.ts_current_values = ts_current_values
-	}
 
-	// if (global.extremal_depth.fbplot.active) {
-	// 	y_max = Math.max.apply(y_max, global.extremal_depth.fbplot.outer_band.upper)
-	// 	y_min = Math.min.apply(y_min, global.extremal_depth.fbplot.outer_band.lower)
-	// }
-	//
-	// if (global.modified_band_depth.fbplot.active) {
-	// 	y_max = Math.max.apply(y_max, global.modified_band_depth.fbplot.outer_band.upper)
-	// 	y_min = Math.min.apply(y_min, global.modified_band_depth.fbplot.outer_band.lower)
-	// }
+			global.viewbox.y = -((h_*((y_ref-global.viewbox.y)/h))-y_ref)
+			global.viewbox.height = h_
 
-	if (global.extremal_depth.fbplot.active || global.modified_band_depth.fbplot.active) {
-		let max_outer_bands = Math.max(Math.max.apply(null, global.extremal_depth.fbplot.outer_band.upper),
-									   Math.max.apply(null, global.modified_band_depth.fbplot.outer_band.upper))
+			y_min = global.viewbox.y
+			y_max = global.viewbox.y + global.viewbox.height
 
-		let min_outer_bands = Math.min(Math.min.apply(null, global.extremal_depth.fbplot.outer_band.lower),
-							  		   Math.min.apply(null, global.modified_band_depth.fbplot.outer_band.lower))
-
-		y_max = Math.max(max_outer_bands, y_max)
-		y_min = Math.min(min_outer_bands, y_min)
-
-	}
-
-	if(y_min == y_max) {
-		y_min = y_max-1
-	}
-
-	//--------------
-	// x range
-	//--------------
-	let x_min = 0
-	let x_max = date_end - date_start
-
-	if (global.recompute_viewbox) {
-		global.viewbox.x 	  = x_min
-		global.viewbox.y 	  = y_min
-		global.viewbox.width  = x_max - x_min
-		global.viewbox.height = y_max - y_min
-		global.recompute_viewbox = false
-	} else {
-		x_min = global.viewbox.x
-		y_min = global.viewbox.y
-		x_max = global.viewbox.x + global.viewbox.width
-		y_max = global.viewbox.y + global.viewbox.height
-	}
-
-	let resolution = parseInt(global.ui.create_curve_density_matrix_resolution.value)
-	let rows = Math.floor(ts_rect[RECT.HEIGHT] / resolution)
-	let cols = Math.floor(ts_rect[RECT.WIDTH] / resolution)
-	global.viewbox.resolution = resolution
-	global.viewbox.rows = rows
-	global.viewbox.cols = cols
-
-	function map(x, y) {
-		let px = ts_rect[RECT.LEFT] + (1.0 * (x - x_min) / (x_max - x_min)) * ts_rect[RECT.WIDTH]
-		let py = ts_rect[RECT.TOP] + (ts_rect[RECT.HEIGHT] - 1 - (1.0 * (y - y_min) / (y_max - y_min)) * ts_rect[RECT.HEIGHT])
-		return [px,py]
-	}
-
-	function inverse_map(px, py) {
-		let x = (px - ts_rect[RECT.LEFT]) / ts_rect[RECT.WIDTH] * (1.0*(x_max - x_min)) + x_min
-		let y = -((((py - ts_rect[RECT.TOP] - ts_rect[RECT.HEIGHT] + 1) * (1.0 * (y_max - y_min))) / ts_rect[RECT.HEIGHT]) - y_min)
-		return [x,y]
-	}
-
-	let factor = 1.1
-	let ref    = inverse_map(local_mouse_pos[0], local_mouse_pos[1])
-	let y_ref  = ref[1]
-	let x_ref  = ref[0]
-
-	if (global.zoom_y != 0) {
-		let h = global.viewbox.height
-		let h_
-
-		if (global.zoom_y > 0) {
-			h_ = h * factor
-		} else {
-			h_ = h / factor
+			global.zoom_y = 0
 		}
 
-		global.viewbox.y = -((h_*((y_ref-global.viewbox.y)/h))-y_ref)
-		global.viewbox.height = h_
+		if (global.zoom_x != 0) {
+			let w = global.viewbox.width
+			let w_
 
-		y_min = global.viewbox.y
-		y_max = global.viewbox.y + global.viewbox.height
+			if (global.zoom_x > 0) {
+				w_ = Math.floor(w * factor)
+			} else {
+				w_ = Math.floor(w / factor)
+			}
 
-		global.zoom_y = 0
-	}
+			global.viewbox.x = Math.floor(-((w_*((x_ref-global.viewbox.x)/w))-x_ref))
+			global.viewbox.width  = w_
 
-	if (global.zoom_x != 0) {
-		let w = global.viewbox.width
-		let w_
+			x_min = global.viewbox.x
+			x_max = global.viewbox.x + global.viewbox.width
 
-		if (global.zoom_x > 0) {
-			w_ = Math.floor(w * factor)
-		} else {
-			w_ = Math.floor(w / factor)
+			global.zoom_x = 0
 		}
 
-		global.viewbox.x = Math.floor(-((w_*((x_ref-global.viewbox.x)/w))-x_ref))
-		global.viewbox.width  = w_
+		if (global.drag.active) {
 
-		x_min = global.viewbox.x
-		x_max = global.viewbox.x + global.viewbox.width
+			let local_dragstart_pos = get_local_position(global.drag.startpos, canvas)
+			local_dragstart_pos = inverse_map(local_dragstart_pos[0], local_dragstart_pos[1])
 
-		global.zoom_x = 0
-	}
+			let local_currmouse_pos = inverse_map(local_mouse_pos[0], local_mouse_pos[1])
 
-	if (global.drag.active) {
+			global.viewbox.x = global.drag.startvbox[0] - Math.floor(local_currmouse_pos[0] - local_dragstart_pos[0])
+			global.viewbox.y = global.drag.startvbox[1] - (local_currmouse_pos[1] - local_dragstart_pos[1])
 
-		let local_dragstart_pos = get_local_position(global.drag.startpos, canvas)
-		local_dragstart_pos = inverse_map(local_dragstart_pos[0], local_dragstart_pos[1])
+			x_min = global.viewbox.x
+			x_max = global.viewbox.x + global.viewbox.width
 
-		let local_currmouse_pos = inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+			y_min = global.viewbox.y
+			y_max = global.viewbox.y + global.viewbox.height
 
-		global.viewbox.x = global.drag.startvbox[0] - Math.floor(local_currmouse_pos[0] - local_dragstart_pos[0])
-		global.viewbox.y = global.drag.startvbox[1] - (local_currmouse_pos[1] - local_dragstart_pos[1])
+		}
 
-		x_min = global.viewbox.x
-		x_max = global.viewbox.x + global.viewbox.width
+		//--------------
+		//grid lines
+		//--------------
 
-		y_min = global.viewbox.y
-		y_max = global.viewbox.y + global.viewbox.height
+		//--------------
+		//x axis grid lines and ticks
+		//--------------
+		let x_num_ticks = 8
+		let x_ticks = []
+		for(let i=0; i<x_num_ticks; i++) {
+			let x_tick = Math.floor(x_min+(i*((x_max-x_min)/(x_num_ticks-1))))
+			x_ticks.push(x_tick)
+		}
 
-	}
+		// console.log(x_ticks)
 
-	//--------------
-	//grid lines
-	//--------------
+		for(let i=0; i<x_ticks.length; i++) {
+			ctx.strokeStyle = "#555555";
+			ctx.lineWidth   = 1;
 
-	//--------------
-	//x axis grid lines and ticks
-	//--------------
-	let x_num_ticks = 8
-	let x_ticks = []
-	for(let i=0; i<x_num_ticks; i++) {
-		let x_tick = Math.floor(x_min+(i*((x_max-x_min)/(x_num_ticks-1))))
-		x_ticks.push(x_tick)
-	}
+			let p0 = map(x_ticks[i], y_min)
+			let p1 = map(x_ticks[i], y_max)
 
-	// console.log(x_ticks)
+			ctx.beginPath()
+			ctx.moveTo(p0[0], p0[1])
+			ctx.lineTo(p1[0], p1[1])
+			ctx.stroke()
 
-	for(let i=0; i<x_ticks.length; i++) {
-		ctx.strokeStyle = "#555555";
+
+			ctx.save();
+			ctx.font = "bold 12pt Courier"
+			ctx.fillStyle = "#FFFFFF"
+			ctx.translate(p0[0], p0[1]+42);
+			ctx.rotate(-Math.PI/4);
+			ctx.fillText(date_offset_to_string(date_start + (x_ticks[i])), 0, 0);
+			ctx.restore();
+		}
+
+
+		//--------------
+		//y grid lines and ticks
+		//--------------
+		let y_num_ticks = 10
+		let y_ticks = []
+		for(let i=0; i<y_num_ticks; i++) {
+			let y_tick = y_min+((1.0*i*(y_max-y_min))/(y_num_ticks-1))
+			y_ticks.push(y_tick)
+		}
+
+		for(let i=0; i<y_ticks.length; i++) {
+			ctx.strokeStyle = "#555555";
+			ctx.lineWidth   = 1;
+
+			let p0 = map(x_min, y_ticks[i])
+			let p1 = map(x_max, y_ticks[i])
+
+			ctx.beginPath()
+			ctx.moveTo(p0[0], p0[1])
+			ctx.lineTo(p1[0], p1[1])
+			ctx.stroke()
+
+			ctx.font = "bold 12pt Courier"
+			ctx.fillStyle = "#FFFFFF"
+			if(i==(y_ticks.length-1)) {
+				ctx.fillText(y_ticks[i].toFixed(2), p0[0]-23, p0[1]+8);
+			} else {
+				ctx.fillText(y_ticks[i].toFixed(2), p0[0]-23, p0[1]+5);
+			}
+
+		}
+
+		ctx.save()
+
+		ctx.moveTo(0,0)
+		ctx.rect(ts_rect[RECT.LEFT],ts_rect[RECT.TOP],ts_rect[RECT.WIDTH],ts_rect[RECT.HEIGHT])
+		ctx.clip()
+
+		//--------------
+		//vertical line to track norm date
+		//--------------
+		let x_norm = date_norm - date_start
+
+		ctx.strokeStyle = "#FFFFFFFF";
 		ctx.lineWidth   = 1;
 
-		let p0 = map(x_ticks[i], y_min)
-		let p1 = map(x_ticks[i], y_max)
+		let p0 = map(x_norm, y_min)
+		let p1 = map(x_norm, y_max)
 
 		ctx.beginPath()
 		ctx.moveTo(p0[0], p0[1])
 		ctx.lineTo(p1[0], p1[1])
 		ctx.stroke()
-
 
 		ctx.save();
 		ctx.font = "bold 12pt Courier"
-		ctx.fillStyle = "#FFFFFF"
-		ctx.translate(p0[0], p0[1]+42);
-		ctx.rotate(-Math.PI/4);
-		ctx.fillText(date_offset_to_string(date_start + (x_ticks[i])), 0, 0);
+		ctx.fillStyle = "#FFFFFFFF"
+		ctx.translate(p1[0]+10, p1[1]+50);
+		ctx.rotate(Math.PI/2);
+		ctx.fillText(date_offset_to_string(date_start+x_norm), 0, 0);
 		ctx.restore();
-	}
 
+		//--------------
+		// drawing and highlighting utils
+		//--------------
+		let closest_date = null
+		let closest_symbol  = null
+		let min_distance_threshold = 5 * 5
+		let closest_distance = 100000
 
-	//--------------
-	//y grid lines and ticks
-	//--------------
-	let y_num_ticks = 10
-	let y_ticks = []
-	for(let i=0; i<y_num_ticks; i++) {
-		let y_tick = y_min+((1.0*i*(y_max-y_min))/(y_num_ticks-1))
-		y_ticks.push(y_tick)
-	}
-
-	for(let i=0; i<y_ticks.length; i++) {
-		ctx.strokeStyle = "#555555";
-		ctx.lineWidth   = 1;
-
-		let p0 = map(x_min, y_ticks[i])
-		let p1 = map(x_max, y_ticks[i])
-
-		ctx.beginPath()
-		ctx.moveTo(p0[0], p0[1])
-		ctx.lineTo(p1[0], p1[1])
-		ctx.stroke()
-
-		ctx.font = "bold 12pt Courier"
-		ctx.fillStyle = "#FFFFFF"
-		if(i==(y_ticks.length-1)) {
-			ctx.fillText(y_ticks[i].toFixed(2), p0[0]-23, p0[1]+8);
-		} else {
-			ctx.fillText(y_ticks[i].toFixed(2), p0[0]-23, p0[1]+5);
+		function update_closest_point(symbol, date, px, py) {
+			let dx = local_mouse_pos[0] - px
+			let dy = local_mouse_pos[1] - py
+			let dist = dx * dx + dy * dy
+			if (dist <= min_distance_threshold && dist < closest_distance) {
+				closest_symbol = symbol
+				closest_date = date
+			}
 		}
 
-	}
+		function draw_timeseries(symbol, focused, color) {
 
-	//--------------
-	//vertical line to track norm date
-	//--------------
-	let x_norm = date_norm - date_start
-
-	ctx.strokeStyle = "#FFFFFFFF";
-	ctx.lineWidth   = 1;
-
-	let p0 = map(x_norm, y_min)
-	let p1 = map(x_norm, y_max)
-
-	ctx.beginPath()
-	ctx.moveTo(p0[0], p0[1])
-	ctx.lineTo(p1[0], p1[1])
-	ctx.stroke()
-
-	ctx.save();
-	ctx.font = "bold 12pt Courier"
-	ctx.fillStyle = "#FFFFFFFF"
-	ctx.translate(p1[0]+10, p1[1]+50);
-	ctx.rotate(Math.PI/2);
-	ctx.fillText(date_offset_to_string(date_start+x_norm), 0, 0);
-	ctx.restore();
-
-	//--------------
-	// drawing and highlighting utils
-	//--------------
-	let closest_date = null
-	let closest_symbol  = null
-	let min_distance_threshold = 5 * 5
-	let closest_distance = 100000
-
-	function update_closest_point(symbol, date, px, py) {
-		let dx = local_mouse_pos[0] - px
-		let dy = local_mouse_pos[1] - py
-		let dist = dx * dx + dy * dy
-		if (dist <= min_distance_threshold && dist < closest_distance) {
-			closest_symbol = symbol
-			closest_date = date
-		}
-	}
-
-	function draw_timeseries(symbol, focused, color) {
-
-		let ts_current_values = symbol.ts_current_values
-		if (ts_current_values == null) {
-			console.log("Not drawing ts for symbol ", symbol.name);
-			return;
-		}
+			let ts_current_values = symbol.ts_current_values
+			if (ts_current_values == null) {
+				console.log("Not drawing ts for symbol ", symbol.name);
+				return;
+			}
 
 
-		if (focused) {
-			ctx.lineWidth = 4
-		} else {
-			ctx.lineWidth = 2
-		}
-
-		let i = global.chart_symbols.indexOf(symbol)
-		if (symbol.data == null) {
-			return
-		}
-
-		let first_point_drawn = false
-		if (typeof color !== 'undefined') {
-			ctx.strokeStyle = color
-			symbol.ui_col.style.color = color
-		} else {
-			ctx.strokeStyle = global.chart_colors[i]
-			symbol.ui_col.style.color = global.chart_colors[i]
-		}
-
-
-		ctx.beginPath()
-		for (let j=x_min;j<=x_max;j++) {
-			let date_offset = date_start+j
-			let yi = ts_current_values[j]
-			let p = map(j,yi)
-			update_closest_point(symbol, j, p[0], p[1])
-			if (!first_point_drawn) {
-				ctx.moveTo(p[0],p[1])
-				first_point_drawn = true
+			if (focused) {
+				ctx.lineWidth = 4
 			} else {
-				ctx.lineTo(p[0],p[1])
+				ctx.lineWidth = 2
 			}
-		}
-		ctx.stroke()
-	}
 
-	function draw_point(i, j, r) {
-		let values = global.focused_symbol.data
-		let yi = values[j]
-		let p = map(j,yi)
-		update_closest_point(i, j, p[0], p[1])
-		ctx.beginPath()
-		ctx.arc(p[0],p[1],r,0,Math.PI*2,true)
-		ctx.stroke()
-	}
+			let i = global.chart_symbols.indexOf(symbol)
+			if (symbol.data == null) {
+				return
+			}
 
-	ctx.save()
+			let first_point_drawn = false
+			if (typeof color !== 'undefined') {
+				ctx.strokeStyle = color
+				symbol.ui_col.style.color = color
+			} else {
+				ctx.strokeStyle = global.chart_colors[i]
+				symbol.ui_col.style.color = global.chart_colors[i]
+			}
 
-	ctx.moveTo(0,0)
-	ctx.rect(ts_rect[RECT.LEFT],ts_rect[RECT.TOP],ts_rect[RECT.WIDTH],ts_rect[RECT.HEIGHT])
-	ctx.clip()
 
-	if (global.denselines.active) {
-
-		let updated = build_curves_density_matrix()
-
-		rows = global.viewbox.rows
-		cols = global.viewbox.cols
-		let max_value = Math.max.apply(null, global.denselines.entries)
-
-		let cell_width  = ts_rect[RECT.WIDTH] / global.viewbox.cols
-		let cell_height = ts_rect[RECT.HEIGHT] / global.viewbox.rows
-
-		let starting_x = ts_rect[RECT.LEFT]
-		let starting_y = ts_rect[RECT.TOP]
-
-		let matrix = global.denselines.entries
-
-		function hex_to_rgb(hexstr) {
-			let r = parseInt(hexstr.slice(1,3),16) / 255.0
-			let g = parseInt(hexstr.slice(3,5),16) / 255.0
-			let b = parseInt(hexstr.slice(5,7),16) / 255.0
-
-			return [r,g,b]
-		}
-
-		function rgb_to_hex(rgbarr) {
-
-			let r = Math.trunc(rgbarr[0] * 255).toString(16)
-			let g = Math.trunc(rgbarr[1] * 255).toString(16)
-			let b = Math.trunc(rgbarr[2] * 255).toString(16)
-
-			r = r.length == 2 ? r : ("0"+r)
-			g = g.length == 2 ? g : ("0"+g)
-			b = b.length == 2 ? b : ("0"+b)
-			let color = "#" + r + g + b + 'BB'
-
-			return color
-		}
-
-		function rgb_lerp(a_rgb, b_rgb, lambda) {
-			return [a_rgb[0] * lambda + b_rgb[0] * (1-lambda),
-					a_rgb[1] * lambda + b_rgb[1] * (1-lambda),
-					a_rgb[2] * lambda + b_rgb[2] * (1-lambda)]
-		}
-
-		function hex_lerp(a_hex, b_hex, lambda) {
-			return rgb_to_hex(rgb_lerp(hex_to_rgb(a_hex), hex_to_rgb(b_hex), lambda) )
-		}
-
-		ctx.save()
-		for (let i=0; i<rows; i++) {
-			for (let j=0; j<cols; j++) {
-				let value = matrix[(cols*i)+j]
-				value = value / max_value
-				// console.log(value)
-				let color = "#2f3233"
-				let color_scale = ['#ffffd9','#edf8b1','#c7e9b4','#7fcdbb','#41b6c4','#1d91c0','#225ea8','#253494','#081d58','#081d58']
-				// ['#fff7ec','#fee8c8','#fdd49e','#fdbb84','#fc8d59','#ef6548','#d7301f','#b30000','#7f0000', '#7f0000']
-				// ['#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026','#800026']
-				// ['#67001f','#b2182b','#d6604d','#f4a582','#fddbc7','#f7f7f7','#d1e5f0','#92c5de','#4393c3','#2166ac','#053061']
-
-				if (value > 0.0) {
-					let x = value * (color_scale.length-1)
-					let x_idx = Math.floor(x)
-					let x_idx_next = Math.min(x_idx+1, color_scale.length-1)
-					let lambda = 1 - (x - x_idx)
-					color = hex_lerp(color_scale[x_idx], color_scale[x_idx_next], lambda)
+			ctx.beginPath()
+			for (let j=x_min;j<=x_max;j++) {
+				let date_offset = date_start+j
+				let yi = ts_current_values[j]
+				let p = map(j,yi)
+				update_closest_point(symbol, j, p[0], p[1])
+				if (!first_point_drawn) {
+					ctx.moveTo(p[0],p[1])
+					first_point_drawn = true
+				} else {
+					ctx.lineTo(p[0],p[1])
 				}
+			}
+			ctx.stroke()
+		}
 
-				ctx.fillStyle = color
-				ctx.strokeStyle = ctx.fillStyle
+		function draw_point(i, j, r) {
+			let values = global.focused_symbol.data
+			let yi = values[j]
+			let p = map(j,yi)
+			update_closest_point(i, j, p[0], p[1])
+			ctx.beginPath()
+			ctx.arc(p[0],p[1],r,0,Math.PI*2,true)
+			ctx.stroke()
+		}
+
+		if (global.denselines.active) {
+
+			let updated = build_curves_density_matrix()
+
+			rows = global.viewbox.rows
+			cols = global.viewbox.cols
+			let max_value = Math.max.apply(null, global.denselines.entries)
+
+			let cell_width  = ts_rect[RECT.WIDTH] / global.viewbox.cols
+			let cell_height = ts_rect[RECT.HEIGHT] / global.viewbox.rows
+
+			let starting_x = ts_rect[RECT.LEFT]
+			let starting_y = ts_rect[RECT.TOP]
+
+			let matrix = global.denselines.entries
+
+			function hex_to_rgb(hexstr) {
+				let r = parseInt(hexstr.slice(1,3),16) / 255.0
+				let g = parseInt(hexstr.slice(3,5),16) / 255.0
+				let b = parseInt(hexstr.slice(5,7),16) / 255.0
+
+				return [r,g,b]
+			}
+
+			function rgb_to_hex(rgbarr) {
+
+				let r = Math.trunc(rgbarr[0] * 255).toString(16)
+				let g = Math.trunc(rgbarr[1] * 255).toString(16)
+				let b = Math.trunc(rgbarr[2] * 255).toString(16)
+
+				r = r.length == 2 ? r : ("0"+r)
+				g = g.length == 2 ? g : ("0"+g)
+				b = b.length == 2 ? b : ("0"+b)
+				let color = "#" + r + g + b + 'BB'
+
+				return color
+			}
+
+			function rgb_lerp(a_rgb, b_rgb, lambda) {
+				return [a_rgb[0] * lambda + b_rgb[0] * (1-lambda),
+						a_rgb[1] * lambda + b_rgb[1] * (1-lambda),
+						a_rgb[2] * lambda + b_rgb[2] * (1-lambda)]
+			}
+
+			function hex_lerp(a_hex, b_hex, lambda) {
+				return rgb_to_hex(rgb_lerp(hex_to_rgb(a_hex), hex_to_rgb(b_hex), lambda) )
+			}
+
+			ctx.save()
+			for (let i=0; i<rows; i++) {
+				for (let j=0; j<cols; j++) {
+					let value = matrix[(cols*i)+j]
+					value = value / max_value
+					// console.log(value)
+					let color = "#2f3233"
+					let color_scale = ['#ffffd9','#edf8b1','#c7e9b4','#7fcdbb','#41b6c4','#1d91c0','#225ea8','#253494','#081d58','#081d58']
+					// ['#fff7ec','#fee8c8','#fdd49e','#fdbb84','#fc8d59','#ef6548','#d7301f','#b30000','#7f0000', '#7f0000']
+					// ['#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026','#800026']
+					// ['#67001f','#b2182b','#d6604d','#f4a582','#fddbc7','#f7f7f7','#d1e5f0','#92c5de','#4393c3','#2166ac','#053061']
+
+					if (value > 0.0) {
+						let x = value * (color_scale.length-1)
+						let x_idx = Math.floor(x)
+						let x_idx_next = Math.min(x_idx+1, color_scale.length-1)
+						let lambda = 1 - (x - x_idx)
+						color = hex_lerp(color_scale[x_idx], color_scale[x_idx_next], lambda)
+					}
+
+					ctx.fillStyle = color
+					ctx.strokeStyle = ctx.fillStyle
+					ctx.beginPath()
+					ctx.rect( starting_x + (cell_width*j),
+						  ts_rect[RECT.HEIGHT] - (i + 1) * cell_height, cell_width, cell_height)
+					ctx.closePath()
+					ctx.fill()
+					ctx.stroke()
+				}
+			}
+			ctx.restore()
+		}
+
+		//--------------
+		// running extremal depth algorithm and drawing bands
+		//--------------
+		if (global.extremal_depth.fbplot.active) {
+
+			if(global.chart_symbols.length == 0) {
+				console.log("No symbols selected!")
+			} else {
+				//--------------
+				// drawing inner band
+				//--------------
+				let ymin = global.extremal_depth.fbplot.inner_band.lower
+				let ymax = global.extremal_depth.fbplot.inner_band.upper
+				let num_timesteps = global.extremal_depth.ranked_symbols[0].ts_current_values.length
+
+				ctx.save()
+
 				ctx.beginPath()
-				ctx.rect( starting_x + (cell_width*j),
-					  ts_rect[RECT.HEIGHT] - (i + 1) * cell_height, cell_width, cell_height)
+				let p = map(0,ymin[0])
+				ctx.moveTo(p[0],p[1])
+				for (let j=1;j<num_timesteps;j++) {
+					p = map(j,ymin[j])
+					ctx.lineTo(p[0],p[1])
+				}
+				for (let j=num_timesteps-1;j>=0;j--) {
+					p = map(j,ymax[j])
+					ctx.lineTo(p[0],p[1])
+				}
 				ctx.closePath()
+				ctx.fillStyle="#00FFFF55"
 				ctx.fill()
+
+				ctx.restore()
+
+				//--------------
+				// drawing outer band
+				//--------------
+				let ymin_outer = global.extremal_depth.fbplot.outer_band.lower
+				let ymax_outer = global.extremal_depth.fbplot.outer_band.upper
+
+				ctx.save()
+				ctx.strokeStyle = "#FFFFFF"
+				ctx.setLineDash([5, 3])
+				ctx.beginPath()
+				p = map(0,ymin_outer[0])
+				ctx.moveTo(p[0],p[1])
+				for (let j=1;j<num_timesteps;j++) {
+					p = map(j,ymin_outer[j])
+					ctx.lineTo(p[0],p[1])
+				}
+				for (let j=num_timesteps-1;j>=0;j--) {
+					p = map(j,ymax_outer[j])
+					ctx.lineTo(p[0],p[1])
+				}
 				ctx.stroke()
+				ctx.restore()
+
+				//--------------
+				// drawing median curve
+				//--------------
+				let median_symbol = global.extremal_depth.ranked_symbols[global.extremal_depth.ranked_symbols.length - 1]
+				draw_timeseries(median_symbol, false, "#00FFFF")
+
+				if (global.ui.ed_draw_outliers_btn.checked) {
+					//--------------
+					// drawing outliers
+					//--------------
+					for(let i=0; i<global.extremal_depth.fbplot.outliers.length; i++) {
+						let symbol = global.extremal_depth.fbplot.outliers[i]
+						draw_timeseries(symbol, false, "#00FFFF55")
+					}
+
+				}
+
 			}
+
 		}
-		ctx.restore()
-	}
 
-	//--------------
-	// running extremal depth algorithm and drawing bands
-	//--------------
-	if (global.extremal_depth.fbplot.active) {
+		if (global.modified_band_depth.fbplot.active) {
 
-		if(global.chart_symbols.length == 0) {
-			console.log("No symbols selected!")
-		} else {
+			if(global.chart_symbols.length == 0) {
+				console.log("No symbols selected!")
+			} else {
+				//--------------
+				// drawing inner band
+				//--------------
+				let ymin = global.modified_band_depth.fbplot.inner_band.lower
+				let ymax = global.modified_band_depth.fbplot.inner_band.upper
+				let num_timesteps = global.modified_band_depth.ranked_symbols[0].ts_current_values.length
+
+				ctx.save()
+				ctx.beginPath()
+				let p = map(0,ymin[0])
+				ctx.moveTo(p[0],p[1])
+				for (let j=1;j<num_timesteps;j++) {
+					p = map(j,ymin[j])
+					ctx.lineTo(p[0],p[1])
+				}
+				for (let j=num_timesteps-1;j>=0;j--) {
+					p = map(j,ymax[j])
+					ctx.lineTo(p[0],p[1])
+				}
+				ctx.closePath()
+				ctx.fillStyle="#FF000055"
+				ctx.fill()
+				ctx.restore()
+
+				//--------------
+				// drawing outer band
+				//--------------
+				let ymin_outer = global.modified_band_depth.fbplot.outer_band.lower
+				let ymax_outer = global.modified_band_depth.fbplot.outer_band.upper
+
+				ctx.save()
+				ctx.strokeStyle = "#FFFFFF"
+				ctx.setLineDash([5, 3])
+				ctx.beginPath()
+				p = map(0,ymin_outer[0])
+				ctx.moveTo(p[0],p[1])
+				for (let j=1;j<num_timesteps;j++) {
+					p = map(j,ymin_outer[j])
+					ctx.lineTo(p[0],p[1])
+				}
+				for (let j=num_timesteps-1;j>=0;j--) {
+					p = map(j,ymax_outer[j])
+					ctx.lineTo(p[0],p[1])
+				}
+				ctx.stroke()
+				ctx.restore()
+
+				//--------------
+				// drawing median curve
+				//--------------
+				let median_symbol = global.modified_band_depth.ranked_symbols[global.modified_band_depth.ranked_symbols.length - 1]
+				draw_timeseries(median_symbol, false, "#FF0000")
+
+				if (global.ui.mbd_draw_outliers_btn.checked) {
+					//--------------
+					// drawing outliers
+					//--------------
+					for(let i=0; i<global.modified_band_depth.fbplot.outliers.length; i++) {
+						let symbol = global.modified_band_depth.fbplot.outliers[i]
+						draw_timeseries(symbol, false, "#FF000055")
+					}
+
+				}
+
+			}
+
+		}
+
+		//--------------
+		// drawing curves
+		//--------------
+		if (global.ui.draw_curves_btn.checked) {
+
+			for (let i=0;i<global.chart_symbols.length;i++) {
+
+				let symbol = global.chart_symbols[i]
+
+				if(global.focused_symbol == null || global.chart_symbols[i] != global.focused_symbol) {
+					draw_timeseries(symbol, false)
+				}
+			}
+
+			for (let i=0; i<global.chart_groups.length; i++) {
+
+				let group = global.chart_groups[i]
+				let members = group.members
+
+				for (let j=0; j<members.length; j++) {
+
+					let member = members[j]
+
+					if(global.focused_symbol == null || member != global.focused_symbol) {
+						draw_timeseries(member, false, group.color)
+					}
+
+				}
+
+			}
+
+
+		}
+
+		function draw_group_fbplot(group, depth_type) {
 			//--------------
 			// drawing inner band
 			//--------------
-			let ymin = global.extremal_depth.fbplot.inner_band.lower
-			let ymax = global.extremal_depth.fbplot.inner_band.upper
-			let num_timesteps = global.extremal_depth.ranked_symbols[0].ts_current_values.length
+			let group_depth = null
+			if(depth_type == "ed") {
+				group_depth = group.fbed
+			}
+
+			if (depth_type == "mbd") {
+				// console.log(depth_type)
+				group_depth = group.fbmbd
+			}
+
+			let ymin = group_depth.inner_band.lower
+			let ymax = group_depth.inner_band.upper
+			let num_timesteps = group_depth.ranked_symbols[0].ts_current_values.length
 
 			ctx.save()
-
 			ctx.beginPath()
 			let p = map(0,ymin[0])
 			ctx.moveTo(p[0],p[1])
@@ -1994,19 +2185,18 @@ function update_ts()
 				ctx.lineTo(p[0],p[1])
 			}
 			ctx.closePath()
-			ctx.fillStyle="#00FFFF55"
+			ctx.fillStyle = group.color + "55"
 			ctx.fill()
-
 			ctx.restore()
 
 			//--------------
 			// drawing outer band
 			//--------------
-			let ymin_outer = global.extremal_depth.fbplot.outer_band.lower
-			let ymax_outer = global.extremal_depth.fbplot.outer_band.upper
+			let ymin_outer = group_depth.outer_band.lower
+			let ymax_outer = group_depth.outer_band.upper
 
 			ctx.save()
-			ctx.strokeStyle = "#FFFFFF"
+			ctx.strokeStyle = group.color + "DD"
 			ctx.setLineDash([5, 3])
 			ctx.beginPath()
 			p = map(0,ymin_outer[0])
@@ -2025,283 +2215,238 @@ function update_ts()
 			//--------------
 			// drawing median curve
 			//--------------
-			let median_symbol = global.extremal_depth.ranked_symbols[global.extremal_depth.ranked_symbols.length - 1]
-			draw_timeseries(median_symbol, false, "#00FFFF")
-
-			if (global.ui.ed_draw_outliers_btn.checked) {
-				//--------------
-				// drawing outliers
-				//--------------
-				for(let i=0; i<global.extremal_depth.fbplot.outliers.length; i++) {
-					let symbol = global.extremal_depth.fbplot.outliers[i]
-					draw_timeseries(symbol, false, "#00FFFF55")
-				}
-
-			}
-
-		}
-
-	}
-
-	if (global.modified_band_depth.fbplot.active) {
-
-		if(global.chart_symbols.length == 0) {
-			console.log("No symbols selected!")
-		} else {
-			//--------------
-			// drawing inner band
-			//--------------
-			let ymin = global.modified_band_depth.fbplot.inner_band.lower
-			let ymax = global.modified_band_depth.fbplot.inner_band.upper
-			let num_timesteps = global.modified_band_depth.ranked_symbols[0].ts_current_values.length
-
-			ctx.save()
-			ctx.beginPath()
-			let p = map(0,ymin[0])
-			ctx.moveTo(p[0],p[1])
-			for (let j=1;j<num_timesteps;j++) {
-				p = map(j,ymin[j])
-				ctx.lineTo(p[0],p[1])
-			}
-			for (let j=num_timesteps-1;j>=0;j--) {
-				p = map(j,ymax[j])
-				ctx.lineTo(p[0],p[1])
-			}
-			ctx.closePath()
-			ctx.fillStyle="#FF000055"
-			ctx.fill()
-			ctx.restore()
-
-			//--------------
-			// drawing outer band
-			//--------------
-			let ymin_outer = global.modified_band_depth.fbplot.outer_band.lower
-			let ymax_outer = global.modified_band_depth.fbplot.outer_band.upper
-
-			ctx.save()
-			ctx.strokeStyle = "#FFFFFF"
-			ctx.setLineDash([5, 3])
-			ctx.beginPath()
-			p = map(0,ymin_outer[0])
-			ctx.moveTo(p[0],p[1])
-			for (let j=1;j<num_timesteps;j++) {
-				p = map(j,ymin_outer[j])
-				ctx.lineTo(p[0],p[1])
-			}
-			for (let j=num_timesteps-1;j>=0;j--) {
-				p = map(j,ymax_outer[j])
-				ctx.lineTo(p[0],p[1])
-			}
-			ctx.stroke()
-			ctx.restore()
-
-			//--------------
-			// drawing median curve
-			//--------------
-			let median_symbol = global.modified_band_depth.ranked_symbols[global.modified_band_depth.ranked_symbols.length - 1]
-			draw_timeseries(median_symbol, false, "#FF0000")
-
-			if (global.ui.mbd_draw_outliers_btn.checked) {
-				//--------------
-				// drawing outliers
-				//--------------
-				for(let i=0; i<global.modified_band_depth.fbplot.outliers.length; i++) {
-					let symbol = global.modified_band_depth.fbplot.outliers[i]
-					draw_timeseries(symbol, false, "#FF000055")
-				}
-
-			}
-
-		}
-
-	}
-
-	//--------------
-	// drawing curves
-	//--------------
-	if (global.ui.draw_curves_btn.checked) {
-
-		for (let i=0;i<global.chart_symbols.length;i++) {
-
-			let symbol = global.chart_symbols[i]
-
-			if(global.focused_symbol == null || global.chart_symbols[i] != global.focused_symbol) {
-				draw_timeseries(symbol, false)
-			}
+			let median_symbol = group_depth.ranked_symbols[group_depth.ranked_symbols.length - 1]
+			draw_timeseries(median_symbol, false, group.color)
 		}
 
 		for (let i=0; i<global.chart_groups.length; i++) {
+			let group   = global.chart_groups[i]
+			if (group.fbed.active) {
+				draw_group_fbplot(group, "ed")
+			}
+			if(group.fbmbd.active) {
+				draw_group_fbplot(group, "mbd")
+			}
+		}
 
-			let group = global.chart_groups[i]
-			let members = group.members
+		//--------------
+		// highlight on focused time series
+		//--------------
+		if (global.focused_symbol != null) {
+			draw_timeseries(global.focused_symbol, true)
 
-			for (let j=0; j<members.length; j++) {
+			let record = global.focused_symbol
+			let value = global.focused_symbol.data[global.focused_date]
+			let date = date_offset_to_string(date_start+global.focused_date)
+			let text = `symbol: ${global.focused_symbol.name} // date: ${date} // ED rank: #${global.focused_symbol.ed_rank+1} // `+
+						`MBD rank: #${global.focused_symbol.mbd_rank+1}`
+			ctx.font = '20px Monospace';
+			ctx.textAlign = 'center';
+			ctx.fillText(text, canvas.width/2, 40);
+		}
 
-				let member = members[j]
 
-				if(global.focused_symbol == null || member != global.focused_symbol) {
-					draw_timeseries(member, false, group.color)
+		let clamp = function(a,b,c) {
+			return Math.max(b,Math.min(c,a))
+		}
+		//--------------
+		//auxiliar lines on mouse position to track date and value
+		//--------------
+		let pt = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
+		pt[0] = clamp(pt[0],x_min,x_max)
+		pt[1] = clamp(pt[1],y_min,y_max)
+
+		let y_p0 = map(Math.floor(0.5+pt[0]),y_min)
+		let y_p1 = map(Math.floor(0.5+pt[0]),y_max)
+
+		ctx.strokeStyle = "#555555"
+		ctx.beginPath()
+		ctx.moveTo(y_p0[0], y_p0[1])
+		ctx.lineTo(y_p1[0], y_p1[1])
+		ctx.stroke()
+
+		let x_p0 = map(x_min, pt[1])
+		let x_p1 = map(x_max, pt[1])
+
+		ctx.beginPath()
+		ctx.moveTo(x_p0[0], x_p0[1])
+		ctx.lineTo(x_p1[0], x_p1[1])
+		ctx.stroke()
+
+		ctx.restore() // TS_RECT CLIP END
+
+		drawTextBG(ctx, date_offset_to_string(date_start+pt[0]), y_p0[0], y_p0[1])
+		drawTextBG(ctx, pt[1].toFixed(2), x_p0[0], x_p0[1])
+
+
+		//--------------
+		// update focused record
+		//--------------
+		global.focused_symbol = closest_symbol
+		global.focused_date = closest_date
+
+		//--------------
+		// update start, end and norm dates on keyboard controls
+		//--------------
+		if (global.key_update_norm) {
+			let pt_n = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
+			let new_date_norm = date_offset_to_string(Math.floor(date_start+pt_n[0]))
+
+			document.getElementById('norm_date_input').value = new_date_norm
+			global.date_norm = new_date_norm
+			global.key_update_norm = false
+		}
+
+		if (global.key_update_start) {
+			let pt_s = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
+			let new_date_start = date_offset_to_string(Math.floor(date_start+pt_s[0]))
+
+			document.getElementById('start_date_input').value = new_date_start
+			global.date_start = new_date_start
+			global.key_update_start = false
+		}
+
+		if (global.key_update_end) {
+			let pt_e = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
+			let new_date_end = date_offset_to_string(Math.floor(date_start+pt_e[0]))
+
+			document.getElementById('end_date_input').value = new_date_end
+			global.date_end = new_date_end
+			global.key_update_end = false
+		}
+	} // time series drawings
+
+	if(global.ui.draw_ed_dcdf_curves_btn.checked) {
+
+		// ctx.strokeStyle = "#FFFFFF"
+		// ctx.moveTo(canvas.width, canvas.height/2)
+		// ctx.lineTo(canvas.width/2,canvas.height/2)
+		// ctx.stroke()
+
+		ctx.font = "bold 14pt Courier"
+		ctx.fillStyle = "#FFFFFF";
+		ctx.textAlign = "center";
+
+		//--------------
+		//drawing axis strokes
+		//--------------
+		ctx.save()
+		ctx.strokeStyle = "#FFFFFF";
+		ctx.lineWidth   = 2;
+
+		ctx.beginPath()
+		//y axis
+		ctx.moveTo(dcdf_rect[RECT.LEFT], dcdf_rect[RECT.TOP])
+		ctx.lineTo(dcdf_rect[RECT.LEFT], canvas.height-margin[SIDE.BOTTOM])
+		//x axis
+		ctx.moveTo(dcdf_rect[RECT.LEFT], canvas.height-dcdf_rect[RECT.BOTTOM])
+		ctx.lineTo(canvas.width-margin[SIDE.RIGHT], canvas.height-margin[SIDE.BOTTOM])
+		ctx.stroke()
+
+		ctx.restore()
+
+
+		//--------------
+		// find y range
+		//--------------
+		let cdf_y_min = 1.0
+		let cdf_y_max = 1.0
+		let last_valid_value = 1
+
+		for (let i=0;i<global.extremal_depth.ranked_symbols.length;i++) {
+			let symbol = global.extremal_depth.ranked_symbols[i]
+			symbol.cdf_current_values = null
+			if (symbol.cdf_matrix_row == null) {
+				continue
+			}
+			let k = symbol.cdf_matrix_row.length
+			let cdf_current_values = []
+			for (let j=0;j<symbol.cdf_matrix_row.length;j++) {
+				let value = symbol.cdf_matrix_row[j]
+				if (value == undefined) {
+					value = last_valid_value
 				}
+				// value = i
+				cdf_current_values.push(value)
+				last_valid_value = value
+				cdf_y_min = Math.min(cdf_y_min, value)
+				cdf_y_max = Math.max(cdf_y_max, value)
+			}
+			symbol.cdf_current_values = cdf_current_values
+		}
 
+		// console.log(cdf_y_min, cdf_y_max)
+		let cdf_x_min = 0
+		let cdf_x_max = global.extremal_depth.ranked_symbols[0].cdf_matrix_row.length
+
+
+		function dcdf_rect_map(x, y) {
+			let px = dcdf_rect[RECT.LEFT] + (1.0 * (x - cdf_x_min) / (cdf_x_max - cdf_x_min)) * dcdf_rect[RECT.WIDTH]
+			let py = dcdf_rect[RECT.TOP] + (dcdf_rect[RECT.HEIGHT] - 1 - (1.0 * (y - cdf_y_min) / (cdf_y_max - cdf_y_min)) * dcdf_rect[RECT.HEIGHT])
+			return [px,py]
+		}
+
+		function dcdf_rect_inverse_map(px, py) {
+			let x = (px - dcdf_rect[RECT.LEFT]) / dcdf_rect[RECT.WIDTH] * (1.0*(cdf_x_max - cdf_x_min)) + cdf_x_min
+			let y = -((((py - dcdf_rect[RECT.TOP] - dcdf_rect[RECT.HEIGHT] + 1) * (1.0 * (cdf_y_max - cdf_y_min))) / dcdf_rect[RECT.HEIGHT]) - cdf_y_min)
+			return [x,y]
+		}
+
+		function draw_symbol_dcdf(symbol, focused, color) {
+
+			let cdf_current_values = symbol.cdf_current_values
+			if (cdf_current_values == null) {
+				console.log("Not drawing cdf for symbol ", symbol.name);
+				return;
 			}
 
+
+			if (focused) {
+				ctx.lineWidth = 4
+			} else {
+				ctx.lineWidth = 2
+			}
+
+			let i = global.chart_symbols.indexOf(symbol)
+			if (symbol.data == null) {
+				return
+			}
+
+			let first_point_drawn = false
+			if (typeof color !== 'undefined') {
+				ctx.strokeStyle = color
+				symbol.ui_col.style.color = color
+			} else {
+				ctx.strokeStyle = global.chart_colors[i]
+				symbol.ui_col.style.color = global.chart_colors[i]
+			}
+
+
+			ctx.beginPath()
+			for (let j=0;j<symbol.cdf_current_values.length;j++) {
+				// let date_offset = date_start+j
+				let yi = cdf_current_values[j]
+				let p = dcdf_rect_map(j,yi)
+				// update_closest_point(symbol, j, p[0], p[1])
+				if (!first_point_drawn) {
+					ctx.moveTo(p[0],p[1])
+					first_point_drawn = true
+				} else {
+					ctx.lineTo(p[0],p[1])
+				}
+			}
+			ctx.stroke()
+		}
+
+		for (let i=0;i<global.extremal_depth.ranked_symbols.length;i++) {
+
+			let symbol = global.extremal_depth.ranked_symbols[i]
+
+			draw_symbol_dcdf(symbol, false)
 		}
 
 
-	}
-
-	function draw_group_fbplot(group, depth_type) {
-		//--------------
-		// drawing inner band
-		//--------------
-		let group_depth = null
-		if(depth_type == "ed") {
-			group_depth = group.fbed
-		}
-
-		if (depth_type == "mbd") {
-			console.log(depth_type)
-			group_depth = group.fbmbd
-		}
-
-		let ymin = group_depth.inner_band.lower
-		let ymax = group_depth.inner_band.upper
-		let num_timesteps = group_depth.ranked_symbols[0].ts_current_values.length
-
-		ctx.save()
-		ctx.beginPath()
-		let p = map(0,ymin[0])
-		ctx.moveTo(p[0],p[1])
-		for (let j=1;j<num_timesteps;j++) {
-			p = map(j,ymin[j])
-			ctx.lineTo(p[0],p[1])
-		}
-		for (let j=num_timesteps-1;j>=0;j--) {
-			p = map(j,ymax[j])
-			ctx.lineTo(p[0],p[1])
-		}
-		ctx.closePath()
-		ctx.fillStyle = group.color + "55"
-		ctx.fill()
-		ctx.restore()
-
-		//--------------
-		// drawing outer band
-		//--------------
-		let ymin_outer = group_depth.outer_band.lower
-		let ymax_outer = group_depth.outer_band.upper
-
-		ctx.save()
-		ctx.strokeStyle = group.color + "DD"
-		ctx.setLineDash([5, 3])
-		ctx.beginPath()
-		p = map(0,ymin_outer[0])
-		ctx.moveTo(p[0],p[1])
-		for (let j=1;j<num_timesteps;j++) {
-			p = map(j,ymin_outer[j])
-			ctx.lineTo(p[0],p[1])
-		}
-		for (let j=num_timesteps-1;j>=0;j--) {
-			p = map(j,ymax_outer[j])
-			ctx.lineTo(p[0],p[1])
-		}
-		ctx.stroke()
-		ctx.restore()
-
-		//--------------
-		// drawing median curve
-		//--------------
-		let median_symbol = group_depth.ranked_symbols[group_depth.ranked_symbols.length - 1]
-		draw_timeseries(median_symbol, false, group.color)
-	}
-
-	for (let i=0; i<global.chart_groups.length; i++) {
-		let group   = global.chart_groups[i]
-		if (group.fbed.active) {
-			draw_group_fbplot(group, "ed")
-		}
-		if(group.fbmbd.active) {
-			draw_group_fbplot(group, "mbd")
-		}
-	}
-
-	//--------------
-	// highlight on focused time series
-	//--------------
-	if (global.focused_symbol != null) {
-		draw_timeseries(global.focused_symbol, true)
-
-		let record = global.focused_symbol
-		let value = global.focused_symbol.data[global.focused_date]
-		let date = date_offset_to_string(date_start+global.focused_date)
-		let text = `symbol: ${global.focused_symbol.name} // date: ${date} // ED rank: #${global.focused_symbol.ed_rank+1} // `+
-					`MBD rank: #${global.focused_symbol.mbd_rank+1}`
-		ctx.font = '20px Monospace';
-		ctx.textAlign = 'center';
-		ctx.fillText(text, canvas.width/2, 40);
-	}
-
-	ctx.restore()
-
-	//--------------
-	//auxiliar lines on mouse position to track date and value
-	//--------------
-	let pt = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
-
-	let y_p0 = map(Math.floor(0.5+pt[0]),y_min)
-	let y_p1 = map(Math.floor(0.5+pt[0]),y_max)
-
-	ctx.strokeStyle = "#555555"
-	ctx.beginPath()
-	ctx.moveTo(y_p0[0], y_p0[1])
-	ctx.lineTo(y_p1[0], y_p1[1])
-	ctx.stroke()
-	drawTextBG(ctx, date_offset_to_string(date_start+pt[0]), y_p0[0], y_p0[1])
-
-	let x_p0 = map(x_min, pt[1])
-	let x_p1 = map(x_max, pt[1])
-
-	ctx.beginPath()
-	ctx.moveTo(x_p0[0], x_p0[1])
-	ctx.lineTo(x_p1[0], x_p1[1])
-	ctx.stroke()
-	drawTextBG(ctx, pt[1].toFixed(2), x_p0[0], x_p0[1])
-
-	//--------------
-	// update focused record
-	//--------------
-	global.focused_symbol = closest_symbol
-	global.focused_date = closest_date
-
-	//--------------
-	// update start, end and norm dates on keyboard controls
-	//--------------
-	if (global.key_update_norm) {
-		let pt_n = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
-		let new_date_norm = date_offset_to_string(Math.floor(date_start+pt_n[0]))
-
-		document.getElementById('norm_date_input').value = new_date_norm
-		global.date_norm = new_date_norm
-		global.key_update_norm = false
-	}
-
-	if (global.key_update_start) {
-		let pt_s = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
-		let new_date_start = date_offset_to_string(Math.floor(date_start+pt_s[0]))
-
-		document.getElementById('start_date_input').value = new_date_start
-		global.date_start = new_date_start
-		global.key_update_start = false
-	}
-
-	if (global.key_update_end) {
-		let pt_e = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
-		let new_date_end = date_offset_to_string(Math.floor(date_start+pt_e[0]))
-
-		document.getElementById('end_date_input').value = new_date_end
-		global.date_end = new_date_end
-		global.key_update_end = false
-	}
+	} // ed-cdf drawings
 
 }
 

@@ -444,6 +444,12 @@ typedef struct {
 static s32*
 ed_get_rank_matrix(ExtremalDepth *self) { return OffsetedPointer(self,self->rank_matrix); }
 
+s32
+ed_get_pointwise_depth_unique_values(ExtremalDepth *self) { return self->k; }
+
+s32
+ed_get_number_of_points(ExtremalDepth *self) { return self->p; }
+
 s32*
 ed_get_extremal_depth_rank(ExtremalDepth *self) { return ed_get_rank_matrix(self) + self->p * self->n; }
 
@@ -456,7 +462,7 @@ ed_get_ltgt_abs_diff_matrix(ExtremalDepth *self) { return OffsetedPointer(self,s
 static s32*
 ed_get_ltgt_abs_diff_for_timestep(ExtremalDepth *self, s32 timestep) { return ed_get_ltgt_abs_diff_matrix(self) + timestep * self->n; }
 
-static s32*
+s32*
 ed_get_cdf_matrix(ExtremalDepth *self) { return OffsetedPointer(self,self->cdf_matrix); }
 
 static s32*
@@ -1059,7 +1065,7 @@ curves_density_matrix(CurveList *curve_list, s32 rows, s32 cols, f32 viewbox_x, 
 static void
 test_extremal_depth()
 {
-#if 0
+#if 1
 	// Example from Figure 1 of the Extremal Depth paper
 	// f64 curves_data[] = {
 	// 	0, 0, 0,
@@ -1071,16 +1077,27 @@ test_extremal_depth()
 	// s32 n = 3;
 	// s32 p = 3;
 
-	f64 curves_data[] = {
-		0.1, -5.0, -4.0, -3.0,
-		0.0,  1.0,  2.1,  3.0,
-		6.1,  1.1,  8.0,  9.2,
-		6.2,  7.0,  2.0,  9.4,
-		6.0,  7.1,  8.1,  9.3
-	};
+	// f64 curves_data[] = {
+	// 	0.1, -5.0, -4.0, -3.0,
+	// 	0.0,  1.0,  2.1,  3.0,
+	// 	6.1,  1.1,  8.0,  9.2,
+	// 	6.2,  7.0,  2.0,  9.4,
+	// 	6.0,  7.1,  8.1,  9.3
+	// };
 
-	s32 n = 5;
-	s32 p = 4;
+	f64 curves_data[] = {
+			 2.00,  2.10,  1.80,  1.52,  0.60, -0.50,
+			 1.50,  1.50,  1.50,  1.51,  1.40,  1.40,
+			 1.10,  1.10,  1.30,  1.20,  1.20,  1.30,
+			 1.00,  0.90,  1.10,  1.50,  2.30,  3.50,
+			 0.60,  0.50,  0.11, -0.60, -1.50, -2.60,
+			 0.00,  0.40,  0.10,  0.20,  0.10, -0.30,
+			-0.80, -0.70, -0.30, -0.30, -0.60, -0.60,
+			-1.40, -1.10, -1.00, -1.10, -1.40, -1.60
+		};
+
+	s32 n = 8;
+	s32 p = 6;
 
 	CurveList *curve_list = tsvis_CurveList_new(n);
 
@@ -1116,8 +1133,8 @@ test_extremal_depth()
 
 
 	// compue extremal depth
-	// ExtremalDepth *ed = ed_extremal_depth_run(curve_list);
-	ModifiedBandDepth *mbd = mbd_modified_band_depth_run(curve_list);
+	ExtremalDepth *ed = ed_extremal_depth_run(curve_list);
+	// ModifiedBandDepth *mbd = mbd_modified_band_depth_run(curve_list);
 	// s32 *rank = ed_get_extremal_depth_rank(ed);
 	// for (s32 i=0;i<ed->n;++i) {
 	// 	printf("curve[%d] rank: %d\n", rank[i]+1, i+1);
@@ -1213,9 +1230,9 @@ test_curves_density_matrix()
 int
 main(int argc, char *argv[])
 {
-	// test_extremal_depth();
+	test_extremal_depth();
 	// test_next_grid_intersection();
-	test_curves_density_matrix();
+	// test_curves_density_matrix();
 	return 0;
 }
 
