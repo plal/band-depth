@@ -104,7 +104,7 @@ function drawTextBG(ctx, txt, x, y) {
     ctx.save();
 
     // set font
-    ctx.font = "bold 12pt Courier";
+    ctx.font = "bold 10pt Courier";
 
     // draw text from top - makes life easier at the moment
     ctx.textBaseline = 'top';
@@ -1480,7 +1480,7 @@ function update_ts()
 		dcdf_rect_inf = [canvas.width/2, 0, canvas.width/2, canvas.height]
 	}
 
-	let margin = [ 100, 50, 5, 5 ]
+	let margin = [ 100, 40, 5, 5 ]
 
 	let ts_rect = [ rect[0] + margin[SIDE.LEFT],
 		        	rect[1] + margin[SIDE.TOP],
@@ -1488,11 +1488,12 @@ function update_ts()
 		        	rect[3] - margin[SIDE.BOTTOM] - margin[SIDE.TOP] ]
 
 	let dcdf_rect = null
+	let dcdf_rect_margins = [ 100, 33, 5, 5 ]
 	if (global.ui.draw_ed_dcdf_curves_btn.checked) {
-		dcdf_rect = [ dcdf_rect_inf[0] + 20,
-					  dcdf_rect_inf[1] + 5,
-					  dcdf_rect_inf[2] - 20 - 5,
-					  dcdf_rect_inf[3] - 100 - 5 ]
+		dcdf_rect = [ dcdf_rect_inf[0] + dcdf_rect_margins[SIDE.LEFT],
+					  dcdf_rect_inf[1] + dcdf_rect_margins[SIDE.TOP],
+					  dcdf_rect_inf[2] - dcdf_rect_margins[SIDE.LEFT] - dcdf_rect_margins[SIDE.RIGHT],
+					  dcdf_rect_inf[3] - dcdf_rect_margins[SIDE.BOTTOM] - dcdf_rect_margins[SIDE.TOP] ]
 	}
 
 
@@ -1529,21 +1530,17 @@ function update_ts()
 		//--------------
 		//drawing axis strokes
 		//--------------
-		ctx.save()
 		ctx.strokeStyle = "#FFFFFF";
 		ctx.lineWidth   = 2;
 
 		ctx.beginPath()
 		//y axis
-		ctx.moveTo(margin[SIDE.LEFT], margin[SIDE.TOP])
-		ctx.lineTo(margin[SIDE.LEFT], canvas.height-margin[SIDE.BOTTOM]+6)
+		ctx.moveTo(ts_rect[RECT.LEFT], ts_rect[RECT.TOP])
+		ctx.lineTo(ts_rect[RECT.LEFT], ts_rect[RECT.HEIGHT]+6)
 		//x axis
-		ctx.moveTo(margin[SIDE.LEFT]-6, canvas.height-margin[SIDE.BOTTOM])
-		ctx.lineTo(canvas.width-margin[SIDE.RIGHT], canvas.height-margin[SIDE.BOTTOM])
+		ctx.moveTo(ts_rect[RECT.LEFT], ts_rect[RECT.HEIGHT]+6)
+		ctx.lineTo(ts_rect[RECT.LEFT] + ts_rect[RECT.WIDTH], ts_rect[RECT.HEIGHT]+6)
 		ctx.stroke()
-
-		ctx.restore()
-
 
 		//--------------
 		// find y range
@@ -1743,7 +1740,7 @@ function update_ts()
 
 
 			ctx.save();
-			ctx.font = "bold 12pt Courier"
+			ctx.font = "bold 10pt Courier"
 			ctx.fillStyle = "#FFFFFF"
 			ctx.translate(p0[0], p0[1]+42);
 			ctx.rotate(-Math.PI/4);
@@ -1774,12 +1771,12 @@ function update_ts()
 			ctx.lineTo(p1[0], p1[1])
 			ctx.stroke()
 
-			ctx.font = "bold 12pt Courier"
+			ctx.font = "bold 10pt Courier"
 			ctx.fillStyle = "#FFFFFF"
 			if(i==(y_ticks.length-1)) {
-				ctx.fillText(y_ticks[i].toFixed(2), p0[0]-23, p0[1]+8);
+				ctx.fillText(y_ticks[i].toFixed(2), p0[0]-20, p0[1]+8);
 			} else {
-				ctx.fillText(y_ticks[i].toFixed(2), p0[0]-23, p0[1]+5);
+				ctx.fillText(y_ticks[i].toFixed(2), p0[0]-20, p0[1]+5);
 			}
 
 		}
@@ -2318,6 +2315,18 @@ function update_ts()
 
 	if(global.ui.draw_ed_dcdf_curves_btn.checked) {
 
+		function dcdf_rect_map(x, y) {
+			let px = dcdf_rect[RECT.LEFT] + (1.0 * (x - cdf_x_min) / (cdf_x_max - cdf_x_min)) * dcdf_rect[RECT.WIDTH]
+			let py = dcdf_rect[RECT.TOP] + (dcdf_rect[RECT.HEIGHT] - 1 - (1.0 * (y - cdf_y_min) / (cdf_y_max - cdf_y_min)) * dcdf_rect[RECT.HEIGHT])
+			return [px,py]
+		}
+
+		function dcdf_rect_inverse_map(px, py) {
+			let x = (px - dcdf_rect[RECT.LEFT]) / dcdf_rect[RECT.WIDTH] * (1.0*(cdf_x_max - cdf_x_min)) + cdf_x_min
+			let y = -((((py - dcdf_rect[RECT.TOP] - dcdf_rect[RECT.HEIGHT] + 1) * (1.0 * (cdf_y_max - cdf_y_min))) / dcdf_rect[RECT.HEIGHT]) - cdf_y_min)
+			return [x,y]
+		}
+
 		// ctx.strokeStyle = "#FFFFFF"
 		// ctx.moveTo(canvas.width, canvas.height/2)
 		// ctx.lineTo(canvas.width/2,canvas.height/2)
@@ -2337,10 +2346,10 @@ function update_ts()
 		ctx.beginPath()
 		//y axis
 		ctx.moveTo(dcdf_rect[RECT.LEFT], dcdf_rect[RECT.TOP])
-		ctx.lineTo(dcdf_rect[RECT.LEFT], canvas.height-margin[SIDE.BOTTOM])
+		ctx.lineTo(dcdf_rect[RECT.LEFT], dcdf_rect[RECT.HEIGHT]+6)
 		//x axis
-		ctx.moveTo(dcdf_rect[RECT.LEFT], canvas.height-dcdf_rect[RECT.BOTTOM])
-		ctx.lineTo(canvas.width-margin[SIDE.RIGHT], canvas.height-margin[SIDE.BOTTOM])
+		ctx.moveTo(dcdf_rect[RECT.LEFT], dcdf_rect[RECT.HEIGHT]+6)
+		ctx.lineTo(dcdf_rect[RECT.LEFT] + dcdf_rect[RECT.WIDTH], dcdf_rect[RECT.HEIGHT]+6)
 		ctx.stroke()
 
 		ctx.restore()
@@ -2377,22 +2386,73 @@ function update_ts()
 
 		// console.log(cdf_y_min, cdf_y_max)
 		let cdf_x_min = 0
-		let cdf_x_max = global.extremal_depth.ranked_symbols[0].cdf_matrix_row.length
+		let cdf_x_max = global.extremal_depth.ranked_symbols[0].cdf_matrix_row.length - 1
 
-
-		function dcdf_rect_map(x, y) {
-			let px = dcdf_rect[RECT.LEFT] + (1.0 * (x - cdf_x_min) / (cdf_x_max - cdf_x_min)) * dcdf_rect[RECT.WIDTH]
-			let py = dcdf_rect[RECT.TOP] + (dcdf_rect[RECT.HEIGHT] - 1 - (1.0 * (y - cdf_y_min) / (cdf_y_max - cdf_y_min)) * dcdf_rect[RECT.HEIGHT])
-			return [px,py]
+		//--------------
+		//y grid lines and ticks
+		//--------------
+		let y_num_ticks = 10
+		let y_ticks = []
+		for(let i=0; i<y_num_ticks; i++) {
+			let y_tick = cdf_y_min+((1.0*i*(cdf_y_max-cdf_y_min))/(y_num_ticks-1))
+			y_ticks.push(y_tick)
 		}
 
-		function dcdf_rect_inverse_map(px, py) {
-			let x = (px - dcdf_rect[RECT.LEFT]) / dcdf_rect[RECT.WIDTH] * (1.0*(cdf_x_max - cdf_x_min)) + cdf_x_min
-			let y = -((((py - dcdf_rect[RECT.TOP] - dcdf_rect[RECT.HEIGHT] + 1) * (1.0 * (cdf_y_max - cdf_y_min))) / dcdf_rect[RECT.HEIGHT]) - cdf_y_min)
-			return [x,y]
+		for(let i=0; i<y_ticks.length; i++) {
+			ctx.strokeStyle = "#555555";
+			ctx.lineWidth   = 1;
+
+			let p0 = dcdf_rect_map(cdf_x_min, y_ticks[i])
+			let p1 = dcdf_rect_map(cdf_x_max, y_ticks[i])
+
+			ctx.beginPath()
+			ctx.moveTo(p0[0], p0[1])
+			ctx.lineTo(p1[0], p1[1])
+			ctx.stroke()
+
+			ctx.font = "bold 10pt Courier"
+			ctx.fillStyle = "#FFFFFF"
+			if(i==(y_ticks.length-1)) {
+				ctx.fillText(y_ticks[i].toFixed(2), p0[0]-20, p0[1]+8);
+			} else {
+				ctx.fillText(y_ticks[i].toFixed(2), p0[0]-20, p0[1]+5);
+			}
+
 		}
 
-		function draw_symbol_dcdf(symbol, focused, color) {
+		//--------------
+		//x axis grid lines and ticks
+		//--------------
+		let x_num_ticks = 8
+		let x_ticks = []
+		for(let i=0; i<x_num_ticks; i++) {
+			let x_tick = Math.floor(cdf_x_min+(i*((cdf_x_max-cdf_x_min)/(x_num_ticks-1))))
+			x_ticks.push(x_tick)
+		}
+
+		// console.log(x_ticks)
+
+		for(let i=0; i<x_ticks.length; i++) {
+			ctx.strokeStyle = "#555555";
+			ctx.lineWidth   = 1;
+
+			let p0 = dcdf_rect_map(x_ticks[i], cdf_y_min)
+			let p1 = dcdf_rect_map(x_ticks[i], cdf_y_max)
+
+			ctx.beginPath()
+			ctx.moveTo(p0[0], p0[1])
+			ctx.lineTo(p1[0], p1[1])
+			ctx.stroke()
+
+
+			ctx.font = "bold 10pt Courier"
+			ctx.fillStyle = "#FFFFFF"
+			// ctx.translate(p0[0], p0[1]+42);
+			// ctx.rotate(-Math.PI/4);
+			ctx.fillText((x_ticks[i]/cdf_x_max).toFixed(2), p0[0], p0[1]+15);
+		}
+
+		function draw_symbol_dcdf(symbol, focused) {
 
 			let cdf_current_values = symbol.cdf_current_values
 			if (cdf_current_values == null) {
@@ -2400,26 +2460,24 @@ function update_ts()
 				return;
 			}
 
-
-			if (focused) {
-				ctx.lineWidth = 4
-			} else {
-				ctx.lineWidth = 2
-			}
-
 			let i = global.chart_symbols.indexOf(symbol)
 			if (symbol.data == null) {
 				return
 			}
 
-			let first_point_drawn = false
-			if (typeof color !== 'undefined') {
+			let color = global.chart_colors[i]
+
+
+			if (symbol == global.focused_symbol) {
+				ctx.lineWidth = 4
 				ctx.strokeStyle = color
-				symbol.ui_col.style.color = color
 			} else {
-				ctx.strokeStyle = global.chart_colors[i]
-				symbol.ui_col.style.color = global.chart_colors[i]
+				ctx.lineWidth = 2
+				ctx.strokeStyle = color + "AA"
 			}
+
+
+			let first_point_drawn = false
 
 
 			ctx.beginPath()
