@@ -2479,9 +2479,7 @@ function update_ts()
 				ctx.strokeStyle = color + "AA"
 			}
 
-
 			let first_point_drawn = false
-
 
 			ctx.beginPath()
 			for (let j=0;j<symbol.cdf_current_values.length;j++) {
@@ -2506,13 +2504,9 @@ function update_ts()
 			draw_symbol_dcdf(symbol)
 		}
 
-		let midway_dcdf_rect = dcdf_rect_map(dcdf_rect[2]/2, 0)
-
 		if (global.focused_symbol != null) {
-			draw_symbol_dcdf(global.focused_symbol)
 
 			let text = `symbol: ${global.focused_symbol.name} `
-
 			ctx.font = '14px Monospace';
 			ctx.textAlign = 'center';
 			ctx.fillText(text, (dcdf_rect[0]+dcdf_rect[2])-(dcdf_rect[2]/2), 40);
