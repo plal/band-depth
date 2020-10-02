@@ -2240,7 +2240,7 @@ function update_ts()
 			if (global.ui.draw_ed_dcdf_curves_btn.checked) {
 				ctx.font = '14px Monospace';
 			} else {
-				ctx.font = '20px Monospace';	
+				ctx.font = '20px Monospace';
 			}
 			ctx.textAlign = 'center';
 			ctx.fillText(text, ts_rect[2]/2, 40);
@@ -2455,7 +2455,7 @@ function update_ts()
 			ctx.fillText((x_ticks[i]/cdf_x_max).toFixed(2), p0[0], p0[1]+15);
 		}
 
-		function draw_symbol_dcdf(symbol, focused) {
+		function draw_symbol_dcdf(symbol) {
 
 			let cdf_current_values = symbol.cdf_current_values
 			if (cdf_current_values == null) {
@@ -2503,9 +2503,21 @@ function update_ts()
 
 			let symbol = global.extremal_depth.ranked_symbols[i]
 
-			draw_symbol_dcdf(symbol, false)
+			draw_symbol_dcdf(symbol)
 		}
 
+		let midway_dcdf_rect = dcdf_rect_map(dcdf_rect[2]/2, 0)
+
+		if (global.focused_symbol != null) {
+			draw_symbol_dcdf(global.focused_symbol)
+
+			let text = `symbol: ${global.focused_symbol.name} `
+
+			ctx.font = '14px Monospace';
+			ctx.textAlign = 'center';
+			ctx.fillText(text, (dcdf_rect[0]+dcdf_rect[2])-(dcdf_rect[2]/2), 40);
+
+		}
 
 	} // ed-cdf drawings
 
