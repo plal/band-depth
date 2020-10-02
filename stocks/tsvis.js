@@ -1475,7 +1475,6 @@ function update_ts()
 	let rect = [0, 0, canvas.width, canvas.height]
 	let dcdf_rect_inf = null
 	if (global.ui.draw_ed_dcdf_curves_btn.checked) {
-		global.recompute_viewbox = true
 		rect = [0, 0, canvas.width/2, canvas.height]
 		dcdf_rect_inf = [canvas.width/2, 0, canvas.width/2, canvas.height]
 	}
