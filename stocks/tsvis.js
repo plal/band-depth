@@ -2236,9 +2236,14 @@ function update_ts()
 			let date = date_offset_to_string(date_start+global.focused_date)
 			let text = `symbol: ${global.focused_symbol.name} // date: ${date} // ED rank: #${global.focused_symbol.ed_rank+1} // `+
 						`MBD rank: #${global.focused_symbol.mbd_rank+1}`
-			ctx.font = '20px Monospace';
+
+			if (global.ui.draw_ed_dcdf_curves_btn.checked) {
+				ctx.font = '14px Monospace';
+			} else {
+				ctx.font = '20px Monospace';	
+			}
 			ctx.textAlign = 'center';
-			ctx.fillText(text, canvas.width/2, 40);
+			ctx.fillText(text, ts_rect[2]/2, 40);
 		}
 
 
@@ -2383,7 +2388,6 @@ function update_ts()
 			symbol.cdf_current_values = cdf_current_values
 		}
 
-		// console.log(cdf_y_min, cdf_y_max)
 		let cdf_x_min = 0
 		let cdf_x_max = global.extremal_depth.ranked_symbols[0].cdf_matrix_row.length - 1
 
