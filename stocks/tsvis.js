@@ -760,6 +760,46 @@ function prepare_ui()
 	draw_ed_dcdf_curves_grid.appendChild(draw_ed_dcdf_curves_lbl)
 	draw_ed_dcdf_curves_grid.appendChild(draw_ed_dcdf_curves_btn)
 
+	let draw_ed_dcdf_agg = document.createElement('input')
+	global.ui.draw_ed_dcdf_agg = draw_ed_dcdf_agg
+	draw_ed_dcdf_agg.type = 'radio'
+	draw_ed_dcdf_agg.checked = true
+	draw_ed_dcdf_agg.name = 'dcdf-vis-choice'
+
+	let draw_ed_dcdf_agg_lbl = document.createElement('label')
+	global.ui.draw_ed_dcdf_lbl = draw_ed_dcdf_agg_lbl
+	draw_ed_dcdf_agg_lbl.setAttribute("for", draw_ed_dcdf_curves_btn)
+	draw_ed_dcdf_agg_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
+	//extremal_depth_lbl.classList.add('checkbox_input_label')
+	draw_ed_dcdf_agg_lbl.innerHTML = '-- Aggregated'
+
+	let draw_ed_dcdf_agg_grid = document.createElement('div')
+	global.ui.draw_ed_dcdf_agg_grid = draw_ed_dcdf_agg_grid
+	draw_ed_dcdf_agg_grid.id = draw_ed_dcdf_agg_grid
+	draw_ed_dcdf_agg_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around;' //justify-content:flex-end'
+	draw_ed_dcdf_agg_grid.appendChild(draw_ed_dcdf_agg_lbl)
+	draw_ed_dcdf_agg_grid.appendChild(draw_ed_dcdf_agg)
+
+	let draw_ed_dcdf_sep = document.createElement('input')
+	global.ui.draw_ed_dcdf_sep = draw_ed_dcdf_sep
+	draw_ed_dcdf_sep.type = 'radio'
+	draw_ed_dcdf_sep.name = 'dcdf-vis-choice'
+
+	let draw_ed_dcdf_sep_lbl = document.createElement('label')
+	global.ui.draw_ed_dcdf_lbl = draw_ed_dcdf_sep_lbl
+	draw_ed_dcdf_sep_lbl.setAttribute("for", draw_ed_dcdf_curves_btn)
+	draw_ed_dcdf_sep_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
+	//extremal_depth_lbl.classList.add('checkbox_input_label')
+	draw_ed_dcdf_sep_lbl.innerHTML = '-- Separated'
+
+	let draw_ed_dcdf_sep_grid = document.createElement('div')
+	global.ui.draw_ed_dcdf_sep_grid = draw_ed_dcdf_sep_grid
+	draw_ed_dcdf_sep_grid.id = draw_ed_dcdf_sep_grid
+	draw_ed_dcdf_sep_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around;' //justify-content:flex-end'
+	draw_ed_dcdf_sep_grid.appendChild(draw_ed_dcdf_sep_lbl)
+	draw_ed_dcdf_sep_grid.appendChild(draw_ed_dcdf_sep)
+
+
 	let filter_input = document.createElement('input')
 	global.ui.filter_input = filter_input
 	filter_input.setAttribute("type","text")
@@ -831,8 +871,6 @@ function prepare_ui()
 	create_curve_density_matrix_grid.appendChild(create_curve_density_matrix_btn)
 	create_curve_density_matrix_grid.appendChild(create_curve_density_matrix_resolution)
 
-
-
 	let left_panel = document.createElement('div')
    	global.ui.left_panel = left_panel
    	left_panel.id = 'left_panel'
@@ -845,6 +883,8 @@ function prepare_ui()
 	left_panel.appendChild(extremal_depth_grid)
 	left_panel.appendChild(ed_draw_outliers_grid)
 	left_panel.appendChild(draw_ed_dcdf_curves_grid)
+	left_panel.appendChild(draw_ed_dcdf_agg_grid)
+	left_panel.appendChild(draw_ed_dcdf_sep_grid)
 	left_panel.appendChild(draw_curves_grid)
 	left_panel.appendChild(create_curve_density_matrix_grid)
 	left_panel.appendChild(filter_input)
@@ -1077,14 +1117,19 @@ function run_extremal_depth_algorithm()
 	for (let i=0;i<symbols_ed.length;i++) {
 		let symbol_rank_i = symbols_ed[rank[i]]
 		symbol_rank_i.ed_rank = i
+		global.extremal_depth.ranked_symbols.push(symbol_rank_i)
+	}
+
+	for (let i=0;i<symbols_ed.length;i++) {
+		let symbol_i = symbols_ed[i]
 		let cdf_row = []
 		for (let j=0; j<n_of_pwdepth_unique_values; j++) {
 			let value = cdf_matrix[(n_of_pwdepth_unique_values*i)+j] / n_of_points
-			cdf_row.push(value)
+			if (j % 2 == 0) {
+				cdf_row.push(value)
+			}
 		}
-		symbol_rank_i.cdf_matrix_row = cdf_row
-		console.log(symbol_rank_i)
-		global.extremal_depth.ranked_symbols.push(symbol_rank_i)
+		symbol_i.cdf_matrix_row = cdf_row
 	}
 
 	//--------------
@@ -1836,27 +1881,45 @@ function update_ts()
 				return;
 			}
 
-
-			if (focused) {
-				ctx.lineWidth = 4
-			} else {
-				ctx.lineWidth = 2
-			}
-
 			let i = global.chart_symbols.indexOf(symbol)
 			if (symbol.data == null) {
 				return
 			}
 
-			let first_point_drawn = false
-			if (typeof color !== 'undefined') {
-				ctx.strokeStyle = color
-				symbol.ui_col.style.color = color
+			let first_point_drawn   = false
+			let curve_color 		= null
+			let curve_focused_color = null
+			let symbol_color 		= null
+
+			if (global.ui.draw_ed_dcdf_curves_btn.checked) {
+
+				curve_color 		= "#FFFFFF44"
+				curve_focused_color = global.chart_colors[i]
+				symbol_color 		= global.chart_colors[i]
+
 			} else {
-				ctx.strokeStyle = global.chart_colors[i]
-				symbol.ui_col.style.color = global.chart_colors[i]
+
+				if (typeof color !== 'undefined') {
+					curve_color 		= color
+					curve_focused_color = color
+					symbol_color 		= color
+				} else {
+					curve_color 		= global.chart_colors[i]
+					curve_focused_color = global.chart_colors[i]
+					symbol_color 		= global.chart_colors[i]
+				}
+
 			}
 
+			ctx.strokeStyle = curve_color
+			symbol.ui_col.style.color = symbol_color
+
+			if (focused) {
+				ctx.lineWidth = 4
+				ctx.strokeStyle = curve_focused_color
+			} else {
+				ctx.lineWidth = 2
+			}
 
 			ctx.beginPath()
 			for (let j=x_min;j<=x_max;j++) {
@@ -2319,17 +2382,6 @@ function update_ts()
 
 	if(global.ui.draw_ed_dcdf_curves_btn.checked) {
 
-		function dcdf_rect_map(x, y) {
-			let px = dcdf_rect[RECT.LEFT] + (1.0 * (x - cdf_x_min) / (cdf_x_max - cdf_x_min)) * dcdf_rect[RECT.WIDTH]
-			let py = dcdf_rect[RECT.TOP] + (dcdf_rect[RECT.HEIGHT] - 1 - (1.0 * (y - cdf_y_min) / (cdf_y_max - cdf_y_min)) * dcdf_rect[RECT.HEIGHT])
-			return [px,py]
-		}
-
-		function dcdf_rect_inverse_map(px, py) {
-			let x = (px - dcdf_rect[RECT.LEFT]) / dcdf_rect[RECT.WIDTH] * (1.0*(cdf_x_max - cdf_x_min)) + cdf_x_min
-			let y = -((((py - dcdf_rect[RECT.TOP] - dcdf_rect[RECT.HEIGHT] + 1) * (1.0 * (cdf_y_max - cdf_y_min))) / dcdf_rect[RECT.HEIGHT]) - cdf_y_min)
-			return [x,y]
-		}
 
 		// ctx.strokeStyle = "#FFFFFF"
 		// ctx.moveTo(canvas.width, canvas.height/2)
@@ -2363,7 +2415,7 @@ function update_ts()
 		// find y range
 		//--------------
 		let cdf_y_min = 1.0
-		let cdf_y_max = 1.0
+		let cdf_y_max = 0.0
 		let last_valid_value = 1
 
 		for (let i=0;i<global.extremal_depth.ranked_symbols.length;i++) {
@@ -2379,6 +2431,11 @@ function update_ts()
 				if (value == undefined) {
 					value = last_valid_value
 				}
+				if(global.ui.draw_ed_dcdf_sep.checked) {
+					if (j>0) {
+						value = symbol.cdf_matrix_row[j] - symbol.cdf_matrix_row[j-1]
+					}
+				}
 				// value = i
 				cdf_current_values.push(value)
 				last_valid_value = value
@@ -2390,6 +2447,18 @@ function update_ts()
 
 		let cdf_x_min = 0
 		let cdf_x_max = global.extremal_depth.ranked_symbols[0].cdf_matrix_row.length - 1
+
+		function dcdf_rect_map(x, y) {
+			let px = dcdf_rect[RECT.LEFT] + (1.0 * (x - cdf_x_min) / (cdf_x_max - cdf_x_min)) * dcdf_rect[RECT.WIDTH]
+			let py = dcdf_rect[RECT.TOP] + (dcdf_rect[RECT.HEIGHT] - 1 - (1.0 * (y - cdf_y_min) / (cdf_y_max - cdf_y_min)) * dcdf_rect[RECT.HEIGHT])
+			return [px,py]
+		}
+
+		function dcdf_rect_inverse_map(px, py) {
+			let x = (px - dcdf_rect[RECT.LEFT]) / dcdf_rect[RECT.WIDTH] * (1.0*(cdf_x_max - cdf_x_min)) + cdf_x_min
+			let y = -((((py - dcdf_rect[RECT.TOP] - dcdf_rect[RECT.HEIGHT] + 1) * (1.0 * (cdf_y_max - cdf_y_min))) / dcdf_rect[RECT.HEIGHT]) - cdf_y_min)
+			return [x,y]
+		}
 
 		//--------------
 		//y grid lines and ticks
@@ -2468,25 +2537,24 @@ function update_ts()
 				return
 			}
 
-			let color = global.chart_colors[i]
-
+			let color = "#FFFFFF44"
 
 			if (symbol == global.focused_symbol) {
 				ctx.lineWidth = 4
-				ctx.strokeStyle = color
+				color = global.chart_colors[i]
 			} else {
 				ctx.lineWidth = 2
-				ctx.strokeStyle = color + "AA"
 			}
+
+			ctx.strokeStyle = color
 
 			let first_point_drawn = false
 
 			ctx.beginPath()
-			for (let j=0;j<symbol.cdf_current_values.length;j++) {
-				// let date_offset = date_start+j
+			for (let j=0;j<cdf_current_values.length;j++) {
 				let yi = cdf_current_values[j]
 				let p = dcdf_rect_map(j,yi)
-				// update_closest_point(symbol, j, p[0], p[1])
+				// update_closest_point(symbol, p[0], p[1])
 				if (!first_point_drawn) {
 					ctx.moveTo(p[0],p[1])
 					first_point_drawn = true
