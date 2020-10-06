@@ -1543,6 +1543,8 @@ function update_ts()
 
 	ctx.clearRect(0,0,canvas.width, canvas.height)
 
+	let ts_closest_symbol  = null
+
 	{
 		ctx.save()
 
@@ -1859,7 +1861,6 @@ function update_ts()
 		// drawing and highlighting utils
 		//--------------
 		let closest_date = null
-		let closest_symbol  = null
 		let min_distance_threshold = 5 * 5
 		let closest_distance = 100000
 
@@ -1868,7 +1869,40 @@ function update_ts()
 			let dy = local_mouse_pos[1] - py
 			let dist = dx * dx + dy * dy
 			if (dist <= min_distance_threshold && dist < closest_distance) {
-				closest_symbol = symbol
+				ts_closest_symbol = symbol
+				closest_date = date
+			}
+		}
+
+		function update_closest_segment(symbol, date, p0x, p0y, p1x, p1y) {
+			// a --> p0 to mouse
+			// b --> p0 to p1
+			// a.b = |a|*|b|*cos(Theta)
+			// a.b/|b| = |a|*cos(theta)
+			// |a|^2 - (|a|*cos(theta))^2 = h^2
+			// |a|^2 - (a.b/|b|)^2 = h^2
+			let ax = local_mouse_pos[0] - p0x
+			let ay = local_mouse_pos[1] - p0y
+
+			let bx = p1x - p0x
+			let by = p1y - p0y
+
+			let a_len_sq = (ax*ax)+(ay*ay)
+			let b_len_sq = (bx*bx)+(by*by)
+			let a_dot_b  = (ax*bx)+(ay*by)
+
+			if (a_dot_b < 0) { return }
+
+			let a_shadow_b_len_sq = (a_dot_b*a_dot_b)/b_len_sq
+			if (a_shadow_b_len_sq > b_len_sq) {
+				return
+			}
+
+			let h_sq = a_len_sq - a_shadow_b_len_sq
+
+			let dist = h_sq
+			if (dist <= min_distance_threshold && dist < closest_distance) {
+				ts_closest_symbol = symbol
 				closest_date = date
 			}
 		}
@@ -1922,11 +1956,16 @@ function update_ts()
 			}
 
 			ctx.beginPath()
+			let p_prev = null
 			for (let j=x_min;j<=x_max;j++) {
 				let date_offset = date_start+j
 				let yi = ts_current_values[j]
 				let p = map(j,yi)
-				update_closest_point(symbol, j, p[0], p[1])
+				if (p_prev) {
+					update_closest_segment(symbol, j, p_prev[0], p_prev[1], p[0], p[1])
+				}
+				p_prev = p
+				// update_closest_point(symbol, j, p[0], p[1])
 				if (!first_point_drawn) {
 					ctx.moveTo(p[0],p[1])
 					first_point_drawn = true
@@ -2346,7 +2385,6 @@ function update_ts()
 		//--------------
 		// update focused record
 		//--------------
-		global.focused_symbol = closest_symbol
 		global.focused_date = closest_date
 
 		//--------------
@@ -2380,13 +2418,9 @@ function update_ts()
 		}
 	} // time series drawings
 
+	let ed_cdf_closest_symbol = null
+
 	if(global.ui.draw_ed_dcdf_curves_btn.checked) {
-
-
-		// ctx.strokeStyle = "#FFFFFF"
-		// ctx.moveTo(canvas.width, canvas.height/2)
-		// ctx.lineTo(canvas.width/2,canvas.height/2)
-		// ctx.stroke()
 
 		ctx.font = "bold 14pt Courier"
 		ctx.fillStyle = "#FFFFFF";
@@ -2431,12 +2465,15 @@ function update_ts()
 				if (value == undefined) {
 					value = last_valid_value
 				}
+				//--------------
+				// if drawing separated values for pointwise depths cdfs
+				// dissipate them
+				//--------------
 				if(global.ui.draw_ed_dcdf_sep.checked) {
 					if (j>0) {
 						value = symbol.cdf_matrix_row[j] - symbol.cdf_matrix_row[j-1]
 					}
 				}
-				// value = i
 				cdf_current_values.push(value)
 				last_valid_value = value
 				cdf_y_min = Math.min(cdf_y_min, value)
@@ -2524,7 +2561,51 @@ function update_ts()
 			ctx.fillText((x_ticks[i]/cdf_x_max).toFixed(2), p0[0], p0[1]+15);
 		}
 
-		function draw_symbol_dcdf(symbol) {
+		let min_distance_threshold = 5 * 5
+		let closest_distance = 100000
+
+		function update_dcdf_closest_point(symbol, px, py) {
+			let dx = local_mouse_pos[0] - px
+			let dy = local_mouse_pos[1] - py
+			let dist = dx * dx + dy * dy
+			if (dist <= min_distance_threshold && dist < closest_distance) {
+				ed_cdf_closest_symbol = symbol
+			}
+		}
+
+		function update_dcdf_closest_segment(symbol, p0x, p0y, p1x, p1y) {
+			// a --> p0 to mouse
+			// b --> p0 to p1
+			// a.b = |a|*|b|*cos(Theta)
+			// a.b/|b| = |a|*cos(theta)
+			// |a|^2 - (|a|*cos(theta))^2 = h^2
+			// |a|^2 - (a.b/|b|)^2 = h^2
+			let ax = local_mouse_pos[0] - p0x
+			let ay = local_mouse_pos[1] - p0y
+
+			let bx = p1x - p0x
+			let by = p1y - p0y
+
+			let a_len_sq = (ax*ax)+(ay*ay)
+			let b_len_sq = (bx*bx)+(by*by)
+			let a_dot_b  = (ax*bx)+(ay*by)
+
+			if (a_dot_b < 0) { return }
+
+			let a_shadow_b_len_sq = (a_dot_b*a_dot_b)/b_len_sq
+			if (a_shadow_b_len_sq > b_len_sq) {
+				return
+			}
+
+			let h_sq = a_len_sq - a_shadow_b_len_sq
+
+			let dist = h_sq
+			if (dist <= min_distance_threshold && dist < closest_distance) {
+				ed_cdf_closest_symbol = symbol
+			}
+		}
+
+		function draw_symbol_dcdf(symbol, focused) {
 
 			let cdf_current_values = symbol.cdf_current_values
 			if (cdf_current_values == null) {
@@ -2539,7 +2620,7 @@ function update_ts()
 
 			let color = "#FFFFFF44"
 
-			if (symbol == global.focused_symbol) {
+			if (focused) {
 				ctx.lineWidth = 4
 				color = global.chart_colors[i]
 			} else {
@@ -2551,10 +2632,15 @@ function update_ts()
 			let first_point_drawn = false
 
 			ctx.beginPath()
+			let p_prev = null
 			for (let j=0;j<cdf_current_values.length;j++) {
 				let yi = cdf_current_values[j]
 				let p = dcdf_rect_map(j,yi)
-				// update_closest_point(symbol, p[0], p[1])
+				if (p_prev) {
+					update_dcdf_closest_segment(symbol, p_prev[0], p_prev[1], p[0], p[1])
+				}
+				// update_dcdf_closest_point(symbol, p[0], p[1])
+				p_prev = p
 				if (!first_point_drawn) {
 					ctx.moveTo(p[0],p[1])
 					first_point_drawn = true
@@ -2569,10 +2655,12 @@ function update_ts()
 
 			let symbol = global.extremal_depth.ranked_symbols[i]
 
-			draw_symbol_dcdf(symbol)
+			draw_symbol_dcdf(symbol, false)
 		}
 
 		if (global.focused_symbol != null) {
+
+			draw_symbol_dcdf(global.focused_symbol, true)
 
 			let text = `symbol: ${global.focused_symbol.name} `
 			ctx.font = '14px Monospace';
@@ -2582,6 +2670,12 @@ function update_ts()
 		}
 
 	} // ed-cdf drawings
+
+	if (ts_closest_symbol != null) {
+		global.focused_symbol = ts_closest_symbol
+	} else {
+		global.focused_symbol = ed_cdf_closest_symbol
+	}
 
 }
 
