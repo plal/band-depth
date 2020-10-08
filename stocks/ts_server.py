@@ -13,6 +13,7 @@ import http.server
 
 # I hate this extra dependency, but whatever for now...
 # import simplejson as json
+import argparse
 import json
 import os
 
@@ -28,8 +29,20 @@ import os
 
 ts_server = None
 
-c_SYMBOL,c_DATE,c_OPEN,c_HIGH,c_LOW,c_CLOSE,c_VOLUME,c_ADJ=range(8)
- 
+# c_SYMBOL,c_DATE,c_OPEN,c_HIGH,c_LOW,c_CLOSE,c_VOLUME,c_ADJ=range(8)
+
+# Expecting data on format id | date | value1 [| value 2 | ...]*
+ap = argparse.ArgumentParser()
+ap.add_argument("-d", "--data", required=True, type=str,
+                help="Path to data folder")
+ap.add_argument("-c", "--column", required=True, type=int,
+                help="Column with values to be analyzed")
+args = vars(ap.parse_args())
+
+c_ID     = 0
+c_DATE   = 1
+c_VALUES = args["column"]
+
 class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
     # Handler for the GET requests
     def do_GET(self):
@@ -37,7 +50,7 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
         path = self.path
         # Send the html message
         if path == '/desc':
-            result = json.dumps(ts_server.symbols).encode('utf-8')
+            result = json.dumps(ts_server.ids).encode('utf-8')
             self.send_response(200)
             self.send_header('Content-Type','application/json')
             self.send_header('Content-Length',len(result))
@@ -47,27 +60,28 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.flush()
         elif path[0:7] == "/get?p=":
             error = []
-            symbols=path[7:].split(',')
-            symbol_data = []
-            for symbol in symbols:
+            ids=path[7:].split(',')
+            id_data = []
+            for id in ids:
                 try:
-                    date = []
-                    close = []
-                    with open('data/%s' % symbol,'r') as fp:
+                    dates  = []
+                    values = []
+                    with open(args["data"]+'/%s' % id,'r') as fp:
                         for line in fp:
                             tokens = line.strip().split('|')
+                            # print(tokens)
                             try:
                                 d = tokens[c_DATE]
-                                c = float(tokens[c_CLOSE])
-                                date.append(d)
-                                close.append(c)
+                                v = float(tokens[c_VALUES])
+                                dates.append(d)
+                                values.append(v)
                             except:
                                 # couldn't parse NA price possibly
                                 pass
-                    symbol_data.append( { 'symbol':symbol, 'date':date, 'close':close } )
+                    id_data.append( { 'id':id, 'dates':dates, 'values':values } )
                 except:
-                    error.append(symbol)
-            result = json.dumps({'data': symbol_data,'error':error}).encode('utf-8')
+                    error.append(id)
+            result = json.dumps({'data': id_data,'error':error}).encode('utf-8')
             self.send_response(200)
             self.send_header('Content-Type','application/json')
             self.send_header('Content-Length',len(result))
@@ -89,7 +103,7 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
 
 class TSServer:
     def __init__(self):
-        self.symbols = os.listdir('data')
+        self.ids = os.listdir(args["data"])
 
 if __name__ == "__main__":
     ts_server = TSServer()
@@ -97,4 +111,3 @@ if __name__ == "__main__":
     server = http.server.HTTPServer(('', port), CustomHTTPHandler)
     print ('Started httpserver on port ' , port)
     server.serve_forever()
-

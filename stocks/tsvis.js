@@ -135,16 +135,18 @@ async function download_symbol_data(symbol)
 	try {
 		let result = await fetch('http://localhost:8888/get?p='+symbol.name)
 		let data   = await result.json()
+		console.log(data)
 		let dict = {}
-		for (let i=0;i<data.data[0].close.length;i++) {
-			let offset = date_offset(data.data[0].date[i])
-			let price = parseFloat(data.data[0].close[i])
+		for (let i=0;i<data.data[0].values.length;i++) {
+			let offset = date_offset(data.data[0].dates[i])
+			let price = parseFloat(data.data[0].values[i])
 			dict[offset] = price
 		}
+		console.log(dict)
 		symbol.data = dict
 		global.recompute_viewbox = true
 	} catch (e) {
-		console.log("Fatal Error: couldn't download symbol data" + symbol.name)
+		console.log("Fatal Error: couldn't download symbol data " + symbol.name)
 		return
 	}
 }
@@ -644,6 +646,25 @@ function prepare_ui()
 	norm_date_grid.appendChild(norm_date_label)
 	norm_date_grid.appendChild(norm_date_input)
 
+	let normalize_btn = document.createElement('input')
+	global.ui.normalize_btn = normalize_btn
+	normalize_btn.type = "checkbox"
+	//normalize_btn.classList.add('checkbox_input')
+
+	let normalize_lbl = document.createElement('label')
+	global.ui.normalize_lbl = normalize_lbl
+	normalize_lbl.setAttribute("for", normalize_btn)
+	normalize_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
+	//normalize_lbl.classList.add('checkbox_input_label')
+	normalize_lbl.innerHTML = 'Normalize values'
+
+	let normalize_grid = document.createElement('div')
+	global.ui.normalize_grid = normalize_grid
+	normalize_grid.id = normalize_grid
+	normalize_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
+	normalize_grid.appendChild(normalize_lbl)
+	normalize_grid.appendChild(normalize_btn)
+
 	let modified_band_depth_btn = document.createElement('input')
 	global.ui.modified_band_depth_btn = modified_band_depth_btn
 	modified_band_depth_btn.type = "checkbox"
@@ -878,6 +899,7 @@ function prepare_ui()
 	left_panel.appendChild(start_date_grid)
 	left_panel.appendChild(end_date_grid)
 	left_panel.appendChild(norm_date_grid)
+	left_panel.appendChild(normalize_grid)
 	left_panel.appendChild(modified_band_depth_grid)
 	left_panel.appendChild(mbd_draw_outliers_grid)
 	left_panel.appendChild(extremal_depth_grid)
@@ -1620,7 +1642,9 @@ function update_ts()
 				if (value == undefined) {
 					value = last_valid_value
 				} else {
-					value = value / norm_value
+					if(global.ui.normalize_btn.checked) {
+						value = value / norm_value
+					}
 				}
 				// value = i
 				ts_current_values.push(value)
@@ -2038,7 +2062,9 @@ function update_ts()
 			for (let i=0; i<rows; i++) {
 				for (let j=0; j<cols; j++) {
 					let value = matrix[(cols*i)+j]
-					value = value / max_value
+					if(global.ui.normalize_btn.checked) {
+						value = value / norm_value
+					}
 					// console.log(value)
 					let color = "#2f3233"
 					let color_scale = ['#ffffd9','#edf8b1','#c7e9b4','#7fcdbb','#41b6c4','#1d91c0','#225ea8','#253494','#081d58','#081d58']
