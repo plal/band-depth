@@ -19,7 +19,8 @@ const EVENT= {
 	MOUSEDOWN: "event_mousedown",
 	MOUSEUP: "event_mouseup",
 	DBCLICK: "event_dbclick",
-	KEYDOWN: "event_keydown"
+	KEYDOWN: "event_keydown",
+	DRAWING_FILTER: "event_drawing_filter"
 }
 
 var global = {
@@ -31,8 +32,8 @@ var global = {
 	group_count: 0,
 	chart_groups: [],
 	events: [],
-	date_start: "2018-01-01",
-	date_end: "2020-07-18",
+	date_start: "2020-03-25",
+	date_end: "2020-10-05",
 	date_norm: "2020-07-15",
 	mouse: { position:[0,0], last_position:[0,0] },
 	color: { colors:['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628'], counter:0 },
@@ -47,7 +48,11 @@ var global = {
 	viewbox: { x:0, y:0, width:1, height:1, rows:4, cols:4 },
 	recompute_viewbox: true,
 	zoom: 0,
-	drag: { active: false, startpos: [0,0] }
+	drag: { active: false, startpos: [0,0] },
+	red_filters: [],
+	blue_filters: [],
+	drawing_blue_filter: { active: false, startpos: null, endpos: null },
+	drawing_red_filter: { active: false, startpos: null , endpos: null }
 }
 
 function install_event_listener(component, raw_event_type, context, event_type)
@@ -135,14 +140,12 @@ async function download_symbol_data(symbol)
 	try {
 		let result = await fetch('http://localhost:8888/get?p='+symbol.name)
 		let data   = await result.json()
-		console.log(data)
 		let dict = {}
 		for (let i=0;i<data.data[0].values.length;i++) {
 			let offset = date_offset(data.data[0].dates[i])
-			let price = parseFloat(data.data[0].values[i])
+			let price = parseInt(data.data[0].values[i])
 			dict[offset] = price
 		}
-		console.log(dict)
 		symbol.data = dict
 		global.recompute_viewbox = true
 	} catch (e) {
@@ -948,6 +951,7 @@ function prepare_ui()
 	install_event_listener(ts_canvas, "mousedown", ts_canvas, EVENT.MOUSEDOWN)
 	install_event_listener(ts_canvas, "mouseup", ts_canvas, EVENT.MOUSEUP)
 	install_event_listener(ts_canvas, "dblclick", ts_canvas, EVENT.DBCLICK)
+	install_event_listener(ts_canvas, "click", ts_canvas, EVENT.DRAWING_FILTER)
 
 	let main_div = document.createElement('div')
 	global.ui.main_div = main_div
@@ -965,13 +969,13 @@ function prepare_ui()
 }
 
 function grow_heap() {
-	console.log("starting grow heap function")
+	// console.log("starting grow heap function")
 	let old_heap_size = global.tsvis_wasm_module.exports.memory.buffer.byteLength
 	global.tsvis_wasm_module.exports.memory.grow(old_heap_size/65536)
 	let new_heap_size = global.tsvis_wasm_module.exports.memory.buffer.byteLength
-	console.log(`heap grew from ${old_heap_size} to ${new_heap_size}`)
+	// console.log(`heap grew from ${old_heap_size} to ${new_heap_size}`)
 	global.tsvis_wasm_module.exports.tsvis_heap_grow(new_heap_size)
-	console.log(`success`)
+	// console.log(`success`)
 }
 
 function heap_log() {
@@ -1508,6 +1512,30 @@ function process_event_queue()
 			}
 		} else if (e.event_type == EVENT.BUILD_CURVES_DENSITY_MATRIX) {
 			global.denselines.active = !global.denselines.active
+		} else if (e.event_type == EVENT.DRAWING_FILTER) {
+			if (e.raw.getModifierState("Shift")) {
+				global.drawing_blue_filter.active = !global.drawing_blue_filter.active
+				if (global.drawing_blue_filter.active) {
+					global.drawing_blue_filter.startpos = [e.raw.x, e.raw.y]
+				} else {
+					global.drawing_blue_filter.endpos = [e.raw.x, global.drawing_blue_filter.startpos[1]]
+					let line = { startpos: global.drawing_blue_filter.startpos, endpos: global.drawing_blue_filter.endpos }
+					global.blue_filters.push(line)
+				}
+
+			}
+			if (e.raw.getModifierState("Control")) {
+				global.drawing_red_filter.active = !global.drawing_red_filter.active
+				if (global.drawing_red_filter.active) {
+					global.drawing_red_filter.startpos = [e.raw.x, e.raw.y]
+				} else {
+					global.drawing_red_filter.endpos = [e.raw.x, global.drawing_red_filter.startpos[1]]
+					let line = { startpos: global.drawing_red_filter.startpos, endpos: global.drawing_red_filter.endpos }
+					global.red_filters.push(line)
+				}
+
+			}
+
 		}
 	}
 	global.events.length = 0
@@ -1546,7 +1574,7 @@ function update_ts()
 		dcdf_rect_inf = [canvas.width/2, 0, canvas.width/2, canvas.height]
 	}
 
-	let margin = [ 100, 40, 5, 5 ]
+	let margin = [ 100, 55, 5, 5 ]
 
 	let ts_rect = [ rect[0] + margin[SIDE.LEFT],
 		        	rect[1] + margin[SIDE.TOP],
@@ -1633,8 +1661,10 @@ function update_ts()
 					break;
 				}
 			}
-			if (norm_value == undefined) {
-				console.log("no price for symbol " + symbol.name + " on norm date")
+			if (global.ui.normalize_btn.checked) {
+				if (norm_value == undefined) {
+					console.log("no price for symbol " + symbol.name + " on norm date")
+				}
 			}
 			let ts_current_values = []
 			for (let j=date_start;j<=date_end;j++) {
@@ -1935,7 +1965,7 @@ function update_ts()
 
 			let ts_current_values = symbol.ts_current_values
 			if (ts_current_values == null) {
-				console.log("Not drawing ts for symbol ", symbol.name);
+				// console.log("Not drawing ts for symbol ", symbol.name);
 				return;
 			}
 
@@ -2533,6 +2563,8 @@ function update_ts()
 			y_ticks.push(y_tick)
 		}
 
+		// console.log(y_ticks)
+
 		for(let i=0; i<y_ticks.length; i++) {
 			ctx.strokeStyle = "#555555";
 			ctx.lineWidth   = 1;
@@ -2635,7 +2667,7 @@ function update_ts()
 
 			let cdf_current_values = symbol.cdf_current_values
 			if (cdf_current_values == null) {
-				console.log("Not drawing cdf for symbol ", symbol.name);
+				// console.log("Not drawing cdf for symbol ", symbol.name);
 				return;
 			}
 
@@ -2692,6 +2724,34 @@ function update_ts()
 			ctx.font = '14px Monospace';
 			ctx.textAlign = 'center';
 			ctx.fillText(text, (dcdf_rect[0]+dcdf_rect[2])-(dcdf_rect[2]/2), 40);
+
+		}
+
+		for (let i=0; i<global.red_filters.length; i++) {
+			let filter =  global.red_filters[i]
+
+			let local_filter_startpos = get_local_position(filter.startpos, canvas)
+			let local_filter_endpos = get_local_position(filter.endpos, canvas)
+
+			ctx.strokeStyle = "#FF0000"
+			ctx.beginPath()
+			ctx.moveTo(local_filter_startpos[0], local_filter_startpos[1])
+			ctx.lineTo(local_filter_endpos[0], local_filter_endpos[1])
+			ctx.stroke()
+
+		}
+
+		for (let i=0; i<global.blue_filters.length; i++) {
+			let filter =  global.blue_filters[i]
+
+			let local_filter_startpos = get_local_position(filter.startpos, canvas)
+			let local_filter_endpos = get_local_position(filter.endpos, canvas)
+
+			ctx.strokeStyle = "#0000FF"
+			ctx.beginPath()
+			ctx.moveTo(local_filter_startpos[0], local_filter_startpos[1])
+			ctx.lineTo(local_filter_endpos[0], local_filter_endpos[1])
+			ctx.stroke()
 
 		}
 
