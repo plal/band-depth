@@ -17,16 +17,6 @@ import argparse
 import json
 import os
 
-# import socketserver
-# import http.client
-# import concurrent.futures
-# import threading
-# import re
-# import png
-# import json
-# import traceback
-# import math
-
 ts_server = None
 
 # c_SYMBOL,c_DATE,c_OPEN,c_HIGH,c_LOW,c_CLOSE,c_VOLUME,c_ADJ=range(8)
@@ -69,7 +59,6 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
                     with open(args["data"]+'/%s' % id,'r') as fp:
                         for line in fp:
                             tokens = line.strip().split('|')
-                            # print(tokens)
                             try:
                                 d = tokens[c_DATE]
                                 v = float(tokens[c_VALUES])
@@ -104,9 +93,20 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
 class TSServer:
     def __init__(self):
         self.ids = os.listdir(args["data"])
+        self.datasets = []
+
+    def set_datasets(self, datasets_path_list):
+        self.datasets = datasets_path_list
 
 if __name__ == "__main__":
     ts_server = TSServer()
+
+    datasets_paths = []
+    for root, dirs, files in os.walk('data/'):
+        if files != []:
+            datasets_paths.append(root)
+    ts_server.set_datasets(datasets_paths)
+
     port = 8888
     server = http.server.HTTPServer(('', port), CustomHTTPHandler)
     print ('Started httpserver on port ' , port)
