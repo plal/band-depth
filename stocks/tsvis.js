@@ -1,5 +1,18 @@
 "use strict";
 
+const FILTER_STATE = {
+	INACTIVE: 0,
+	START: 1,
+	UPDATE: 2
+}
+
+const FILTER_TYPE = {
+	BLUE: 0,
+	RED: 1,
+}
+
+const FILTER_COLORS = ["#8888FF", "#FF8888"]
+
 const EVENT= {
 	FILTER: "event_filter",
 	TOGGLE_SYMBOL: "event_toggle_symbol",
@@ -49,10 +62,7 @@ var global = {
 	recompute_viewbox: true,
 	zoom: 0,
 	drag: { active: false, startpos: [0,0] },
-	red_filters: [],
-	blue_filters: [],
-	drawing_blue_filter: { active: false, startpos: null, endpos: null },
-	drawing_red_filter: { active: false, startpos: null , endpos: null }
+	filter_list: []
 }
 
 function install_event_listener(component, raw_event_type, context, event_type)
@@ -1493,13 +1503,32 @@ function process_event_queue()
 		} else if (e.event_type == EVENT.DBCLICK) {
 			reset_zoom()
 		} else if (e.event_type == EVENT.MOUSEDOWN) {
-			global.drag.active = true
-			global.drag.startpos = [e.raw.x, e.raw.y]
-			global.drag.startvbox = [global.viewbox.x, global.viewbox.y]
-			// console.log("drag start position: " + e.raw.x + ", " + e.raw.y)
+			//--------------
+			//drag
+			//--------------
+			if (e.raw.getModifierState("Alt")) {
+				global.drag.active = true
+				global.drag.startpos = [e.raw.x, e.raw.y]
+				global.drag.startvbox = [global.viewbox.x, global.viewbox.y]
+			}
+
+			//--------------
+			//drawing segment filters
+			//--------------
+			if (e.raw.getModifierState("Shift")) {
+				global.filter_state = FILTER_STATE.START
+				global.filter_type  = FILTER_TYPE.BLUE
+
+			}
+			if (e.raw.getModifierState("Control")) {
+				global.filter_state = FILTER_STATE.START
+				global.filter_type  = FILTER_TYPE.RED
+			}
+
 		} else if (e.event_type == EVENT.MOUSEUP) {
 			global.drag.active = false
 			// console.log("drag end position: " + e.raw.x + ", " + e.raw.y)
+			global.filter_state = FILTER_STATE.INACTIVE
 		} else if (e.event_type == EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM) {
 			global.extremal_depth.fbplot.active = !global.extremal_depth.fbplot.active
 			if (global.extremal_depth.fbplot.active) {
@@ -1512,30 +1541,6 @@ function process_event_queue()
 			}
 		} else if (e.event_type == EVENT.BUILD_CURVES_DENSITY_MATRIX) {
 			global.denselines.active = !global.denselines.active
-		} else if (e.event_type == EVENT.DRAWING_FILTER) {
-			if (e.raw.getModifierState("Shift")) {
-				global.drawing_blue_filter.active = !global.drawing_blue_filter.active
-				if (global.drawing_blue_filter.active) {
-					global.drawing_blue_filter.startpos = [e.raw.x, e.raw.y]
-				} else {
-					global.drawing_blue_filter.endpos = [e.raw.x, global.drawing_blue_filter.startpos[1]]
-					let line = { startpos: global.drawing_blue_filter.startpos, endpos: global.drawing_blue_filter.endpos }
-					global.blue_filters.push(line)
-				}
-
-			}
-			if (e.raw.getModifierState("Control")) {
-				global.drawing_red_filter.active = !global.drawing_red_filter.active
-				if (global.drawing_red_filter.active) {
-					global.drawing_red_filter.startpos = [e.raw.x, e.raw.y]
-				} else {
-					global.drawing_red_filter.endpos = [e.raw.x, global.drawing_red_filter.startpos[1]]
-					let line = { startpos: global.drawing_red_filter.startpos, endpos: global.drawing_red_filter.endpos }
-					global.red_filters.push(line)
-				}
-
-			}
-
 		}
 	}
 	global.events.length = 0
@@ -1565,6 +1570,16 @@ function update_ts()
 		TOP:1,
 		WIDTH:2,
 		HEIGHT:3
+	}
+
+	function point_inside_rect(point, rect) {
+		let point_inside_x_range = rect[RECT.LEFT] <= point[0] <= rect[RECT.LEFT]+rect[RECT.WIDTH]
+		let point_inside_y_range = rect[RECT.TOP] <= point[1] <= rect[RECT.TOP]+rect[RECT.HEIGHT]
+		if (point_inside_x_range && point_inside_y_range) {
+			return true
+		} else {
+			return false
+		}
 	}
 
 	let rect = [0, 0, canvas.width, canvas.height]
@@ -1795,19 +1810,20 @@ function update_ts()
 		if (global.drag.active) {
 
 			let local_dragstart_pos = get_local_position(global.drag.startpos, canvas)
-			local_dragstart_pos = inverse_map(local_dragstart_pos[0], local_dragstart_pos[1])
+			if (point_inside_rect(local_dragstart_pos, ts_rect)) {
+				local_dragstart_pos = inverse_map(local_dragstart_pos[0], local_dragstart_pos[1])
 
-			let local_currmouse_pos = inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+				let local_currmouse_pos = inverse_map(local_mouse_pos[0], local_mouse_pos[1])
 
-			global.viewbox.x = global.drag.startvbox[0] - Math.floor(local_currmouse_pos[0] - local_dragstart_pos[0])
-			global.viewbox.y = global.drag.startvbox[1] - (local_currmouse_pos[1] - local_dragstart_pos[1])
+				global.viewbox.x = global.drag.startvbox[0] - Math.floor(local_currmouse_pos[0] - local_dragstart_pos[0])
+				global.viewbox.y = global.drag.startvbox[1] - (local_currmouse_pos[1] - local_dragstart_pos[1])
 
-			x_min = global.viewbox.x
-			x_max = global.viewbox.x + global.viewbox.width
+				x_min = global.viewbox.x
+				x_max = global.viewbox.x + global.viewbox.width
 
-			y_min = global.viewbox.y
-			y_max = global.viewbox.y + global.viewbox.height
-
+				y_min = global.viewbox.y
+				y_max = global.viewbox.y + global.viewbox.height
+			}
 		}
 
 		//--------------
@@ -1887,29 +1903,32 @@ function update_ts()
 		ctx.rect(ts_rect[RECT.LEFT],ts_rect[RECT.TOP],ts_rect[RECT.WIDTH],ts_rect[RECT.HEIGHT])
 		ctx.clip()
 
-		//--------------
-		//vertical line to track norm date
-		//--------------
-		let x_norm = date_norm - date_start
+		if (global.ui.normalize_btn.checked) {
+			//--------------
+			//vertical line to track norm date
+			//--------------
+			let x_norm = date_norm - date_start
 
-		ctx.strokeStyle = "#FFFFFFFF";
-		ctx.lineWidth   = 1;
+			ctx.strokeStyle = "#FFFFFFFF";
+			ctx.lineWidth   = 1;
 
-		let p0 = map(x_norm, y_min)
-		let p1 = map(x_norm, y_max)
+			let p0 = map(x_norm, y_min)
+			let p1 = map(x_norm, y_max)
 
-		ctx.beginPath()
-		ctx.moveTo(p0[0], p0[1])
-		ctx.lineTo(p1[0], p1[1])
-		ctx.stroke()
+			ctx.beginPath()
+			ctx.moveTo(p0[0], p0[1])
+			ctx.lineTo(p1[0], p1[1])
+			ctx.stroke()
 
-		ctx.save();
-		ctx.font = "bold 12pt Courier"
-		ctx.fillStyle = "#FFFFFFFF"
-		ctx.translate(p1[0]+10, p1[1]+50);
-		ctx.rotate(Math.PI/2);
-		ctx.fillText(date_offset_to_string(date_start+x_norm), 0, 0);
-		ctx.restore();
+			ctx.save();
+			ctx.font = "bold 12pt Courier"
+			ctx.fillStyle = "#FFFFFFFF"
+			ctx.translate(p1[0]+10, p1[1]+50);
+			ctx.rotate(Math.PI/2);
+			ctx.fillText(date_offset_to_string(date_start+x_norm), 0, 0);
+			ctx.restore();
+
+		}
 
 		//--------------
 		// drawing and highlighting utils
@@ -2408,6 +2427,7 @@ function update_ts()
 		let clamp = function(a,b,c) {
 			return Math.max(b,Math.min(c,a))
 		}
+
 		//--------------
 		//auxiliar lines on mouse position to track date and value
 		//--------------
@@ -2493,6 +2513,7 @@ function update_ts()
 		//y axis
 		ctx.moveTo(dcdf_rect[RECT.LEFT], dcdf_rect[RECT.TOP])
 		ctx.lineTo(dcdf_rect[RECT.LEFT], dcdf_rect[RECT.HEIGHT]+6)
+		ctx.stroke()
 		//x axis
 		ctx.moveTo(dcdf_rect[RECT.LEFT], dcdf_rect[RECT.HEIGHT]+6)
 		ctx.lineTo(dcdf_rect[RECT.LEFT] + dcdf_rect[RECT.WIDTH], dcdf_rect[RECT.HEIGHT]+6)
@@ -2548,7 +2569,7 @@ function update_ts()
 		}
 
 		function dcdf_rect_inverse_map(px, py) {
-			let x = (px - dcdf_rect[RECT.LEFT]) / dcdf_rect[RECT.WIDTH] * (1.0*(cdf_x_max - cdf_x_min)) + cdf_x_min
+			let x = ((px - dcdf_rect[RECT.LEFT]) / dcdf_rect[RECT.WIDTH]) * (1.0*(cdf_x_max - cdf_x_min)) + cdf_x_min
 			let y = -((((py - dcdf_rect[RECT.TOP] - dcdf_rect[RECT.HEIGHT] + 1) * (1.0 * (cdf_y_max - cdf_y_min))) / dcdf_rect[RECT.HEIGHT]) - cdf_y_min)
 			return [x,y]
 		}
@@ -2562,8 +2583,6 @@ function update_ts()
 			let y_tick = cdf_y_min+((1.0*i*(cdf_y_max-cdf_y_min))/(y_num_ticks-1))
 			y_ticks.push(y_tick)
 		}
-
-		// console.log(y_ticks)
 
 		for(let i=0; i<y_ticks.length; i++) {
 			ctx.strokeStyle = "#555555";
@@ -2593,11 +2612,9 @@ function update_ts()
 		let x_num_ticks = 8
 		let x_ticks = []
 		for(let i=0; i<x_num_ticks; i++) {
-			let x_tick = Math.floor(cdf_x_min+(i*((cdf_x_max-cdf_x_min)/(x_num_ticks-1))))
+			let x_tick = (cdf_x_min+(i*((cdf_x_max-cdf_x_min)/(x_num_ticks-1))))
 			x_ticks.push(x_tick)
 		}
-
-		// console.log(x_ticks)
 
 		for(let i=0; i<x_ticks.length; i++) {
 			ctx.strokeStyle = "#555555";
@@ -2617,6 +2634,95 @@ function update_ts()
 			// ctx.translate(p0[0], p0[1]+42);
 			// ctx.rotate(-Math.PI/4);
 			ctx.fillText((x_ticks[i]/cdf_x_max).toFixed(2), p0[0], p0[1]+15);
+		}
+
+		//--------------
+		//
+		//cv_* --> canvas position (mouse position on canvas)
+		//dm_* --> domain position (position in x,y domain)
+		//
+		//
+		//--------------
+
+		if (global.filter_state == FILTER_STATE.START) {
+			if (!point_inside_rect(local_mouse_pos, dcdf_rect)) {
+				global.filter_state = FILTER_STATE.INACTIVE
+			} else {
+
+				let dm_filter_pos = dcdf_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+				// let cv_filter_pos= dcdf_rect_map(dm_filter_pos[0], dm_filter_pos[1])
+
+				let filter = {offset: dm_filter_pos[0], length: 0, y: dm_filter_pos[1], type: global.filter_type}
+
+				global.filter_list.push(filter)
+				global.filter_state = FILTER_STATE.UPDATE
+
+			}
+		} else if (global.filter_state == FILTER_STATE.UPDATE) {
+			if (point_inside_rect(local_mouse_pos, dcdf_rect)) {
+				let dm_filter_pos = dcdf_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+
+				let filter = global.filter_list[global.filter_list.length-1]
+				let x = dm_filter_pos[0]
+				let length = x - filter.offset
+				filter.length = length
+			}
+		}
+
+		for (let i=0; i<global.filter_list.length; i++) {
+
+			let filter = global.filter_list[i]
+
+			let cv_filter_startpos = dcdf_rect_map(filter.offset, filter.y)
+			let cv_filter_endpos   = dcdf_rect_map(filter.offset + filter.length, filter.y)
+
+			if (filter.type == FILTER_TYPE.RED) {
+				ctx.strokeStyle = "#FF8888"
+			} else {
+				ctx.strokeStyle = "#8888FF"
+			}
+
+			ctx.beginPath()
+			ctx.moveTo(cv_filter_startpos[0], cv_filter_startpos[1])
+			ctx.lineTo(cv_filter_endpos[0], cv_filter_endpos[1])
+			ctx.stroke()
+		}
+
+		function check_filters(symbol) {
+			let cdf_current_values = symbol.cdf_current_values
+			if (cdf_current_values == null) {
+				// console.log("Not drawing cdf for symbol ", symbol.name);
+				return;
+			}
+
+			for (let i=0; i<global.filter_list.length; i++) {
+				let filter = global.filter_list[i]
+
+				if (filter.type == FILTER_TYPE.RED) {
+					for (let j=0;j<cdf_current_values.length;j++) {
+						let yj = cdf_current_values[j]
+						let point_inside_x_range = filter.offset <= j <= filter.offset+filter.length
+						let point_over_y = (yj > filter.y)
+						if (point_inside_x_range && point_over_y) {
+							return false
+						}
+
+					}
+				} else if (filter.type == FILTER_TYPE.BLUE) {
+					for (let j=0;j<cdf_current_values.length;j++) {
+						let yj = cdf_current_values[j]
+						let point_inside_x_range = filter.offset <= j <= filter.offset+filter.length
+						let point_under_equal_y	= (yj <= filter.y)
+						if (point_inside_x_range && point_under_equal_y) {
+							return false
+						}
+
+					}
+
+				}
+			}
+
+			return true
 		}
 
 		let min_distance_threshold = 5 * 5
@@ -2713,47 +2819,25 @@ function update_ts()
 
 			let symbol = global.extremal_depth.ranked_symbols[i]
 
+			// if (check_filters(symbol)) {
+			// }
+
 			draw_symbol_dcdf(symbol, false)
+
+
 		}
 
 		if (global.focused_symbol != null) {
 
 			draw_symbol_dcdf(global.focused_symbol, true)
 
-			let text = `symbol: ${global.focused_symbol.name} `
+			let text = `symbol: ${global.focused_symbol.name}`
 			ctx.font = '14px Monospace';
 			ctx.textAlign = 'center';
 			ctx.fillText(text, (dcdf_rect[0]+dcdf_rect[2])-(dcdf_rect[2]/2), 40);
 
 		}
 
-		for (let i=0; i<global.red_filters.length; i++) {
-			let filter =  global.red_filters[i]
-
-			let local_filter_startpos = get_local_position(filter.startpos, canvas)
-			let local_filter_endpos = get_local_position(filter.endpos, canvas)
-
-			ctx.strokeStyle = "#FF0000"
-			ctx.beginPath()
-			ctx.moveTo(local_filter_startpos[0], local_filter_startpos[1])
-			ctx.lineTo(local_filter_endpos[0], local_filter_endpos[1])
-			ctx.stroke()
-
-		}
-
-		for (let i=0; i<global.blue_filters.length; i++) {
-			let filter =  global.blue_filters[i]
-
-			let local_filter_startpos = get_local_position(filter.startpos, canvas)
-			let local_filter_endpos = get_local_position(filter.endpos, canvas)
-
-			ctx.strokeStyle = "#0000FF"
-			ctx.beginPath()
-			ctx.moveTo(local_filter_startpos[0], local_filter_startpos[1])
-			ctx.lineTo(local_filter_endpos[0], local_filter_endpos[1])
-			ctx.stroke()
-
-		}
 
 	} // ed-cdf drawings
 
