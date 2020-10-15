@@ -1378,6 +1378,7 @@ const KEY_E      = 69
 const KEY_N      = 78
 const KEY_PERIOD = 190
 const KEY_COMMA  = 188
+const KEY_BCKSPC = 8
 //--------------
 //processing events as they arrive
 //--------------
@@ -1474,6 +1475,10 @@ function process_event_queue()
 					global.ui.create_curve_density_matrix_resolution.value = 2 * parseInt(global.ui.create_curve_density_matrix_resolution.value)
 				} else if (e.raw.keyCode == KEY_COMMA) {
 					global.ui.create_curve_density_matrix_resolution.value = Math.max(1, parseInt(global.ui.create_curve_density_matrix_resolution.value) / 2)
+				} else if (e.raw.keyCode == KEY_BCKSPC) {
+					if (global.filter_list.length > 0) {
+						global.filter_list.pop()
+					}
 				}
 			}
 		} else if (e.event_type == EVENT.MOUSEWHEEL) {
@@ -2681,6 +2686,7 @@ function update_ts()
 			} else {
 				ctx.strokeStyle = "#8888FF"
 			}
+			ctx.lineWidth = 3
 
 			ctx.beginPath()
 			ctx.moveTo(cv_filter_startpos[0], cv_filter_startpos[1])
@@ -2695,23 +2701,28 @@ function update_ts()
 				return;
 			}
 
+
+
+			let ok  = true
 			for (let i=0; i<global.filter_list.length; i++) {
 				let filter = global.filter_list[i]
 
 				if (filter.type == FILTER_TYPE.RED) {
 					for (let j=0;j<cdf_current_values.length;j++) {
 						let yj = cdf_current_values[j]
-						let point_inside_x_range = filter.offset <= j <= filter.offset+filter.length
+						let size = filter.offset + filter.length
+						let point_inside_x_range = (filter.offset <= j && j <= (filter.offset+filter.length))
 						let point_over_y = (yj > filter.y)
 						if (point_inside_x_range && point_over_y) {
-							return false
+							ok = false
 						}
 
 					}
-				} else if (filter.type == FILTER_TYPE.BLUE) {
+				}
+				if (filter.type == FILTER_TYPE.BLUE) {
 					for (let j=0;j<cdf_current_values.length;j++) {
 						let yj = cdf_current_values[j]
-						let point_inside_x_range = filter.offset <= j <= filter.offset+filter.length
+						let point_inside_x_range = (filter.offset <= j && j <= (filter.offset+filter.length))
 						let point_under_equal_y	= (yj <= filter.y)
 						if (point_inside_x_range && point_under_equal_y) {
 							return false
@@ -2722,7 +2733,7 @@ function update_ts()
 				}
 			}
 
-			return true
+			return ok
 		}
 
 		let min_distance_threshold = 5 * 5
@@ -2819,11 +2830,9 @@ function update_ts()
 
 			let symbol = global.extremal_depth.ranked_symbols[i]
 
-			// if (check_filters(symbol)) {
-			// }
-
-			draw_symbol_dcdf(symbol, false)
-
+			if (check_filters(symbol)) {
+				draw_symbol_dcdf(symbol, false)
+			}
 
 		}
 
