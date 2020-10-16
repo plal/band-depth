@@ -2701,39 +2701,40 @@ function update_ts()
 				return;
 			}
 
-
-
-			let ok  = true
+			let ok_blue = true
+			let ok_red  = true
 			for (let i=0; i<global.filter_list.length; i++) {
 				let filter = global.filter_list[i]
 
 				if (filter.type == FILTER_TYPE.RED) {
+					// let ok_red = true
 					for (let j=0;j<cdf_current_values.length;j++) {
 						let yj = cdf_current_values[j]
 						let size = filter.offset + filter.length
 						let point_inside_x_range = (filter.offset <= j && j <= (filter.offset+filter.length))
 						let point_over_y = (yj > filter.y)
 						if (point_inside_x_range && point_over_y) {
-							ok = false
+							ok_red = false
 						}
-
 					}
 				}
 				if (filter.type == FILTER_TYPE.BLUE) {
+					let at_least_one_over = false
 					for (let j=0;j<cdf_current_values.length;j++) {
 						let yj = cdf_current_values[j]
 						let point_inside_x_range = (filter.offset <= j && j <= (filter.offset+filter.length))
-						let point_under_equal_y	= (yj <= filter.y)
-						if (point_inside_x_range && point_under_equal_y) {
-							return false
+						// let point_under_equal_y	= (yj <= filter.y)
+						let point_over_y = (yj > filter.y)
+						if (point_inside_x_range && point_over_y) {
+							at_least_one_over = true
 						}
-
 					}
-
+					ok_blue = at_least_one_over
+					// ok = ok_blue
 				}
 			}
 
-			return ok
+			return (ok_red && ok_blue) || (global.filter_list.length == 0)
 		}
 
 		let min_distance_threshold = 5 * 5
