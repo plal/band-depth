@@ -1022,7 +1022,7 @@ function run_modified_band_depth_algorithm() {
 		let symbol = global.chart_symbols[i]
 		let ts_current_values = symbol.ts_current_values
 		if (ts_current_values == null) {
-			console.log("Discarding symbol ", symbol.name, " on modified band depth computation")
+			// console.log("Discarding symbol ", symbol.name, " on modified band depth computation")
 		}
 		symbols_mbd.push(symbol)
 
@@ -1110,7 +1110,7 @@ function run_extremal_depth_algorithm()
 		let symbol = global.chart_symbols[i]
 		let ts_current_values = symbol.ts_current_values
 		if (ts_current_values == null) {
-			console.log("Discarding symbol ", symbol.name, " on extremal depth computation")
+			// console.log("Discarding symbol ", symbol.name, " on extremal depth computation")
 		}
 		symbols_ed.push(symbol)
 
@@ -1226,7 +1226,7 @@ function run_depth_algorithm_group(group, depth_type)
 		let symbol = group.members[i]
 		let ts_current_values = symbol.ts_current_values
 		if (ts_current_values == null) {
-			console.log("Discarding symbol ", symbol.name, " on extremal depth computation")
+			// console.log("Discarding symbol ", symbol.name, " on extremal depth computation")
 		}
 		symbols.push(symbol)
 
@@ -1320,7 +1320,7 @@ function build_curves_density_matrix() {
 		let ts_current_values = symbol.ts_current_values
 
 		if (ts_current_values == null) {
-			console.log("Discarding symbol ", symbol.name, " on curve density matrix building")
+			// console.log("Discarding symbol ", symbol.name, " on curve density matrix building")
 		}
 
 		let m = ts_current_values.length
@@ -1673,17 +1673,17 @@ function update_ts()
 			}
 			let norm_value = undefined
 			let k = date_end - date_start
-			let offset = date_norm - date_start
-			for (let j=0;j<k;j++) {
-				// 0 1 2 3 4 5 * 7 8
-				norm_value = symbol.data[date_start + ((offset + j) % k)]
-				if (norm_value != undefined) {
-					break;
-				}
-			}
 			if (global.ui.normalize_btn.checked) {
+				let offset = date_norm - date_start
+				for (let j=0;j<k;j++) {
+					// 0 1 2 3 4 5 * 7 8
+					norm_value = symbol.data[date_start + ((offset + j) % k)]
+					if (norm_value != undefined) {
+						break;
+					}
+				}
 				if (norm_value == undefined) {
-					console.log("no price for symbol " + symbol.name + " on norm date")
+					// console.log("no price for symbol " + symbol.name + " on norm date")
 				}
 			}
 			let ts_current_values = []
@@ -2308,7 +2308,9 @@ function update_ts()
 				let symbol = global.chart_symbols[i]
 
 				if(global.focused_symbol == null || global.chart_symbols[i] != global.focused_symbol) {
-					draw_timeseries(symbol, false)
+					if (symbol.filter_ok) {
+						draw_timeseries(symbol, false)	
+					}
 				}
 			}
 
@@ -2715,6 +2717,7 @@ function update_ts()
 						let point_over_y = (yj > filter.y)
 						if (point_inside_x_range && point_over_y) {
 							ok_red = false
+							break
 						}
 					}
 				}
@@ -2730,11 +2733,15 @@ function update_ts()
 						}
 					}
 					ok_blue = at_least_one_over
+					if (ok_blue == false) { break }
 					// ok = ok_blue
 				}
 			}
 
-			return (ok_red && ok_blue) || (global.filter_list.length == 0)
+			let ok = (ok_red && ok_blue) || (global.filter_list.length == 0)
+			symbol.filter_ok = ok
+
+			return ok
 		}
 
 		let min_distance_threshold = 5 * 5
@@ -2886,7 +2893,7 @@ async function main()
 		for (let i=0;i<symbol_names.length;i++) {
 			symbols.push({ name:symbol_names[i], ui_row:null, ui_col:null,
 						   on_table:true, on_chart:false, data: null,
-						   ts_current_values: null, ed_rank:null, mbd_rank:null })
+						   ts_current_values: null, ed_rank:null, mbd_rank:null, filter_ok:true })
 		}
 		global.symbols = symbols
 		global.toggle_state = 0
