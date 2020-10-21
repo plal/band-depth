@@ -293,6 +293,7 @@ function create_group() {
 function add_group_to_chart(group) {
 	group.on_chart = true
 	global.chart_groups.push(group)
+	global.chart_colors.push(group.color)
 	group.ui_col.style.color = group.color
 	group.ui_col.style.fontWeight = 'bold'
 
@@ -304,13 +305,7 @@ function add_group_to_chart(group) {
 		let member = members[i]
 
 		if (!member.on_chart) {
-			// add member to chart
-			// member.on_chart = true
-			// global.chart_symbols.push(member)
-			// global.chart_colors.push(group.color)
-			// member.ui_col.style.color = group.color
-			// member.ui_col.style.fontWeight = 'bold'
-			add_symbol_to_chart(member)
+			add_symbol_to_chart(member, group.color)
 		}
 
 	}
@@ -2309,7 +2304,7 @@ function update_ts()
 
 				if(global.focused_symbol == null || global.chart_symbols[i] != global.focused_symbol) {
 					if (symbol.filter_ok) {
-						draw_timeseries(symbol, false)	
+						draw_timeseries(symbol, false)
 					}
 				}
 			}
