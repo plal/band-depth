@@ -3,7 +3,8 @@
 const FILTER_STATE = {
 	INACTIVE: 0,
 	START: 1,
-	UPDATE: 2
+	UPDATE: 2,
+	MOVE: 3
 }
 
 const FILTER_TYPE = {
@@ -2645,18 +2646,35 @@ function update_ts()
 		//
 		//--------------
 
+		function detect_click_inside_filter(local_click_pos) {
+			let clicked_filter = null
+			for(let i=0; i<global.filter_list.length; i++) {
+				let filter = global.filter_list[i]
+				if(point_inside_rect(local_click_pos, filter.rect)) {
+					clicked_filter = filter
+				}
+			}
+
+			return clicked_filter
+		}
+
 		if (global.filter_state == FILTER_STATE.START) {
 			if (!point_inside_rect(local_mouse_pos, dcdf_rect)) {
 				global.filter_state = FILTER_STATE.INACTIVE
 			} else {
+				let clicked_filter = detect_click_inside_filter(local_mouse_pos)
+				if (clicked_filter) {
+					global.filter_moving = clicked_filter
+					global.filter_state  = FILTER_STATE.MOVE
+				} else {
+					let dm_filter_pos = dcdf_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+					// let cv_filter_pos= dcdf_rect_map(dm_filter_pos[0], dm_filter_pos[1])
 
-				let dm_filter_pos = dcdf_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
-				// let cv_filter_pos= dcdf_rect_map(dm_filter_pos[0], dm_filter_pos[1])
+					let filter = {offset: dm_filter_pos[0], length: 0, y: dm_filter_pos[1], type: global.filter_type}
 
-				let filter = {offset: dm_filter_pos[0], length: 0, y: dm_filter_pos[1], type: global.filter_type}
-
-				global.filter_list.push(filter)
-				global.filter_state = FILTER_STATE.UPDATE
+					global.filter_list.push(filter)
+					global.filter_state = FILTER_STATE.UPDATE
+				}
 
 			}
 		} else if (global.filter_state == FILTER_STATE.UPDATE) {
@@ -2668,6 +2686,16 @@ function update_ts()
 				let length = x - filter.offset
 				filter.length = length
 			}
+		} else if (global.filter_state == FILTER_STATE.MOVE) {
+			if (point_inside_rect(local_mouse_pos, dcdf_rect)) {
+				let filter = global.filter_moving
+
+				let dm_filter_newpos = dcdf_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+
+				filter.offset = dm_filter_newpos[0] - (filter.length/2)
+				filter.y 	  = dm_filter_newpos[1]
+
+			}
 		}
 
 		for (let i=0; i<global.filter_list.length; i++) {
@@ -2677,17 +2705,18 @@ function update_ts()
 			let cv_filter_startpos = dcdf_rect_map(filter.offset, filter.y)
 			let cv_filter_endpos   = dcdf_rect_map(filter.offset + filter.length, filter.y)
 
-			if (filter.type == FILTER_TYPE.RED) {
-				ctx.strokeStyle = "#FF8888"
-			} else {
-				ctx.strokeStyle = "#8888FF"
-			}
-			ctx.lineWidth = 3
+			let filter_rect = [cv_filter_startpos[0], cv_filter_startpos[1], cv_filter_endpos[0]-cv_filter_startpos[0], 4]
+			filter.rect = filter_rect
 
-			ctx.beginPath()
-			ctx.moveTo(cv_filter_startpos[0], cv_filter_startpos[1])
-			ctx.lineTo(cv_filter_endpos[0], cv_filter_endpos[1])
-			ctx.stroke()
+			let color
+			if (filter.type == FILTER_TYPE.RED) {
+				color = "#FF8888"
+			} else {
+				color = "#8888FF"
+			}
+
+			ctx.fillStyle = color
+			ctx.fillRect(filter_rect[RECT.LEFT], filter_rect[RECT.TOP], filter_rect[RECT.WIDTH], filter_rect[RECT.HEIGHT])
 		}
 
 		function check_filters(symbol) {
@@ -2722,6 +2751,7 @@ function update_ts()
 						let point_inside_x_range = (filter.offset <= j && j <= (filter.offset+filter.length))
 						// let point_under_equal_y	= (yj <= filter.y)
 						let point_over_y = (yj > filter.y)
+
 						if (point_inside_x_range && point_over_y) {
 							at_least_one_over = true
 						}
@@ -2844,6 +2874,7 @@ function update_ts()
 
 			let text = `symbol: ${global.focused_symbol.name}`
 			ctx.font = '14px Monospace';
+			ctx.fillStyle = "#FFFFFF"
 			ctx.textAlign = 'center';
 			ctx.fillText(text, (dcdf_rect[0]+dcdf_rect[2])-(dcdf_rect[2]/2), 40);
 
