@@ -1506,11 +1506,11 @@ function process_event_queue()
 			//--------------
 			//drag
 			//--------------
-			if (e.raw.getModifierState("Alt")) {
-				global.drag.active = true
-				global.drag.startpos = [e.raw.x, e.raw.y]
-				global.drag.startvbox = [global.viewbox.x, global.viewbox.y]
-			}
+			// if (e.raw.getModifierState("Alt")) {
+			global.drag.active = true
+			global.drag.startpos = [e.raw.x, e.raw.y]
+			global.drag.startvbox = [global.viewbox.x, global.viewbox.y]
+			// }
 
 			//--------------
 			//drawing segment filters
@@ -1573,8 +1573,8 @@ function update_ts()
 	}
 
 	function point_inside_rect(point, rect) {
-		let point_inside_x_range = rect[RECT.LEFT] <= point[0] <= rect[RECT.LEFT]+rect[RECT.WIDTH]
-		let point_inside_y_range = rect[RECT.TOP] <= point[1] <= rect[RECT.TOP]+rect[RECT.HEIGHT]
+		let point_inside_x_range = rect[RECT.LEFT] <= point[0] && point[0] <= rect[RECT.LEFT]+rect[RECT.WIDTH]
+		let point_inside_y_range = rect[RECT.TOP] <= point[1] && point[1] <= rect[RECT.TOP]+rect[RECT.HEIGHT]
 		if (point_inside_x_range && point_inside_y_range) {
 			return true
 		} else {
@@ -2642,7 +2642,6 @@ function update_ts()
 		//
 		//cv_* --> canvas position (mouse position on canvas)
 		//dm_* --> domain position (position in x,y domain)
-		//
 		//
 		//--------------
 
