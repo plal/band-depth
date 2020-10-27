@@ -437,11 +437,13 @@ typedef struct {
 	s32 rank_matrix; // [ col0 ] [ col1 ] ... [colN] - n x p where each column is a permutation
 	s32 ltgt_abs_diff_matrix; // [ col0 ] [ col1 ] ... [colN] - n x p where each column is a permutation
 	s32 cdf_matrix; // n * n
+	s32 lt_matrix;
+	s32 gt_matrix;
 	s32 left;
 	s32 length;
 } ExtremalDepth;
 
-static s32*
+s32*
 ed_get_rank_matrix(ExtremalDepth *self) { return OffsetedPointer(self,self->rank_matrix); }
 
 s32
@@ -461,6 +463,18 @@ ed_get_ltgt_abs_diff_matrix(ExtremalDepth *self) { return OffsetedPointer(self,s
 
 static s32*
 ed_get_ltgt_abs_diff_for_timestep(ExtremalDepth *self, s32 timestep) { return ed_get_ltgt_abs_diff_matrix(self) + timestep * self->n; }
+
+static s32*
+ed_get_lt_matrix(ExtremalDepth *self) { return OffsetedPointer(self,self->lt_matrix); }
+
+static s32*
+ed_get_lt_for_timestep(ExtremalDepth *self, s32 timestep) { return ed_get_lt_matrix(self) + timestep * self->n; }
+
+static s32*
+ed_get_gt_matrix(ExtremalDepth *self) { return OffsetedPointer(self,self->gt_matrix); }
+
+static s32*
+ed_get_gt_for_timestep(ExtremalDepth *self, s32 timestep) { return ed_get_gt_matrix(self) + timestep * self->n; }
 
 s32*
 ed_get_cdf_matrix(ExtremalDepth *self) { return OffsetedPointer(self,self->cdf_matrix); }
@@ -515,8 +529,29 @@ ed_print_rank(ExtremalDepth *self) {
 }
 
 static void
+ed_print_lt(ExtremalDepth *self) {
+	for (s32 i=0;i<self->p;++i) {
+		s32 *lt = ed_get_lt_for_timestep(self, i);
+		for (s32 j=0;j<self->n;++j) {
+			printf("%-6d ", lt[j]);
+		}
+		printf("\n");
+	}
+}
+
+static void
+ed_print_gt(ExtremalDepth *self) {
+	for (s32 i=0;i<self->p;++i) {
+		s32 *gt = ed_get_gt_for_timestep(self, i);
+		for (s32 j=0;j<self->n;++j) {
+			printf("%-6d ", gt[j]);
+		}
+		printf("\n");
+	}
+}
+
+static void
 ed_print_ltgt_abs_diff(ExtremalDepth *self) {
-	// accumulate each of the curves CDF
 	for (s32 i=0;i<self->p;++i) {
 		s32 *rank = ed_get_ltgt_abs_diff_for_timestep(self, i);
 		for (s32 j=0;j<self->n;++j) {
@@ -718,7 +753,9 @@ ed_extremal_depth_run(CurveList *curve_list)
 	s32 rank_matrix_storage = RAlign(n * (p + 1) * sizeof(s32),8);    // (p+1) * n
 	s32 ltgt_abs_diff_matrix_storage = RAlign(n * p * sizeof(s32),8); // (p+0) * n
 	s32 cdf_matrix_storage = RAlign(n * k * sizeof(s32),8);           // (n+0) * k
-	s32 storage = header_storage + rank_matrix_storage + ltgt_abs_diff_matrix_storage + cdf_matrix_storage;
+	s32 lt_matrix_storage = ltgt_abs_diff_matrix_storage;
+	s32 gt_matrix_storage = ltgt_abs_diff_matrix_storage;
+	s32 storage = header_storage + rank_matrix_storage + ltgt_abs_diff_matrix_storage + cdf_matrix_storage + lt_matrix_storage + gt_matrix_storage;
 
 	ExtremalDepth *ed = tsvis_malloc(storage);
 	if (!ed) { return 0; }
@@ -732,23 +769,36 @@ ed_extremal_depth_run(CurveList *curve_list)
 		.rank_matrix = header_storage,
 		.ltgt_abs_diff_matrix = header_storage + rank_matrix_storage,
 		.cdf_matrix = header_storage + rank_matrix_storage + ltgt_abs_diff_matrix_storage,
+		.lt_matrix = header_storage + rank_matrix_storage + ltgt_abs_diff_matrix_storage + cdf_matrix_storage,
+		.gt_matrix = header_storage + rank_matrix_storage + ltgt_abs_diff_matrix_storage + cdf_matrix_storage + lt_matrix_storage,
 		.left = storage,
 		.length = storage
 	};
 
 	rnd_State rnd = rnd_new();
 
+	void *checkpoint = tsvis_mem_get_checkpoint();
+
+	s32 row_storage = sizeof(s32) * n;
+	s32 *aux_ltgt_diff = tsvis_malloc(3*row_storage);
+	s32 *aux_lt = aux_ltgt_diff + n;
+	s32 *aux_gt = aux_lt + n;
+
 	for (s32 i=0;i<p;++i) {
 
 		s32 *rank          = ed_get_rank_for_timestep(ed, i);
 
-		s32 *aux_ltgt_diff = ed_get_rank_for_timestep(ed, i+1);
-
 		s32 *ltgt_abs_diff = ed_get_ltgt_abs_diff_for_timestep(ed, i);
+
+		s32 *lt 		   = ed_get_lt_for_timestep(ed, i);
+
+		s32 *gt 		   = ed_get_gt_for_timestep(ed, i);
 
 		for (s32 j=0;j<n;++j) {
 			rank[j] = j;
 			aux_ltgt_diff[j] = 0;
+			aux_lt[j] = 0;
+			aux_gt[j] = 0;
 		}
 
 		// sort columns based on curve values
@@ -770,9 +820,12 @@ ed_extremal_depth_run(CurveList *curve_list)
 			if (last_value < v) {
 				cum = j;
 				aux_ltgt_diff[j] += cum;
+				aux_lt[j] += cum;
 			} else {
 				aux_ltgt_diff[j] += cum;
+				aux_lt[j] += cum;
 			}
+			last_value = v;
 		}
 
 		last_value = curves[rank[n-1]]->values[i];
@@ -782,14 +835,19 @@ ed_extremal_depth_run(CurveList *curve_list)
 			if (last_value > v) {
 				cum = n-1-j;
 				aux_ltgt_diff[j] -= cum;
+				aux_gt[j] += cum;
 			} else {
 				aux_ltgt_diff[j] -= cum;
+				aux_gt[j] += cum;
 			}
+			last_value = v;
 		}
 
 		for (s32 j=0;j<n;++j) {
 			s32 abs_diff = Abs(aux_ltgt_diff[j]);
 			ltgt_abs_diff[rank[j]] = abs_diff;
+			lt[rank[j]] = aux_lt[j];
+			gt[rank[j]] = aux_gt[j];
 			// 1 - (abs_diff) / n == (n - abs_diff) / n == index
 			//
 			// index on the CDF is n - abs_diff and varies from 0 to n
@@ -797,7 +855,10 @@ ed_extremal_depth_run(CurveList *curve_list)
 			s32 *cdf_curve = ed_get_cdf_for_curve(ed, rank[j]);
 			++cdf_curve[n - abs_diff];
 		}
+
 	}
+
+	tsvis_mem_set_checkpoint(checkpoint);
 
 	// accumulate each of the curves CDF
 	for (s32 i=0;i<ed->n;++i) {
@@ -811,6 +872,12 @@ ed_extremal_depth_run(CurveList *curve_list)
 
 	printf("Rank\n");
 	ed_print_rank(ed);
+
+	printf("lt\n");
+	ed_print_lt(ed);
+
+	printf("gt\n");
+	ed_print_gt(ed);
 
 	printf("ltgt_abs_diff\n");
 	ed_print_ltgt_abs_diff(ed);
@@ -1090,7 +1157,7 @@ test_extremal_depth()
 			 1.50,  1.50,  1.50,  1.51,  1.40,  1.40,
 			 1.10,  1.10,  1.30,  1.20,  1.20,  1.30,
 			 1.00,  0.90,  1.10,  1.50,  2.30,  3.50,
-			 0.60,  0.50,  0.11, -0.60, -1.50, -2.60,
+			 0.60,  0.50,  0.10, -0.60, -1.50, -2.60,
 			 0.00,  0.40,  0.10,  0.20,  0.10, -0.30,
 			-0.80, -0.70, -0.30, -0.30, -0.60, -0.60,
 			-1.40, -1.10, -1.00, -1.10, -1.40, -1.60
