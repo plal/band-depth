@@ -1134,6 +1134,8 @@ function run_extremal_depth_algorithm()
 
 	let rank_raw_p 		 	 		= global.tsvis_wasm_module.exports.ed_get_extremal_depth_rank(ed_raw_p)
 	let cdf_matrix_raw_p 	  		= global.tsvis_wasm_module.exports.ed_get_cdf_matrix(ed_raw_p)
+	// let lt_matrix_raw_p				= global.tsvis_wasm_module.exports.ed_get_lt_matrix(ed_raw_p)
+	// let gt_matrix_raw_p				= global.tsvis_wasm_module.exports.ed_get_gt_matrix(ed_raw_p)
 	let n_of_pwdepth_unique_values  = global.tsvis_wasm_module.exports.ed_get_pointwise_depth_unique_values(ed_raw_p)
 	let n_of_points 				= global.tsvis_wasm_module.exports.ed_get_number_of_points(ed_raw_p)
 
@@ -2812,7 +2814,7 @@ function update_ts()
 			}
 		}
 
-		function draw_symbol_dcdf(symbol, focused) {
+		function draw_symbol_dcdf(symbol, focused, color) {
 
 			let cdf_current_values = symbol.cdf_current_values
 			if (cdf_current_values == null) {
@@ -2825,16 +2827,19 @@ function update_ts()
 				return
 			}
 
-			let color = "#FFFFFF44"
+			let curve_color = "#FFFFFF44"
+			if (typeof color !== "undefined") {
+				curve_color = color
+			}
 
 			if (focused) {
 				ctx.lineWidth = 4
-				color = global.chart_colors[i]
+				curve_color = global.chart_colors[i]
 			} else {
 				ctx.lineWidth = 2
 			}
 
-			ctx.strokeStyle = color
+			ctx.strokeStyle = curve_color
 
 			let first_point_drawn = false
 
@@ -2864,6 +2869,8 @@ function update_ts()
 
 			if (check_filters(symbol)) {
 				draw_symbol_dcdf(symbol, false)
+			} else {
+				draw_symbol_dcdf(symbol, false, "#FFFFFF06")
 			}
 
 		}

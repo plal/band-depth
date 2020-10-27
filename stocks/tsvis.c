@@ -464,13 +464,13 @@ ed_get_ltgt_abs_diff_matrix(ExtremalDepth *self) { return OffsetedPointer(self,s
 static s32*
 ed_get_ltgt_abs_diff_for_timestep(ExtremalDepth *self, s32 timestep) { return ed_get_ltgt_abs_diff_matrix(self) + timestep * self->n; }
 
-static s32*
+s32*
 ed_get_lt_matrix(ExtremalDepth *self) { return OffsetedPointer(self,self->lt_matrix); }
 
 static s32*
 ed_get_lt_for_timestep(ExtremalDepth *self, s32 timestep) { return ed_get_lt_matrix(self) + timestep * self->n; }
 
-static s32*
+s32*
 ed_get_gt_matrix(ExtremalDepth *self) { return OffsetedPointer(self,self->gt_matrix); }
 
 static s32*
@@ -780,8 +780,7 @@ ed_extremal_depth_run(CurveList *curve_list)
 	void *checkpoint = tsvis_mem_get_checkpoint();
 
 	s32 row_storage = sizeof(s32) * n;
-	s32 *aux_ltgt_diff = tsvis_malloc(3*row_storage);
-	s32 *aux_lt = aux_ltgt_diff + n;
+	s32 *aux_lt = tsvis_malloc(2*row_storage);
 	s32 *aux_gt = aux_lt + n;
 
 	for (s32 i=0;i<p;++i) {
@@ -796,7 +795,6 @@ ed_extremal_depth_run(CurveList *curve_list)
 
 		for (s32 j=0;j<n;++j) {
 			rank[j] = j;
-			aux_ltgt_diff[j] = 0;
 			aux_lt[j] = 0;
 			aux_gt[j] = 0;
 		}
@@ -819,10 +817,8 @@ ed_extremal_depth_run(CurveList *curve_list)
 			f64 v = curves[rank[j]]->values[i];
 			if (last_value < v) {
 				cum = j;
-				aux_ltgt_diff[j] += cum;
 				aux_lt[j] += cum;
 			} else {
-				aux_ltgt_diff[j] += cum;
 				aux_lt[j] += cum;
 			}
 			last_value = v;
@@ -834,17 +830,16 @@ ed_extremal_depth_run(CurveList *curve_list)
 			f64 v = curves[rank[j]]->values[i];
 			if (last_value > v) {
 				cum = n-1-j;
-				aux_ltgt_diff[j] -= cum;
 				aux_gt[j] += cum;
 			} else {
-				aux_ltgt_diff[j] -= cum;
 				aux_gt[j] += cum;
 			}
 			last_value = v;
 		}
 
 		for (s32 j=0;j<n;++j) {
-			s32 abs_diff = Abs(aux_ltgt_diff[j]);
+			s32 ltgt_diff = aux_lt[j]-aux_gt[j];
+			s32 abs_diff = Abs(ltgt_diff);
 			ltgt_abs_diff[rank[j]] = abs_diff;
 			lt[rank[j]] = aux_lt[j];
 			gt[rank[j]] = aux_gt[j];
