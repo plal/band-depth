@@ -1,5 +1,11 @@
 "use strict";
 
+const AUX_VIEW = {
+	DCDF: 0,
+	RCDF: 1,
+	NONE: 2
+}
+
 const FILTER_STATE = {
 	INACTIVE: 0,
 	START: 1,
@@ -34,7 +40,8 @@ const EVENT= {
 	MOUSEUP: "event_mouseup",
 	DBCLICK: "event_dbclick",
 	KEYDOWN: "event_keydown",
-	DRAWING_FILTER: "event_drawing_filter"
+	DRAWING_FILTER: "event_drawing_filter",
+	CHANGE_AUX_VIEW: "event_change_aux_view"
 }
 
 var global = {
@@ -63,7 +70,8 @@ var global = {
 	recompute_viewbox: true,
 	zoom: 0,
 	drag: { active: false, startpos: [0,0] },
-	filter_list: []
+	filter_list: [],
+	aux_view: 'none'
 }
 
 function install_event_listener(component, raw_event_type, context, event_type)
@@ -771,24 +779,34 @@ function prepare_ui()
 	ed_draw_outliers_grid.appendChild(ed_draw_outliers_lbl)
 	ed_draw_outliers_grid.appendChild(ed_draw_outliers_btn)
 
-	let draw_ed_dcdf_curves_btn = document.createElement('input')
-	global.ui.draw_ed_dcdf_curves_btn = draw_ed_dcdf_curves_btn
-	// draw_ed_dcdf_curves_btn.checked = 'false'
-	draw_ed_dcdf_curves_btn.type = "checkbox"
+	let rank_depth_select = document.createElement('select')
+	global.ui.rank_depth_select = rank_depth_select
+	rank_depth_select.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around;\
+							   font-family:Courier; font-size:13pt; color: #FFFFFF;'
+	install_event_listener(rank_depth_select, 'change', rank_depth_select, EVENT.CHANGE_AUX_VIEW)
 
-	let draw_ed_dcdf_curves_lbl = document.createElement('label')
-	global.ui.draw_ed_dcdf_curves_lbl = draw_ed_dcdf_curves_lbl
-	draw_ed_dcdf_curves_lbl.setAttribute("for", draw_ed_dcdf_curves_btn)
-	draw_ed_dcdf_curves_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
-	//extremal_depth_lbl.classList.add('checkbox_input_label')
-	draw_ed_dcdf_curves_lbl.innerHTML = '- Draw d-cdfs'
+	let hidden_option = document.createElement('option')
+	hidden_option.selected = 'selected'
+	hidden_option.hidden = 'hidden'
+	hidden_option.value = 'none'
+	hidden_option.innerHTML = 'aux view'
 
-	let draw_ed_dcdf_curves_grid = document.createElement('div')
-	global.ui.draw_ed_dcdf_curves_grid = draw_ed_dcdf_curves_grid
-	draw_ed_dcdf_curves_grid.id = draw_ed_dcdf_curves_grid
-	draw_ed_dcdf_curves_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around;' //justify-content:flex-end'
-	draw_ed_dcdf_curves_grid.appendChild(draw_ed_dcdf_curves_lbl)
-	draw_ed_dcdf_curves_grid.appendChild(draw_ed_dcdf_curves_btn)
+	let dcdf_option = document.createElement('option')
+	dcdf_option.value = 'dcdf'
+	dcdf_option.innerHTML = 'd-cdf'
+
+	let rcdf_option = document.createElement('option')
+	rcdf_option.value = 'rcdf'
+	rcdf_option.innerHTML = 'r-cdf'
+
+	let none_option = document.createElement('option')
+	none_option.value = 'none'
+	none_option.innerHTML = 'none'
+
+	rank_depth_select.appendChild(hidden_option)
+	rank_depth_select.appendChild(dcdf_option)
+	rank_depth_select.appendChild(rcdf_option)
+	rank_depth_select.appendChild(none_option)
 
 	let draw_ed_dcdf_agg = document.createElement('input')
 	global.ui.draw_ed_dcdf_agg = draw_ed_dcdf_agg
@@ -798,7 +816,7 @@ function prepare_ui()
 
 	let draw_ed_dcdf_agg_lbl = document.createElement('label')
 	global.ui.draw_ed_dcdf_lbl = draw_ed_dcdf_agg_lbl
-	draw_ed_dcdf_agg_lbl.setAttribute("for", draw_ed_dcdf_curves_btn)
+	draw_ed_dcdf_agg_lbl.setAttribute("for", draw_ed_dcdf_agg)
 	draw_ed_dcdf_agg_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
 	//extremal_depth_lbl.classList.add('checkbox_input_label')
 	draw_ed_dcdf_agg_lbl.innerHTML = '-- Aggregated'
@@ -817,7 +835,7 @@ function prepare_ui()
 
 	let draw_ed_dcdf_sep_lbl = document.createElement('label')
 	global.ui.draw_ed_dcdf_lbl = draw_ed_dcdf_sep_lbl
-	draw_ed_dcdf_sep_lbl.setAttribute("for", draw_ed_dcdf_curves_btn)
+	draw_ed_dcdf_sep_lbl.setAttribute("for", draw_ed_dcdf_sep)
 	draw_ed_dcdf_sep_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
 	//extremal_depth_lbl.classList.add('checkbox_input_label')
 	draw_ed_dcdf_sep_lbl.innerHTML = '-- Separated'
@@ -913,7 +931,7 @@ function prepare_ui()
 	left_panel.appendChild(mbd_draw_outliers_grid)
 	left_panel.appendChild(extremal_depth_grid)
 	left_panel.appendChild(ed_draw_outliers_grid)
-	left_panel.appendChild(draw_ed_dcdf_curves_grid)
+	left_panel.appendChild(rank_depth_select)
 	left_panel.appendChild(draw_ed_dcdf_agg_grid)
 	left_panel.appendChild(draw_ed_dcdf_sep_grid)
 	left_panel.appendChild(draw_curves_grid)
@@ -1134,18 +1152,21 @@ function run_extremal_depth_algorithm()
 
 	let rank_raw_p 		 	 		= global.tsvis_wasm_module.exports.ed_get_extremal_depth_rank(ed_raw_p)
 	let cdf_matrix_raw_p 	  		= global.tsvis_wasm_module.exports.ed_get_cdf_matrix(ed_raw_p)
-	// let lt_matrix_raw_p				= global.tsvis_wasm_module.exports.ed_get_lt_matrix(ed_raw_p)
-	// let gt_matrix_raw_p				= global.tsvis_wasm_module.exports.ed_get_gt_matrix(ed_raw_p)
+	let lt_matrix_raw_p				= global.tsvis_wasm_module.exports.ed_get_lt_matrix(ed_raw_p)
+	let gt_matrix_raw_p				= global.tsvis_wasm_module.exports.ed_get_gt_matrix(ed_raw_p)
 	let n_of_pwdepth_unique_values  = global.tsvis_wasm_module.exports.ed_get_pointwise_depth_unique_values(ed_raw_p)
 	let n_of_points 				= global.tsvis_wasm_module.exports.ed_get_number_of_points(ed_raw_p)
 
-	// console.log(n_of_pwdepth_unique_values)
-	// console.log(n_of_points)
+	// console.log(lt_matrix_raw_p)
+	// console.log(gt_matrix_raw_p)
 
 	const rank = new Int32Array(global.tsvis_wasm_module.exports.memory.buffer, rank_raw_p, symbols_ed.length);
 	const cdf_matrix = new Int32Array(global.tsvis_wasm_module.exports.memory.buffer, cdf_matrix_raw_p, n * n_of_pwdepth_unique_values)
+	const lt_matrix = new Int32Array(global.tsvis_wasm_module.exports.memory.buffer, lt_matrix_raw_p, n * n_of_points)
+	const gt_matrix = new Int32Array(global.tsvis_wasm_module.exports.memory.buffer, gt_matrix_raw_p, n * n_of_points)
 
-	// console.log(cdf_matrix)
+	// console.log(lt_matrix)
+	// console.log(gt_matrix)
 
 	global.extremal_depth.ranked_symbols = []
 	for (let i=0;i<symbols_ed.length;i++) {
@@ -1156,7 +1177,7 @@ function run_extremal_depth_algorithm()
 
 	for (let i=0;i<symbols_ed.length;i++) {
 		let symbol_i = symbols_ed[i]
-		let cdf_row = []
+		let cdf_row  = []
 		for (let j=0; j<n_of_pwdepth_unique_values; j++) {
 			let value = cdf_matrix[(n_of_pwdepth_unique_values*i)+j] / n_of_points
 			if (j % 2 == 0) {
@@ -1164,6 +1185,43 @@ function run_extremal_depth_algorithm()
 			}
 		}
 		symbol_i.cdf_matrix_row = cdf_row
+	}
+
+	for (let i=0; i<symbols_ed.length; i++) {
+		let symbol_i = symbols_ed[i]
+
+		let lt_ranks = []
+		let gt_ranks = []
+		for (let j=0; j<n_of_points; j++) {
+			let lt_rank = lt_matrix[(n*j)+i]
+			let gt_rank = gt_matrix[(n*j)+i]
+			lt_ranks.push(lt_rank)
+			gt_ranks.push(gt_rank)
+		}
+
+		let lt_ranks_dist = []
+		let gt_ranks_dist = []
+		for (let j=0; j<n; j++) {
+			let count_lt_rankj = 0
+			let count_gt_rankj = 0
+			for (let k=0; k<n_of_points; k++) {
+				if (lt_ranks[k] <= j) {
+					count_lt_rankj += 1
+				}
+
+				if (gt_ranks[k] <= j) {
+					count_gt_rankj += 1
+				}
+			}
+			lt_ranks_dist.push(count_lt_rankj/n_of_points)
+			gt_ranks_dist.push(count_gt_rankj/n_of_points)
+		}
+		// console.log(symbol_i.name, lt_ranks, lt_ranks_dist)
+		// console.log(symbol_i.name, gt_ranks, gt_ranks_dist)
+
+		symbol_i.lt_ranks_dist = lt_ranks_dist
+		symbol_i.gt_ranks_dist = gt_ranks_dist
+
 	}
 
 	//--------------
@@ -1509,11 +1567,9 @@ function process_event_queue()
 			//--------------
 			//drag
 			//--------------
-			// if (e.raw.getModifierState("Alt")) {
 			global.drag.active = true
 			global.drag.startpos = [e.raw.x, e.raw.y]
 			global.drag.startvbox = [global.viewbox.x, global.viewbox.y]
-			// }
 
 			//--------------
 			//drawing segment filters
@@ -1544,6 +1600,8 @@ function process_event_queue()
 			}
 		} else if (e.event_type == EVENT.BUILD_CURVES_DENSITY_MATRIX) {
 			global.denselines.active = !global.denselines.active
+		} else if (e.event_type == EVENT.CHANGE_AUX_VIEW) {
+			global.aux_view = global.ui.rank_depth_select.value
 		}
 	}
 	global.events.length = 0
@@ -1587,7 +1645,7 @@ function update_ts()
 
 	let rect = [0, 0, canvas.width, canvas.height]
 	let dcdf_rect_inf = null
-	if (global.ui.draw_ed_dcdf_curves_btn.checked) {
+	if (global.aux_view != 'none') {
 		rect = [0, 0, canvas.width/2, canvas.height]
 		dcdf_rect_inf = [canvas.width/2, 0, canvas.width/2, canvas.height]
 	}
@@ -1601,7 +1659,7 @@ function update_ts()
 
 	let dcdf_rect = null
 	let dcdf_rect_margins = [ 100, 33, 5, 5 ]
-	if (global.ui.draw_ed_dcdf_curves_btn.checked) {
+	if (global.aux_view != 'none') {
 		dcdf_rect = [ dcdf_rect_inf[0] + dcdf_rect_margins[SIDE.LEFT],
 					  dcdf_rect_inf[1] + dcdf_rect_margins[SIDE.TOP],
 					  dcdf_rect_inf[2] - dcdf_rect_margins[SIDE.LEFT] - dcdf_rect_margins[SIDE.RIGHT],
@@ -1622,7 +1680,7 @@ function update_ts()
 		ctx.rect(ts_rect[RECT.LEFT],ts_rect[RECT.TOP],ts_rect[RECT.WIDTH],ts_rect[RECT.HEIGHT])
 		ctx.fill()
 
-		if (global.ui.draw_ed_dcdf_curves_btn.checked) {
+		if (global.aux_view != 'none') {
 			ctx.moveTo(dcdf_rect_inf[0], dcdf_rect_inf[1])
 			ctx.rect(dcdf_rect[RECT.LEFT], dcdf_rect[RECT.TOP], dcdf_rect[RECT.WIDTH], dcdf_rect[RECT.HEIGHT])
 			ctx.fill()
@@ -1772,41 +1830,46 @@ function update_ts()
 		let y_ref  = ref[1]
 		let x_ref  = ref[0]
 
-		if (global.zoom_y != 0) {
-			let h = global.viewbox.height
-			let h_
+		if (point_inside_rect(local_mouse_pos, ts_rect)) {
+			if (global.zoom_y != 0) {
+				let h = global.viewbox.height
+				let h_
 
-			if (global.zoom_y > 0) {
-				h_ = h * factor
-			} else {
-				h_ = h / factor
+				if (global.zoom_y > 0) {
+					h_ = h * factor
+				} else {
+					h_ = h / factor
+				}
+
+				global.viewbox.y = -((h_*((y_ref-global.viewbox.y)/h))-y_ref)
+				global.viewbox.height = h_
+
+				y_min = global.viewbox.y
+				y_max = global.viewbox.y + global.viewbox.height
+
+				global.zoom_y = 0
 			}
 
-			global.viewbox.y = -((h_*((y_ref-global.viewbox.y)/h))-y_ref)
-			global.viewbox.height = h_
+			if (global.zoom_x != 0) {
+				let w = global.viewbox.width
+				let w_
 
-			y_min = global.viewbox.y
-			y_max = global.viewbox.y + global.viewbox.height
+				if (global.zoom_x > 0) {
+					w_ = Math.floor(w * factor)
+				} else {
+					w_ = Math.floor(w / factor)
+				}
 
+				global.viewbox.x = Math.floor(-((w_*((x_ref-global.viewbox.x)/w))-x_ref))
+				global.viewbox.width  = w_
+
+				x_min = global.viewbox.x
+				x_max = global.viewbox.x + global.viewbox.width
+
+				global.zoom_x = 0
+			}
+		} else {
 			global.zoom_y = 0
-		}
-
-		if (global.zoom_x != 0) {
-			let w = global.viewbox.width
-			let w_
-
-			if (global.zoom_x > 0) {
-				w_ = Math.floor(w * factor)
-			} else {
-				w_ = Math.floor(w / factor)
-			}
-
-			global.viewbox.x = Math.floor(-((w_*((x_ref-global.viewbox.x)/w))-x_ref))
-			global.viewbox.width  = w_
-
-			x_min = global.viewbox.x
-			x_max = global.viewbox.x + global.viewbox.width
-
 			global.zoom_x = 0
 		}
 
@@ -2001,7 +2064,7 @@ function update_ts()
 			let curve_focused_color = null
 			let symbol_color 		= null
 
-			if (global.ui.draw_ed_dcdf_curves_btn.checked) {
+			if (global.aux_view != 'none') {
 
 				curve_color 		= "#FFFFFF44"
 				curve_focused_color = global.chart_colors[i]
@@ -2419,7 +2482,7 @@ function update_ts()
 			let text = `symbol: ${global.focused_symbol.name} // date: ${date} // ED rank: #${global.focused_symbol.ed_rank+1} // `+
 						`MBD rank: #${global.focused_symbol.mbd_rank+1}`
 
-			if (global.ui.draw_ed_dcdf_curves_btn.checked) {
+			if (global.aux_view != 'none') {
 				ctx.font = '14px Monospace';
 			} else {
 				ctx.font = '20px Monospace';
@@ -2501,7 +2564,9 @@ function update_ts()
 
 	let ed_cdf_closest_symbol = null
 
-	if(global.ui.draw_ed_dcdf_curves_btn.checked) {
+	if (global.aux_view != 'none') {
+
+		// console.log(global.aux_view)
 
 		ctx.font = "bold 14pt Courier"
 		ctx.fillStyle = "#FFFFFF";
@@ -2530,20 +2595,31 @@ function update_ts()
 		//--------------
 		// find y range
 		//--------------
-		let cdf_y_min = 1.0
-		let cdf_y_max = 0.0
+		let aux_y_min = 1.0
+		let aux_y_max = 0.0
 		let last_valid_value = 1
 
 		for (let i=0;i<global.extremal_depth.ranked_symbols.length;i++) {
 			let symbol = global.extremal_depth.ranked_symbols[i]
+
 			symbol.cdf_current_values = null
-			if (symbol.cdf_matrix_row == null) {
+			symbol.ranks_current_values = null
+
+			let values
+			if (global.aux_view == 'dcdf') {
+				values = symbol.cdf_matrix_row
+			} else if (global.aux_view == 'rcdf') {
+				values = symbol.lt_ranks_dist
+			}
+
+			if (values == null) {
 				continue
 			}
-			let k = symbol.cdf_matrix_row.length
-			let cdf_current_values = []
-			for (let j=0;j<symbol.cdf_matrix_row.length;j++) {
-				let value = symbol.cdf_matrix_row[j]
+
+			let k = values.length
+			let current_values = []
+			for (let j=0;j<k;j++) {
+				let value = values[j]
 				if (value == undefined) {
 					value = last_valid_value
 				}
@@ -2553,29 +2629,39 @@ function update_ts()
 				//--------------
 				if(global.ui.draw_ed_dcdf_sep.checked) {
 					if (j>0) {
-						value = symbol.cdf_matrix_row[j] - symbol.cdf_matrix_row[j-1]
+						value = values[j] - values[j-1]
 					}
 				}
-				cdf_current_values.push(value)
+				current_values.push(value)
 				last_valid_value = value
-				cdf_y_min = Math.min(cdf_y_min, value)
-				cdf_y_max = Math.max(cdf_y_max, value)
+				aux_y_min = Math.min(aux_y_min, value)
+				aux_y_max = Math.max(aux_y_max, value)
 			}
-			symbol.cdf_current_values = cdf_current_values
+			if (global.aux_view == 'dcdf') {
+				symbol.cdf_current_values = current_values
+			} else if (global.aux_view == 'rcdf') {
+				symbol.ranks_current_values = current_values
+			}
+
 		}
 
-		let cdf_x_min = 0
-		let cdf_x_max = global.extremal_depth.ranked_symbols[0].cdf_matrix_row.length - 1
+		let aux_x_min = 0
+		let aux_x_max
+		if (global.aux_view == 'dcdf') {
+			aux_x_max = global.extremal_depth.ranked_symbols[0].cdf_matrix_row.length - 1
+		} else if (global.aux_view == 'rcdf') {
+			aux_x_max = global.extremal_depth.ranked_symbols.length - 1
+		}
 
 		function dcdf_rect_map(x, y) {
-			let px = dcdf_rect[RECT.LEFT] + (1.0 * (x - cdf_x_min) / (cdf_x_max - cdf_x_min)) * dcdf_rect[RECT.WIDTH]
-			let py = dcdf_rect[RECT.TOP] + (dcdf_rect[RECT.HEIGHT] - 1 - (1.0 * (y - cdf_y_min) / (cdf_y_max - cdf_y_min)) * dcdf_rect[RECT.HEIGHT])
+			let px = dcdf_rect[RECT.LEFT] + (1.0 * (x - aux_x_min) / (aux_x_max - aux_x_min)) * dcdf_rect[RECT.WIDTH]
+			let py = dcdf_rect[RECT.TOP] + (dcdf_rect[RECT.HEIGHT] - 1 - (1.0 * (y - aux_y_min) / (aux_y_max - aux_y_min)) * dcdf_rect[RECT.HEIGHT])
 			return [px,py]
 		}
 
 		function dcdf_rect_inverse_map(px, py) {
-			let x = ((px - dcdf_rect[RECT.LEFT]) / dcdf_rect[RECT.WIDTH]) * (1.0*(cdf_x_max - cdf_x_min)) + cdf_x_min
-			let y = -((((py - dcdf_rect[RECT.TOP] - dcdf_rect[RECT.HEIGHT] + 1) * (1.0 * (cdf_y_max - cdf_y_min))) / dcdf_rect[RECT.HEIGHT]) - cdf_y_min)
+			let x = ((px - dcdf_rect[RECT.LEFT]) / dcdf_rect[RECT.WIDTH]) * (1.0*(aux_x_max - aux_x_min)) + aux_x_min
+			let y = -((((py - dcdf_rect[RECT.TOP] - dcdf_rect[RECT.HEIGHT] + 1) * (1.0 * (aux_y_max - aux_y_min))) / dcdf_rect[RECT.HEIGHT]) - aux_y_min)
 			return [x,y]
 		}
 
@@ -2585,7 +2671,7 @@ function update_ts()
 		let y_num_ticks = 10
 		let y_ticks = []
 		for(let i=0; i<y_num_ticks; i++) {
-			let y_tick = cdf_y_min+((1.0*i*(cdf_y_max-cdf_y_min))/(y_num_ticks-1))
+			let y_tick = aux_y_min+((1.0*i*(aux_y_max-aux_y_min))/(y_num_ticks-1))
 			y_ticks.push(y_tick)
 		}
 
@@ -2593,8 +2679,8 @@ function update_ts()
 			ctx.strokeStyle = "#555555";
 			ctx.lineWidth   = 1;
 
-			let p0 = dcdf_rect_map(cdf_x_min, y_ticks[i])
-			let p1 = dcdf_rect_map(cdf_x_max, y_ticks[i])
+			let p0 = dcdf_rect_map(aux_x_min, y_ticks[i])
+			let p1 = dcdf_rect_map(aux_x_max, y_ticks[i])
 
 			ctx.beginPath()
 			ctx.moveTo(p0[0], p0[1])
@@ -2614,10 +2700,15 @@ function update_ts()
 		//--------------
 		//x axis grid lines and ticks
 		//--------------
-		let x_num_ticks = 8
+		let x_num_ticks
+		if (global.aux_view == 'dcdf') {
+			x_num_ticks = 10
+		} else if (global.aux_view == 'rcdf') {
+			x_num_ticks = 20
+		}
 		let x_ticks = []
 		for(let i=0; i<x_num_ticks; i++) {
-			let x_tick = (cdf_x_min+(i*((cdf_x_max-cdf_x_min)/(x_num_ticks-1))))
+			let x_tick = (aux_x_min+(i*((aux_x_max-aux_x_min)/(x_num_ticks-1))))
 			x_ticks.push(x_tick)
 		}
 
@@ -2625,8 +2716,8 @@ function update_ts()
 			ctx.strokeStyle = "#555555";
 			ctx.lineWidth   = 1;
 
-			let p0 = dcdf_rect_map(x_ticks[i], cdf_y_min)
-			let p1 = dcdf_rect_map(x_ticks[i], cdf_y_max)
+			let p0 = dcdf_rect_map(x_ticks[i], aux_y_min)
+			let p1 = dcdf_rect_map(x_ticks[i], aux_y_max)
 
 			ctx.beginPath()
 			ctx.moveTo(p0[0], p0[1])
@@ -2638,7 +2729,13 @@ function update_ts()
 			ctx.fillStyle = "#FFFFFF"
 			// ctx.translate(p0[0], p0[1]+42);
 			// ctx.rotate(-Math.PI/4);
-			ctx.fillText((x_ticks[i]/cdf_x_max).toFixed(2), p0[0], p0[1]+15);
+			let tick_text
+			if (global.aux_view == 'dcdf') {
+				tick_text = (x_ticks[i]/aux_x_max).toFixed(2)
+			} else if (global.aux_view == 'rcdf') {
+				tick_text = Math.floor(x_ticks[i])
+			}
+			ctx.fillText(tick_text, p0[0], p0[1]+15);
 		}
 
 		//--------------
@@ -2670,7 +2767,6 @@ function update_ts()
 					global.filter_state  = FILTER_STATE.MOVE
 				} else {
 					let dm_filter_pos = dcdf_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
-					// let cv_filter_pos= dcdf_rect_map(dm_filter_pos[0], dm_filter_pos[1])
 
 					let filter = {offset: dm_filter_pos[0], length: 0, y: dm_filter_pos[1], type: global.filter_type}
 
@@ -2722,8 +2818,13 @@ function update_ts()
 		}
 
 		function check_filters(symbol) {
-			let cdf_current_values = symbol.cdf_current_values
-			if (cdf_current_values == null) {
+			let current_values
+			if (global.aux_view == 'dcdf') {
+				current_values = symbol.cdf_current_values
+			} else if (global.aux_view == 'rcdf') {
+				current_values = symbol.ranks_current_values
+			}
+			if (current_values == null) {
 				// console.log("Not drawing cdf for symbol ", symbol.name);
 				return;
 			}
@@ -2734,9 +2835,8 @@ function update_ts()
 				let filter = global.filter_list[i]
 
 				if (filter.type == FILTER_TYPE.RED) {
-					// let ok_red = true
-					for (let j=0;j<cdf_current_values.length;j++) {
-						let yj = cdf_current_values[j]
+					for (let j=0;j<current_values.length;j++) {
+						let yj = current_values[j]
 						let size = filter.offset + filter.length
 						let point_inside_x_range = (filter.offset <= j && j <= (filter.offset+filter.length))
 						let point_over_y = (yj > filter.y)
@@ -2748,10 +2848,9 @@ function update_ts()
 				}
 				if (filter.type == FILTER_TYPE.BLUE) {
 					let at_least_one_over = false
-					for (let j=0;j<cdf_current_values.length;j++) {
-						let yj = cdf_current_values[j]
+					for (let j=0;j<current_values.length;j++) {
+						let yj = current_values[j]
 						let point_inside_x_range = (filter.offset <= j && j <= (filter.offset+filter.length))
-						// let point_under_equal_y	= (yj <= filter.y)
 						let point_over_y = (yj > filter.y)
 
 						if (point_inside_x_range && point_over_y) {
@@ -2760,7 +2859,6 @@ function update_ts()
 					}
 					ok_blue = at_least_one_over
 					if (ok_blue == false) { break }
-					// ok = ok_blue
 				}
 			}
 
@@ -2772,15 +2870,6 @@ function update_ts()
 
 		let min_distance_threshold = 5 * 5
 		let closest_distance = 100000
-
-		function update_dcdf_closest_point(symbol, px, py) {
-			let dx = local_mouse_pos[0] - px
-			let dy = local_mouse_pos[1] - py
-			let dist = dx * dx + dy * dy
-			if (dist <= min_distance_threshold && dist < closest_distance) {
-				ed_cdf_closest_symbol = symbol
-			}
-		}
 
 		function update_dcdf_closest_segment(symbol, p0x, p0y, p1x, p1y) {
 			// a --> p0 to mouse
@@ -2816,8 +2905,14 @@ function update_ts()
 
 		function draw_symbol_dcdf(symbol, focused, color) {
 
-			let cdf_current_values = symbol.cdf_current_values
-			if (cdf_current_values == null) {
+			let current_values
+			if (global.aux_view == 'dcdf') {
+				current_values = symbol.cdf_current_values
+			} else if (global.aux_view == 'rcdf') {
+				current_values = symbol.ranks_current_values
+				// console.log(symbol.name, current_values)
+			}
+			if (current_values == null) {
 				// console.log("Not drawing cdf for symbol ", symbol.name);
 				return;
 			}
@@ -2845,8 +2940,8 @@ function update_ts()
 
 			ctx.beginPath()
 			let p_prev = null
-			for (let j=0;j<cdf_current_values.length;j++) {
-				let yi = cdf_current_values[j]
+			for (let j=0;j<current_values.length;j++) {
+				let yi = current_values[j]
 				let p = dcdf_rect_map(j,yi)
 				if (p_prev) {
 					update_dcdf_closest_segment(symbol, p_prev[0], p_prev[1], p[0], p[1])
@@ -2869,8 +2964,6 @@ function update_ts()
 
 			if (check_filters(symbol)) {
 				draw_symbol_dcdf(symbol, false)
-			} else {
-				draw_symbol_dcdf(symbol, false, "#FFFFFF06")
 			}
 
 		}
