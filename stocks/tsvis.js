@@ -2704,7 +2704,12 @@ function update_ts()
 		if (global.aux_view == 'dcdf') {
 			x_num_ticks = 10
 		} else if (global.aux_view == 'rcdf') {
-			x_num_ticks = 20
+			if (global.extremal_depth.ranked_symbols.length < 10) {
+				x_num_ticks = global.extremal_depth.ranked_symbols.length
+			} else {
+				x_num_ticks = 15
+			}
+
 		}
 		let x_ticks = []
 		for(let i=0; i<x_num_ticks; i++) {
@@ -2837,8 +2842,12 @@ function update_ts()
 				if (filter.type == FILTER_TYPE.RED) {
 					for (let j=0;j<current_values.length;j++) {
 						let yj = current_values[j]
-						let size = filter.offset + filter.length
-						let point_inside_x_range = (filter.offset <= j && j <= (filter.offset+filter.length))
+						let point_inside_x_range
+						if (filter.length < 0) {
+							point_inside_x_range = (filter.offset >= j && j >= (filter.offset+filter.length))
+						} else {
+							point_inside_x_range = (filter.offset <= j && j <= (filter.offset+filter.length))
+						}
 						let point_over_y = (yj > filter.y)
 						if (point_inside_x_range && point_over_y) {
 							ok_red = false
@@ -2850,7 +2859,12 @@ function update_ts()
 					let at_least_one_over = false
 					for (let j=0;j<current_values.length;j++) {
 						let yj = current_values[j]
-						let point_inside_x_range = (filter.offset <= j && j <= (filter.offset+filter.length))
+						let point_inside_x_range
+						if (filter.length < 0) {
+							point_inside_x_range = (filter.offset >= j && j >= (filter.offset+filter.length))
+						} else {
+							point_inside_x_range = (filter.offset <= j && j <= (filter.offset+filter.length))
+						}
 						let point_over_y = (yj > filter.y)
 
 						if (point_inside_x_range && point_over_y) {
