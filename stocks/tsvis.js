@@ -28,9 +28,9 @@ const EVENT= {
 	TOGGLE_GROUP: "event_toggle_group",
 	REMOVE_ACTIVE_GROUPS: "event_remove_active_groups",
 	CLEAR_CHART: "event_clear_chart",
-	UPDATE_START_DATE: "event_update_start_date",
-	UPDATE_END_DATE: "event_update_end_date",
-	UPDATE_NORM_DATE: "event_update_norm_date",
+	// UPDATE_START_DATE: "event_update_start_date",
+	// UPDATE_END_DATE: "event_update_end_date",
+	// UPDATE_NORM_DATE: "event_update_norm_date",
 	RUN_EXTREMAL_DEPTH_ALGORITHM: "event_run_extremal_depth_algorithm",
 	RUN_MODIFIED_BAND_DEPTH_ALGORITHM: "event_run_modified_band_depth_algorithm",
 	BUILD_CURVES_DENSITY_MATRIX: "event_build_curves_density_matrix",
@@ -53,9 +53,9 @@ var global = {
 	group_count: 0,
 	chart_groups: [],
 	events: [],
-	date_start: "2020-03-25",
-	date_end: "2020-10-05",
-	date_norm: "2020-07-15",
+	// date_start: "2018-10-01",
+	// date_end: "2019-06-13",
+	// date_norm: "2020-07-15",
 	mouse: { position:[0,0], last_position:[0,0] },
 	color: { colors:['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628'], counter:0 },
 	focused_symbol: null,
@@ -100,6 +100,50 @@ function date_offset_to_string(date_offset)
 	return ((x.getYear())+1900).toString().padStart(4,'0') + "-" +
 		(x.getMonth()+1).toString().padStart(2,'0') + "-" +
 		(x.getUTCDate()).toString().padStart(2,'0')
+}
+
+function value_running_avg(date, values, window_size) {
+	let pad = Math.floor(window_size/2)
+
+	let start_date 		= date_offset(global.date_start)
+	let start_date_dist = date - start_date
+
+	let end_date 	  = date_offset(global.date_end)
+	let end_date_dist = end_date - date
+
+	// console.log(pad)
+	// console.log(start_date, start_date_dist)
+	// console.log(end_date, end_date_dist)
+
+	let count = 0
+	if(start_date_dist < pad) {
+		for(let i=start_date; i<=start_date+window_size-1; i++) {
+			if (values[i] == undefined) {
+				count += 0
+			} else {
+				count += values[i]
+			}
+		}
+	} else if (end_date_dist <= pad) {
+		for(let i=(end_date-window_size+1);i<=end_date;i++) {
+			if (values[i] == undefined) {
+				count += 0
+			} else {
+				count += values[i]
+			}
+		}
+	} else {
+		for(let i=(date-pad); i<=(date+pad); i++) {
+			if (values[i] == undefined) {
+				count += 0
+			} else {
+				count += values[i]
+			}
+		}
+	}
+	// console.log(date_offset_to_string(date)+': value = '+values[date]+' // count = '+count+' // running avg = '+(count/window_size))
+
+	return count/window_size
 }
 
 function reset_zoom() {
@@ -157,13 +201,15 @@ async function download_symbol_data(symbol)
 {
 	let result
 	try {
-		let result = await fetch('http://localhost:8888/get?p='+symbol.name)
+		//TODO get players with weird characters on name
+		let result = await fetch(encodeURI('http://localhost:8888/get?p='+symbol.name))
 		let data   = await result.json()
 		let dict = {}
-		for (let i=0;i<data.data[0].values.length;i++) {
-			let offset = date_offset(data.data[0].dates[i])
-			let price = parseInt(data.data[0].values[i])
-			dict[offset] = price
+		for (let i=0;i<data.data[0].y_values.length;i++) {
+			// let offset = date_offset(data.data[0].x_values[i])
+			let x_value = data.data[0].x_values[i]
+			let y_value = parseInt(data.data[0].y_values[i])
+			dict[x_value] = y_value
 		}
 		symbol.data = dict
 		global.recompute_viewbox = true
@@ -599,88 +645,106 @@ function prepare_fb_outliers(depth_type, group) {
 function prepare_ui()
 {
 
-	let start_date_input = document.createElement('input')
-	global.ui.start_date_input = start_date_input
-	start_date_input.setAttribute("type","date")
-	start_date_input.defaultValue = global.date_start
-	start_date_input.classList.add('date_input')
-	start_date_input.id = 'start_date_input'
-	install_event_listener(start_date_input, 'change', start_date_input, EVENT.UPDATE_START_DATE)
+	// let start_date_input = document.createElement('input')
+	// global.ui.start_date_input = start_date_input
+	// start_date_input.setAttribute("type","date")
+	// start_date_input.defaultValue = global.date_start
+	// start_date_input.classList.add('date_input')
+	// start_date_input.id = 'start_date_input'
+	// install_event_listener(start_date_input, 'change', start_date_input, EVENT.UPDATE_START_DATE)
+	//
+	// let start_date_label = document.createElement('label')
+	// global.ui.start_date_label = start_date_label
+	// start_date_label.classList.add('date_input_label')
+	// start_date_label.setAttribute("for", start_date_input)
+	// start_date_label.innerHTML = "start"
+	//
+	// let start_date_grid = document.createElement('div')
+	// global.ui.start_date_grid = start_date_grid
+	// start_date_grid.id = start_date_grid
+	// start_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
+	// start_date_grid.appendChild(start_date_label)
+	// start_date_grid.appendChild(start_date_input)
+	//
+	//
+	// let end_date_input = document.createElement('input')
+	// global.ui.end_date_input = end_date_input
+	// end_date_input.setAttribute("type","date")
+	// end_date_input.defaultValue = global.date_end
+	// end_date_input.classList.add('date_input')
+	// end_date_input.id = 'end_date_input'
+	// install_event_listener(end_date_input, 'change', end_date_input, EVENT.UPDATE_END_DATE)
+	//
+	// let end_date_label = document.createElement('label')
+	// global.ui.end_date_label = end_date_label
+	// end_date_label.setAttribute("for", end_date_input)
+	// end_date_label.classList.add('date_input_label')
+	// end_date_label.innerHTML = "end"
+	//
+	// let end_date_grid = document.createElement('div')
+	// global.ui.end_date_grid = end_date_grid
+	// end_date_grid.id = end_date_grid
+	// end_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
+	// end_date_grid.appendChild(end_date_label)
+	// end_date_grid.appendChild(end_date_input)
+	//
+	// let norm_date_input = document.createElement('input')
+	// global.ui.norm_date_input = norm_date_input
+	// norm_date_input.setAttribute("type","date")
+	// norm_date_input.defaultValue = global.date_norm
+	// norm_date_input.classList.add('date_input')
+	// norm_date_input.id = 'norm_date_input'
+	// install_event_listener(norm_date_input, 'change', norm_date_input, EVENT.UPDATE)
+	//
+	// let norm_date_label = document.createElement('label')
+	// global.ui.norm_date_label = norm_date_label
+	// norm_date_label.setAttribute("for", norm_date_input)
+	// norm_date_label.classList.add('date_input_label')
+	// norm_date_label.innerHTML = "norm"
+	//
+	// let norm_date_grid = document.createElement('div')
+	// global.ui.norm_date_grid = norm_date_grid
+	// norm_date_grid.id = norm_date_grid
+	// norm_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
+	// norm_date_grid.appendChild(norm_date_label)
+	// norm_date_grid.appendChild(norm_date_input)
+	//
+	// let normalize_btn = document.createElement('input')
+	// global.ui.normalize_btn = normalize_btn
+	// normalize_btn.type = "checkbox"
+	// //normalize_btn.classList.add('checkbox_input')
+	//
+	// let normalize_lbl = document.createElement('label')
+	// global.ui.normalize_lbl = normalize_lbl
+	// normalize_lbl.setAttribute("for", normalize_btn)
+	// normalize_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
+	// //normalize_lbl.classList.add('checkbox_input_label')
+	// normalize_lbl.innerHTML = 'Normalize values'
+	//
+	// let normalize_grid = document.createElement('div')
+	// global.ui.normalize_grid = normalize_grid
+	// normalize_grid.id = normalize_grid
+	// normalize_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
+	// normalize_grid.appendChild(normalize_lbl)
+	// normalize_grid.appendChild(normalize_btn)
 
-	let start_date_label = document.createElement('label')
-	global.ui.start_date_label = start_date_label
-	start_date_label.classList.add('date_input_label')
-	start_date_label.setAttribute("for", start_date_input)
-	start_date_label.innerHTML = "start"
+	let use_diffs_btn = document.createElement('input')
+	global.ui.use_diffs_btn = use_diffs_btn
+	use_diffs_btn.type = "checkbox"
 
-	let start_date_grid = document.createElement('div')
-	global.ui.start_date_grid = start_date_grid
-	start_date_grid.id = start_date_grid
-	start_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
-	start_date_grid.appendChild(start_date_label)
-	start_date_grid.appendChild(start_date_input)
+	let use_diffs_lbl = document.createElement('label')
+	global.ui.use_diffs_lbl = use_diffs_lbl
+	use_diffs_lbl.setAttribute("for", use_diffs_btn)
+	use_diffs_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:120px'
+	//extremal_depth_lbl.classList.add('checkbox_input_label')
+	use_diffs_lbl.innerHTML = 'Use diffs on aux view'
 
-
-	let end_date_input = document.createElement('input')
-	global.ui.end_date_input = end_date_input
-	end_date_input.setAttribute("type","date")
-	end_date_input.defaultValue = global.date_end
-	end_date_input.classList.add('date_input')
-	end_date_input.id = 'end_date_input'
-	install_event_listener(end_date_input, 'change', end_date_input, EVENT.UPDATE_END_DATE)
-
-	let end_date_label = document.createElement('label')
-	global.ui.end_date_label = end_date_label
-	end_date_label.setAttribute("for", end_date_input)
-	end_date_label.classList.add('date_input_label')
-	end_date_label.innerHTML = "end"
-
-	let end_date_grid = document.createElement('div')
-	global.ui.end_date_grid = end_date_grid
-	end_date_grid.id = end_date_grid
-	end_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
-	end_date_grid.appendChild(end_date_label)
-	end_date_grid.appendChild(end_date_input)
-
-	let norm_date_input = document.createElement('input')
-	global.ui.norm_date_input = norm_date_input
-	norm_date_input.setAttribute("type","date")
-	norm_date_input.defaultValue = global.date_norm
-	norm_date_input.classList.add('date_input')
-	norm_date_input.id = 'norm_date_input'
-	install_event_listener(norm_date_input, 'change', norm_date_input, EVENT.UPDATE)
-
-	let norm_date_label = document.createElement('label')
-	global.ui.norm_date_label = norm_date_label
-	norm_date_label.setAttribute("for", norm_date_input)
-	norm_date_label.classList.add('date_input_label')
-	norm_date_label.innerHTML = "norm"
-
-	let norm_date_grid = document.createElement('div')
-	global.ui.norm_date_grid = norm_date_grid
-	norm_date_grid.id = norm_date_grid
-	norm_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
-	norm_date_grid.appendChild(norm_date_label)
-	norm_date_grid.appendChild(norm_date_input)
-
-	let normalize_btn = document.createElement('input')
-	global.ui.normalize_btn = normalize_btn
-	normalize_btn.type = "checkbox"
-	//normalize_btn.classList.add('checkbox_input')
-
-	let normalize_lbl = document.createElement('label')
-	global.ui.normalize_lbl = normalize_lbl
-	normalize_lbl.setAttribute("for", normalize_btn)
-	normalize_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
-	//normalize_lbl.classList.add('checkbox_input_label')
-	normalize_lbl.innerHTML = 'Normalize values'
-
-	let normalize_grid = document.createElement('div')
-	global.ui.normalize_grid = normalize_grid
-	normalize_grid.id = normalize_grid
-	normalize_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
-	normalize_grid.appendChild(normalize_lbl)
-	normalize_grid.appendChild(normalize_btn)
+	let use_diffs_grid = document.createElement('div')
+	global.ui.use_diffs_grid = use_diffs_grid
+	use_diffs_grid.id = use_diffs_grid
+	use_diffs_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
+	use_diffs_grid.appendChild(use_diffs_lbl)
+	use_diffs_grid.appendChild(use_diffs_btn)
 
 	let modified_band_depth_btn = document.createElement('input')
 	global.ui.modified_band_depth_btn = modified_band_depth_btn
@@ -793,11 +857,15 @@ function prepare_ui()
 
 	let dcdf_option = document.createElement('option')
 	dcdf_option.value = 'dcdf'
-	dcdf_option.innerHTML = 'd-cdf'
+	dcdf_option.innerHTML = 'pw depth distribution'
 
 	let rcdf_option = document.createElement('option')
 	rcdf_option.value = 'rcdf'
-	rcdf_option.innerHTML = 'r-cdf'
+	rcdf_option.innerHTML = 'rank distribution'
+
+	// let diff_option = document.createElement('option')
+	// diff_option.value = 'diff'
+	// diff_option.innerHTML = 'diff distribution'
 
 	let none_option = document.createElement('option')
 	none_option.value = 'none'
@@ -806,6 +874,7 @@ function prepare_ui()
 	rank_depth_select.appendChild(hidden_option)
 	rank_depth_select.appendChild(dcdf_option)
 	rank_depth_select.appendChild(rcdf_option)
+	// rank_depth_select.appendChild(diff_option)
 	rank_depth_select.appendChild(none_option)
 
 	let draw_ed_dcdf_agg = document.createElement('input')
@@ -923,14 +992,15 @@ function prepare_ui()
    	global.ui.left_panel = left_panel
    	left_panel.id = 'left_panel'
    	left_panel.style = 'display:flex; flex-direction:column; background-color:#2f3233; align-content:space-around;'
-	left_panel.appendChild(start_date_grid)
-	left_panel.appendChild(end_date_grid)
-	left_panel.appendChild(norm_date_grid)
+	// left_panel.appendChild(start_date_grid)
+	// left_panel.appendChild(end_date_grid)
+	// left_panel.appendChild(norm_date_grid)
 	left_panel.appendChild(normalize_grid)
 	left_panel.appendChild(modified_band_depth_grid)
 	left_panel.appendChild(mbd_draw_outliers_grid)
 	left_panel.appendChild(extremal_depth_grid)
 	left_panel.appendChild(ed_draw_outliers_grid)
+	left_panel.appendChild(use_diffs_grid)
 	left_panel.appendChild(rank_depth_select)
 	left_panel.appendChild(draw_ed_dcdf_agg_grid)
 	left_panel.appendChild(draw_ed_dcdf_sep_grid)
@@ -1122,13 +1192,20 @@ function run_extremal_depth_algorithm()
 
 	for (let i=0;i<n;i++) {
 		let symbol = global.chart_symbols[i]
-		let ts_current_values = symbol.ts_current_values
-		if (ts_current_values == null) {
+
+		let values
+		if (global.ui.use_diffs_btn.checked) {
+			values = symbol.ts_current_values_diffs
+		} else {
+			values = symbol.ts_current_values
+		}
+
+		if (values == null) {
 			// console.log("Discarding symbol ", symbol.name, " on extremal depth computation")
 		}
 		symbols_ed.push(symbol)
 
-		let m = ts_current_values.length
+		let m = values.length
 
 		let curve_raw_p  = global.tsvis_wasm_module.exports.tsvis_Curve_new(m)
 		while (curve_raw_p == 0) {
@@ -1139,7 +1216,7 @@ function run_extremal_depth_algorithm()
 		let values_raw_p = global.tsvis_wasm_module.exports.tsvis_Curve_values(curve_raw_p)
 
 		const c_curve_values = new Float64Array(global.tsvis_wasm_module.exports.memory.buffer, values_raw_p, m);
-		c_curve_values.set(ts_current_values)
+		c_curve_values.set(values)
 
 		let ok = global.tsvis_wasm_module.exports.tsvis_CurveList_append(curve_list_raw_p, curve_raw_p)
 	}
@@ -1743,8 +1820,11 @@ function update_ts()
 				}
 			}
 			let ts_current_values = []
+			let ts_current_values_diffs = []
 			for (let j=date_start;j<=date_end;j++) {
-				let value = symbol.data[j]
+				let value = value_running_avg(j, symbol.data, 7)//symbol.data[j]
+				let last_value = symbol.data[j-1]
+
 				if (value == undefined) {
 					value = last_valid_value
 				} else {
@@ -1752,13 +1832,31 @@ function update_ts()
 						value = value / norm_value
 					}
 				}
+
+				if (last_value == undefined) {
+					last_value = last_valid_value
+				} else {
+					if(global.ui.normalize_btn.checked) {
+						last_value = last_value / norm_value
+					}
+				}
+
+				let diff
+				if (j>date_start) {
+					diff = value-last_value
+				} else {
+					diff = value
+				}
+
 				// value = i
 				ts_current_values.push(value)
+				ts_current_values_diffs.push(diff)
 				last_valid_value = value
 				y_min = Math.min(y_min, value)
 				y_max = Math.max(y_max, value)
 			}
 			symbol.ts_current_values = ts_current_values
+			symbol.ts_current_values_diffs = ts_current_values_diffs
 		}
 
 		// if (global.extremal_depth.fbplot.active) {
@@ -2609,7 +2707,7 @@ function update_ts()
 			if (global.aux_view == 'dcdf') {
 				values = symbol.cdf_matrix_row
 			} else if (global.aux_view == 'rcdf') {
-				values = symbol.lt_ranks_dist
+				values = symbol.gt_ranks_dist
 			}
 
 			if (values == null) {
