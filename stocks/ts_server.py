@@ -9,6 +9,8 @@
 # data/GGBR4.SA
 # data/AAPL
 #
+
+from urllib.parse import unquote
 import http.server
 
 # I hate this extra dependency, but whatever for now...
@@ -53,6 +55,7 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
             ids=path[7:].split(',')
             id_data = []
             for id in ids:
+                id = unquote(id)
                 try:
                     dates  = []
                     values = []
@@ -71,6 +74,7 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
                 except:
                     error.append(id)
             result = json.dumps({'data': id_data,'error':error}).encode('utf-8')
+            # print(result)
             self.send_response(200)
             self.send_header('Content-Type','application/json')
             self.send_header('Content-Length',len(result))

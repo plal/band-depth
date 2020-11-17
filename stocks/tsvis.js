@@ -28,9 +28,9 @@ const EVENT= {
 	TOGGLE_GROUP: "event_toggle_group",
 	REMOVE_ACTIVE_GROUPS: "event_remove_active_groups",
 	CLEAR_CHART: "event_clear_chart",
-	// UPDATE_START_DATE: "event_update_start_date",
-	// UPDATE_END_DATE: "event_update_end_date",
-	// UPDATE_NORM_DATE: "event_update_norm_date",
+	UPDATE_START_DATE: "event_update_start_date",
+	UPDATE_END_DATE: "event_update_end_date",
+	UPDATE_NORM_DATE: "event_update_norm_date",
 	RUN_EXTREMAL_DEPTH_ALGORITHM: "event_run_extremal_depth_algorithm",
 	RUN_MODIFIED_BAND_DEPTH_ALGORITHM: "event_run_modified_band_depth_algorithm",
 	BUILD_CURVES_DENSITY_MATRIX: "event_build_curves_density_matrix",
@@ -53,9 +53,9 @@ var global = {
 	group_count: 0,
 	chart_groups: [],
 	events: [],
-	// date_start: "2018-10-01",
-	// date_end: "2019-06-13",
-	// date_norm: "2020-07-15",
+	date_start: "2018-10-01",
+	date_end: "2019-06-13",
+	date_norm: "2020-07-15",
 	mouse: { position:[0,0], last_position:[0,0] },
 	color: { colors:['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628'], counter:0 },
 	focused_symbol: null,
@@ -645,88 +645,88 @@ function prepare_fb_outliers(depth_type, group) {
 function prepare_ui()
 {
 
-	// let start_date_input = document.createElement('input')
-	// global.ui.start_date_input = start_date_input
-	// start_date_input.setAttribute("type","date")
-	// start_date_input.defaultValue = global.date_start
-	// start_date_input.classList.add('date_input')
-	// start_date_input.id = 'start_date_input'
-	// install_event_listener(start_date_input, 'change', start_date_input, EVENT.UPDATE_START_DATE)
-	//
-	// let start_date_label = document.createElement('label')
-	// global.ui.start_date_label = start_date_label
-	// start_date_label.classList.add('date_input_label')
-	// start_date_label.setAttribute("for", start_date_input)
-	// start_date_label.innerHTML = "start"
-	//
-	// let start_date_grid = document.createElement('div')
-	// global.ui.start_date_grid = start_date_grid
-	// start_date_grid.id = start_date_grid
-	// start_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
-	// start_date_grid.appendChild(start_date_label)
-	// start_date_grid.appendChild(start_date_input)
-	//
-	//
-	// let end_date_input = document.createElement('input')
-	// global.ui.end_date_input = end_date_input
-	// end_date_input.setAttribute("type","date")
-	// end_date_input.defaultValue = global.date_end
-	// end_date_input.classList.add('date_input')
-	// end_date_input.id = 'end_date_input'
-	// install_event_listener(end_date_input, 'change', end_date_input, EVENT.UPDATE_END_DATE)
-	//
-	// let end_date_label = document.createElement('label')
-	// global.ui.end_date_label = end_date_label
-	// end_date_label.setAttribute("for", end_date_input)
-	// end_date_label.classList.add('date_input_label')
-	// end_date_label.innerHTML = "end"
-	//
-	// let end_date_grid = document.createElement('div')
-	// global.ui.end_date_grid = end_date_grid
-	// end_date_grid.id = end_date_grid
-	// end_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
-	// end_date_grid.appendChild(end_date_label)
-	// end_date_grid.appendChild(end_date_input)
-	//
-	// let norm_date_input = document.createElement('input')
-	// global.ui.norm_date_input = norm_date_input
-	// norm_date_input.setAttribute("type","date")
-	// norm_date_input.defaultValue = global.date_norm
-	// norm_date_input.classList.add('date_input')
-	// norm_date_input.id = 'norm_date_input'
-	// install_event_listener(norm_date_input, 'change', norm_date_input, EVENT.UPDATE)
-	//
-	// let norm_date_label = document.createElement('label')
-	// global.ui.norm_date_label = norm_date_label
-	// norm_date_label.setAttribute("for", norm_date_input)
-	// norm_date_label.classList.add('date_input_label')
-	// norm_date_label.innerHTML = "norm"
-	//
-	// let norm_date_grid = document.createElement('div')
-	// global.ui.norm_date_grid = norm_date_grid
-	// norm_date_grid.id = norm_date_grid
-	// norm_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
-	// norm_date_grid.appendChild(norm_date_label)
-	// norm_date_grid.appendChild(norm_date_input)
-	//
-	// let normalize_btn = document.createElement('input')
-	// global.ui.normalize_btn = normalize_btn
-	// normalize_btn.type = "checkbox"
-	// //normalize_btn.classList.add('checkbox_input')
-	//
-	// let normalize_lbl = document.createElement('label')
-	// global.ui.normalize_lbl = normalize_lbl
-	// normalize_lbl.setAttribute("for", normalize_btn)
-	// normalize_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
-	// //normalize_lbl.classList.add('checkbox_input_label')
-	// normalize_lbl.innerHTML = 'Normalize values'
-	//
-	// let normalize_grid = document.createElement('div')
-	// global.ui.normalize_grid = normalize_grid
-	// normalize_grid.id = normalize_grid
-	// normalize_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
-	// normalize_grid.appendChild(normalize_lbl)
-	// normalize_grid.appendChild(normalize_btn)
+	let start_date_input = document.createElement('input')
+	global.ui.start_date_input = start_date_input
+	start_date_input.setAttribute("type","date")
+	start_date_input.defaultValue = global.date_start
+	start_date_input.classList.add('date_input')
+	start_date_input.id = 'start_date_input'
+	install_event_listener(start_date_input, 'change', start_date_input, EVENT.UPDATE_START_DATE)
+
+	let start_date_label = document.createElement('label')
+	global.ui.start_date_label = start_date_label
+	start_date_label.classList.add('date_input_label')
+	start_date_label.setAttribute("for", start_date_input)
+	start_date_label.innerHTML = "start"
+
+	let start_date_grid = document.createElement('div')
+	global.ui.start_date_grid = start_date_grid
+	start_date_grid.id = start_date_grid
+	start_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
+	start_date_grid.appendChild(start_date_label)
+	start_date_grid.appendChild(start_date_input)
+
+
+	let end_date_input = document.createElement('input')
+	global.ui.end_date_input = end_date_input
+	end_date_input.setAttribute("type","date")
+	end_date_input.defaultValue = global.date_end
+	end_date_input.classList.add('date_input')
+	end_date_input.id = 'end_date_input'
+	install_event_listener(end_date_input, 'change', end_date_input, EVENT.UPDATE_END_DATE)
+
+	let end_date_label = document.createElement('label')
+	global.ui.end_date_label = end_date_label
+	end_date_label.setAttribute("for", end_date_input)
+	end_date_label.classList.add('date_input_label')
+	end_date_label.innerHTML = "end"
+
+	let end_date_grid = document.createElement('div')
+	global.ui.end_date_grid = end_date_grid
+	end_date_grid.id = end_date_grid
+	end_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
+	end_date_grid.appendChild(end_date_label)
+	end_date_grid.appendChild(end_date_input)
+
+	let norm_date_input = document.createElement('input')
+	global.ui.norm_date_input = norm_date_input
+	norm_date_input.setAttribute("type","date")
+	norm_date_input.defaultValue = global.date_norm
+	norm_date_input.classList.add('date_input')
+	norm_date_input.id = 'norm_date_input'
+	install_event_listener(norm_date_input, 'change', norm_date_input, EVENT.UPDATE)
+
+	let norm_date_label = document.createElement('label')
+	global.ui.norm_date_label = norm_date_label
+	norm_date_label.setAttribute("for", norm_date_input)
+	norm_date_label.classList.add('date_input_label')
+	norm_date_label.innerHTML = "norm"
+
+	let norm_date_grid = document.createElement('div')
+	global.ui.norm_date_grid = norm_date_grid
+	norm_date_grid.id = norm_date_grid
+	norm_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
+	norm_date_grid.appendChild(norm_date_label)
+	norm_date_grid.appendChild(norm_date_input)
+
+	let normalize_btn = document.createElement('input')
+	global.ui.normalize_btn = normalize_btn
+	normalize_btn.type = "checkbox"
+	//normalize_btn.classList.add('checkbox_input')
+
+	let normalize_lbl = document.createElement('label')
+	global.ui.normalize_lbl = normalize_lbl
+	normalize_lbl.setAttribute("for", normalize_btn)
+	normalize_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
+	//normalize_lbl.classList.add('checkbox_input_label')
+	normalize_lbl.innerHTML = 'Normalize values'
+
+	let normalize_grid = document.createElement('div')
+	global.ui.normalize_grid = normalize_grid
+	normalize_grid.id = normalize_grid
+	normalize_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
+	normalize_grid.appendChild(normalize_lbl)
+	normalize_grid.appendChild(normalize_btn)
 
 	let use_diffs_btn = document.createElement('input')
 	global.ui.use_diffs_btn = use_diffs_btn
@@ -992,9 +992,9 @@ function prepare_ui()
    	global.ui.left_panel = left_panel
    	left_panel.id = 'left_panel'
    	left_panel.style = 'display:flex; flex-direction:column; background-color:#2f3233; align-content:space-around;'
-	// left_panel.appendChild(start_date_grid)
-	// left_panel.appendChild(end_date_grid)
-	// left_panel.appendChild(norm_date_grid)
+	left_panel.appendChild(start_date_grid)
+	left_panel.appendChild(end_date_grid)
+	left_panel.appendChild(norm_date_grid)
 	left_panel.appendChild(normalize_grid)
 	left_panel.appendChild(modified_band_depth_grid)
 	left_panel.appendChild(mbd_draw_outliers_grid)
