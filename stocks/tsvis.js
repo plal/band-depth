@@ -201,13 +201,12 @@ async function download_symbol_data(symbol)
 {
 	let result
 	try {
-		//TODO get players with weird characters on name
 		let result = await fetch(encodeURI('http://localhost:8888/get?p='+symbol.name))
 		let data   = await result.json()
 		let dict = {}
 		for (let i=0;i<data.data[0].y_values.length;i++) {
-			// let offset = date_offset(data.data[0].x_values[i])
-			let x_value = data.data[0].x_values[i]
+			// let x_value = date_offset(data.data[0].x_values[i])
+			let x_value = parseInt(data.data[0].x_values[i])
 			let y_value = parseInt(data.data[0].y_values[i])
 			dict[x_value] = y_value
 		}
@@ -1792,20 +1791,52 @@ function update_ts()
 		ctx.stroke()
 
 		//--------------
+		// x range
+		//--------------
+		// let x_min = 1
+		// let x_max = 0
+		//
+		// for (let i=0; i<global.chart_symbols.length; i++) {
+		// 	let symbol = global.chart_symbols[i]
+		// 	console.log(symbol.data)
+		// 	let games  = Object.keys(symbol.data)
+		//
+		// 	console.log(games)
+		//
+		// 	games.forEach((game, i) => {
+		// 		console.log(game)
+		// 		x_max = Math.max(game, x_max)
+		// 	});
+		//
+		// }
+		//
+		// console.log(x_max)
+		// let x_min = 0
+		// let x_max = date_end - date_start
+		//--------------
 		// find y range
 		//--------------
 		let y_min = 1.0
 		let y_max = 1.0
+
+		let x_min = 1.0
+		let x_max = 1.0
 		let last_valid_value = 1
 
 		for (let i=0;i<global.chart_symbols.length;i++) {
 			let symbol = global.chart_symbols[i]
+
+			for (const key in symbol.data) {
+				if (symbol.data.hasOwnProperty(key)) {
+					x_max = Math.max(x_max, parseInt(key))
+				}
+			}
 			symbol.ts_current_values = null
 			if (symbol.data == null) {
 				continue
 			}
 			let norm_value = undefined
-			let k = date_end - date_start
+			// let k = date_end - date_start
 			if (global.ui.normalize_btn.checked) {
 				let offset = date_norm - date_start
 				for (let j=0;j<k;j++) {
@@ -1821,12 +1852,12 @@ function update_ts()
 			}
 			let ts_current_values = []
 			let ts_current_values_diffs = []
-			for (let j=date_start;j<=date_end;j++) {
-				let value = value_running_avg(j, symbol.data, 7)//symbol.data[j]
+			for (let j=x_min;j<=x_max;j++) {
+				let value = symbol.data[j] //value_running_avg(j, symbol.data, 7)
 				let last_value = symbol.data[j-1]
 
 				if (value == undefined) {
-					value = last_valid_value
+					value = 0
 				} else {
 					if(global.ui.normalize_btn.checked) {
 						value = value / norm_value
@@ -1885,11 +1916,6 @@ function update_ts()
 			y_min = y_max-1
 		}
 
-		//--------------
-		// x range
-		//--------------
-		let x_min = 0
-		let x_max = date_end - date_start
 
 		if (global.recompute_viewbox) {
 			global.viewbox.x 	  = x_min
@@ -2022,9 +2048,9 @@ function update_ts()
 			ctx.save();
 			ctx.font = "bold 10pt Courier"
 			ctx.fillStyle = "#FFFFFF"
-			ctx.translate(p0[0], p0[1]+42);
-			ctx.rotate(-Math.PI/4);
-			ctx.fillText(date_offset_to_string(date_start + (x_ticks[i])), 0, 0);
+			ctx.translate(p0[0], p0[1]+15);
+			// ctx.rotate(-Math.PI/4);
+			ctx.fillText(x_ticks[i], 0, 0);
 			ctx.restore();
 		}
 
@@ -2035,7 +2061,7 @@ function update_ts()
 		let y_num_ticks = 10
 		let y_ticks = []
 		for(let i=0; i<y_num_ticks; i++) {
-			let y_tick = y_min+((1.0*i*(y_max-y_min))/(y_num_ticks-1))
+			let y_tick = Math.floor(y_min+((1.0*i*(y_max-y_min))/(y_num_ticks-1)))
 			y_ticks.push(y_tick)
 		}
 
