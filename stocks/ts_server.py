@@ -27,13 +27,15 @@ ts_server = None
 ap = argparse.ArgumentParser()
 ap.add_argument("-d", "--data", required=True, type=str,
                 help="Path to data folder")
-ap.add_argument("-c", "--column", required=True, type=int,
-                help="Column with values to be analyzed")
+ap.add_argument("-x", "--xvalues", required=True, type=int,
+                help="Column with values to be put in x axis")
+ap.add_argument("-y", "--yvalues", required=True, type=int,
+                help="Column with values to be put in y axis")
 args = vars(ap.parse_args())
 
-c_ID     = 0
-c_DATE   = 1
-c_VALUES = args["column"]
+c_ID = 0
+c_X  = args["xvalues"]
+c_Y  = args["yvalues"]
 
 class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
     # Handler for the GET requests
@@ -57,20 +59,20 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
             for id in ids:
                 id = unquote(id)
                 try:
-                    dates  = []
-                    values = []
+                    x_values  = []
+                    y_values = []
                     with open(args["data"]+'/%s' % id,'r') as fp:
                         for line in fp:
                             tokens = line.strip().split('|')
                             try:
-                                d = tokens[c_DATE]
-                                v = float(tokens[c_VALUES])
-                                dates.append(d)
-                                values.append(v)
+                                d = tokens[c_X]
+                                v = float(tokens[c_Y])
+                                x_values.append(d)
+                                y_values.append(v)
                             except:
                                 # couldn't parse NA price possibly
                                 pass
-                    id_data.append( { 'id':id, 'dates':dates, 'values':values } )
+                    id_data.append( { 'id':id, 'x_values':x_values, 'y_values':y_values } )
                 except:
                     error.append(id)
             result = json.dumps({'data': id_data,'error':error}).encode('utf-8')
