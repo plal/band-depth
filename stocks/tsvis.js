@@ -3009,7 +3009,6 @@ function update_ts()
 					ctx.restore()
 				}
 
-				// console.log(global.split_cdf.breaks[i], panel_y_max)
 				let panel_y_num_ticks = 9
 				let panel_y_ticks = []
 				for(let l=0; l<panel_y_num_ticks; l++) {
@@ -3020,8 +3019,8 @@ function update_ts()
 					ctx.strokeStyle = "#555555";
 					ctx.lineWidth   = 1;
 
-					let p0 = dcdf_rect_map(panel_x_min, panel_y_ticks[l])
-					let p1 = dcdf_rect_map(panel_x_max, panel_y_ticks[l])
+					let p0 = panel_rect_map(panel_x_min, panel_y_ticks[l])
+					let p1 = panel_rect_map(panel_x_max, panel_y_ticks[l])
 
 					ctx.save()
 					ctx.font = "bold 10pt Courier"
