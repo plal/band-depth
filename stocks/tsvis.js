@@ -2885,8 +2885,11 @@ function update_ts()
 					offset_end = global.split_cdf.breaks[i+1]
 				}
 
+				let panel_x_min = offset_start
+				let panel_x_max = offset_end
 				let panel_y_min = 0
 				let panel_y_max = 0
+
 				for (let j=0; j<global.extremal_depth.ranked_symbols.length; j++) {
 
 					let symbol = global.extremal_depth.ranked_symbols[j]
@@ -2916,7 +2919,6 @@ function update_ts()
 				}
 
 				function draw_symbol_on_panel(symbol, focused, color) {
-
 					let current_values
 					if (global.aux_view == 'dcdf') {
 						current_values = symbol.cdf_current_values
@@ -2952,18 +2954,19 @@ function update_ts()
 
 					ctx.beginPath()
 					let p_prev = null
-					for (let j=offset_start;j<offset_end.length;j++) {
+					for (let j=offset_start;j<offset_end;j++) {
 						let yi
 						if (i==0) {
 							yi = current_values[j]
 						} else {
 							yi = current_values[j] - current_values[offset_start-1]
 						}
+
 						let p = panel_rect_map(j,yi)
 						if (p_prev) {
 							update_dcdf_closest_segment(symbol, p_prev[0], p_prev[1], p[0], p[1])
 						}
-						// update_dcdf_closest_point(symbol, p[0], p[1])
+
 						p_prev = p
 						if (!first_point_drawn) {
 							ctx.moveTo(p[0],p[1])
@@ -2975,6 +2978,12 @@ function update_ts()
 					ctx.stroke()
 				}
 
+				for (let m=0;m<global.extremal_depth.ranked_symbols.length;m++) {
+
+					let symbol = global.extremal_depth.ranked_symbols[m]
+					draw_symbol_on_panel(symbol, false)
+
+				}
 
 				// TODO:
 				// 1. draw line segments in each rect
