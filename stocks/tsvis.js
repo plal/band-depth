@@ -69,9 +69,10 @@ var global = {
 	viewbox: { x:0, y:0, width:1, height:1, rows:4, cols:4 },
 	recompute_viewbox: true,
 	zoom: 0,
-	drag: { active: false, startpos: [0,0] },
-	filter_list: [],
-	aux_view: 'none'
+	drag: { active:false, startpos:[0,0] },
+	filter_list:[],
+	aux_view:'none',
+	split_cdf: { breaks:[0], ww:[], realign:[]}
 }
 
 function install_event_listener(component, raw_event_type, context, event_type)
@@ -1508,6 +1509,7 @@ function build_curves_density_matrix() {
 const KEY_S      = 83
 const KEY_E      = 69
 const KEY_N      = 78
+const KEY_B		 = 66
 const KEY_PERIOD = 190
 const KEY_COMMA  = 188
 const KEY_BCKSPC = 8
@@ -1603,6 +1605,8 @@ function process_event_queue()
 					global.key_update_start = true
 				} else if (e.raw.keyCode == KEY_E) {
 					global.key_update_end = true
+				} else if (e.raw.keyCode == KEY_B){
+					global.key_break = true
 				} else if (e.raw.keyCode == KEY_PERIOD) {
 					global.ui.create_curve_density_matrix_resolution.value = 2 * parseInt(global.ui.create_curve_density_matrix_resolution.value)
 				} else if (e.raw.keyCode == KEY_COMMA) {
@@ -2789,6 +2793,196 @@ function update_ts()
 			return [x,y]
 		}
 
+		let min_distance_threshold = 5 * 5
+		let closest_distance = 100000
+
+		function update_dcdf_closest_segment(symbol, p0x, p0y, p1x, p1y) {
+			// a --> p0 to mouse
+			// b --> p0 to p1
+			// a.b = |a|*|b|*cos(Theta)
+			// a.b/|b| = |a|*cos(theta)
+			// |a|^2 - (|a|*cos(theta))^2 = h^2
+			// |a|^2 - (a.b/|b|)^2 = h^2
+			let ax = local_mouse_pos[0] - p0x
+			let ay = local_mouse_pos[1] - p0y
+
+			let bx = p1x - p0x
+			let by = p1y - p0y
+
+			let a_len_sq = (ax*ax)+(ay*ay)
+			let b_len_sq = (bx*bx)+(by*by)
+			let a_dot_b  = (ax*bx)+(ay*by)
+
+			if (a_dot_b < 0) { return }
+
+			let a_shadow_b_len_sq = (a_dot_b*a_dot_b)/b_len_sq
+			if (a_shadow_b_len_sq > b_len_sq) {
+				return
+			}
+
+			let h_sq = a_len_sq - a_shadow_b_len_sq
+
+			let dist = h_sq
+			if (dist <= min_distance_threshold && dist < closest_distance) {
+				ed_cdf_closest_symbol = symbol
+			}
+		}
+
+		if (global.key_break) {
+			if(point_inside_rect(local_mouse_pos, dcdf_rect)) {
+				let break_pt = dcdf_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+				break_pt = [Math.floor(break_pt[0]), break_pt[1]]
+
+				let weight = break_pt[0]/(global.extremal_depth.ranked_symbols.length-1)
+
+				global.split_cdf.breaks.push(break_pt[0])
+				global.split_cdf.ww.push(weight)
+				global.split_cdf.realign.push(true)
+				global.key_break = false
+			}
+		}
+
+		ctx.fillStyle = "#555555"
+
+		if (global.split_cdf.ww.length > 0) {
+			let sorted_wws = global.split_cdf.ww.sort()
+			let offseted_wws = []
+			for (let i=0; i<sorted_wws.length; i++) {
+				if (i>0) {
+					offseted_wws.push(sorted_wws[i]-sorted_wws[i-1])
+				} else {
+					offseted_wws.push(sorted_wws[i])
+				}
+			}
+
+			let offset = 0
+			for (let i=0; i<=offseted_wws.length; i++) {
+				let panel_rect = null
+				if (i==offseted_wws.length) {
+					panel_rect = [ dcdf_rect[RECT.LEFT]+(dcdf_rect[RECT.WIDTH]*offset),
+								   dcdf_rect[RECT.TOP],
+								   dcdf_rect[RECT.WIDTH]*(1.0-offset),
+								   dcdf_rect[RECT.HEIGHT] ]
+					ctx.rect(panel_rect[RECT.LEFT], panel_rect[RECT.TOP],
+							 panel_rect[RECT.WIDTH], panel_rect[RECT.HEIGHT])
+					ctx.fill()
+				} else {
+					panel_rect = [ dcdf_rect[RECT.LEFT]+(dcdf_rect[RECT.WIDTH]*offset),
+								   dcdf_rect[RECT.TOP],
+								   dcdf_rect[RECT.WIDTH]*offseted_wws[i]-2,
+								   dcdf_rect[RECT.HEIGHT] ]
+					ctx.rect(panel_rect[RECT.LEFT], panel_rect[RECT.TOP],
+							 panel_rect[RECT.WIDTH], panel_rect[RECT.HEIGHT])
+					ctx.fill()
+					offset += offseted_wws[i]
+				}
+
+				let offset_start = global.split_cdf.breaks[i]
+				let offset_end
+				if (i==offseted_wws.length) {
+					offset_end = global.extremal_depth.ranked_symbols.length
+				} else {
+					offset_end = global.split_cdf.breaks[i+1]
+				}
+
+				let panel_y_min = 0
+				let panel_y_max = 0
+				for (let j=0; j<global.extremal_depth.ranked_symbols.length; j++) {
+
+					let symbol = global.extremal_depth.ranked_symbols[j]
+					let current_values
+					if (global.aux_view == 'dcdf') {
+						current_values = symbol.cdf_current_values
+					} else if (global.aux_view == 'rcdf') {
+						current_values = symbol.ranks_current_values
+					}
+					if (current_values == null) {
+						return;
+					}
+
+					for (let k=offset_start; k<offset_end; k++) {
+						if (i==0) {
+							panel_y_max = Math.max(panel_y_max, current_values[k])
+						} else {
+							panel_y_max = Math.max(panel_y_max, current_values[k]-current_values[offset_start-1])
+						}
+					}
+				}
+
+				function panel_rect_map(x, y) {
+					let px = panel_rect[RECT.LEFT] + (1.0 * (x - panel_x_min) / (panel_x_max - panel_x_min)) * panel_rect[RECT.WIDTH]
+					let py = panel_rect[RECT.TOP] + (panel_rect[RECT.HEIGHT] - 1 - (1.0 * (y - panel_y_min) / (panel_y_max - panel_y_min)) * panel_rect[RECT.HEIGHT])
+					return [px,py]
+				}
+
+				function draw_symbol_on_panel(symbol, focused, color) {
+
+					let current_values
+					if (global.aux_view == 'dcdf') {
+						current_values = symbol.cdf_current_values
+					} else if (global.aux_view == 'rcdf') {
+						current_values = symbol.ranks_current_values
+						// console.log(symbol.name, current_values)
+					}
+					if (current_values == null) {
+						// console.log("Not drawing cdf for symbol ", symbol.name);
+						return;
+					}
+
+					let idx = global.chart_symbols.indexOf(symbol)
+					if (symbol.data == null) {
+						return
+					}
+
+					let curve_color = "#FFFFFF44"
+					if (typeof color !== "undefined") {
+						curve_color = color
+					}
+
+					if (focused) {
+						ctx.lineWidth = 4
+						curve_color = global.chart_colors[idx]
+					} else {
+						ctx.lineWidth = 2
+					}
+
+					ctx.strokeStyle = curve_color
+
+					let first_point_drawn = false
+
+					ctx.beginPath()
+					let p_prev = null
+					for (let j=offset_start;j<offset_end.length;j++) {
+						let yi
+						if (i==0) {
+							yi = current_values[j]
+						} else {
+							yi = current_values[j] - current_values[offset_start-1]
+						}
+						let p = panel_rect_map(j,yi)
+						if (p_prev) {
+							update_dcdf_closest_segment(symbol, p_prev[0], p_prev[1], p[0], p[1])
+						}
+						// update_dcdf_closest_point(symbol, p[0], p[1])
+						p_prev = p
+						if (!first_point_drawn) {
+							ctx.moveTo(p[0],p[1])
+							first_point_drawn = true
+						} else {
+							ctx.lineTo(p[0],p[1])
+						}
+					}
+					ctx.stroke()
+				}
+
+
+				// TODO:
+				// 1. draw line segments in each rect
+				// 2. center labels and drawings on x axis
+			}
+		}
+
+
 		//--------------
 		//y grid lines and ticks
 		//--------------
@@ -2806,17 +3000,17 @@ function update_ts()
 			let p0 = dcdf_rect_map(aux_x_min, y_ticks[i])
 			let p1 = dcdf_rect_map(aux_x_max, y_ticks[i])
 
-			ctx.beginPath()
-			ctx.moveTo(p0[0], p0[1])
-			ctx.lineTo(p1[0], p1[1])
-			ctx.stroke()
+			// ctx.beginPath()
+			// ctx.moveTo(p0[0], p0[1])
+			// ctx.lineTo(p1[0], p1[1])
+			// ctx.stroke()
 
 			ctx.font = "bold 10pt Courier"
-			ctx.fillStyle = "#FFFFFF"
+			ctx.fillStyle = "#FFFFFF88"
 			if(i==(y_ticks.length-1)) {
-				ctx.fillText(y_ticks[i].toFixed(2), p0[0]-20, p0[1]+8);
+				ctx.fillText(y_ticks[i].toFixed(2), p0[0]+20, p0[1]+8);
 			} else {
-				ctx.fillText(y_ticks[i].toFixed(2), p0[0]-20, p0[1]+5);
+				ctx.fillText(y_ticks[i].toFixed(2), p0[0]+20, p0[1]+5);
 			}
 
 		}
@@ -2828,7 +3022,7 @@ function update_ts()
 		if (global.aux_view == 'dcdf') {
 			x_num_ticks = 10
 		} else if (global.aux_view == 'rcdf') {
-			if (global.extremal_depth.ranked_symbols.length < 10) {
+			if (global.extremal_depth.ranked_symbols.length <= 15) {
 				x_num_ticks = global.extremal_depth.ranked_symbols.length
 			} else {
 				x_num_ticks = 15
@@ -2848,10 +3042,10 @@ function update_ts()
 			let p0 = dcdf_rect_map(x_ticks[i], aux_y_min)
 			let p1 = dcdf_rect_map(x_ticks[i], aux_y_max)
 
-			ctx.beginPath()
-			ctx.moveTo(p0[0], p0[1])
-			ctx.lineTo(p1[0], p1[1])
-			ctx.stroke()
+			// ctx.beginPath()
+			// ctx.moveTo(p0[0], p0[1])
+			// ctx.lineTo(p1[0], p1[1])
+			// ctx.stroke()
 
 
 			ctx.font = "bold 10pt Courier"
@@ -3004,41 +3198,6 @@ function update_ts()
 			symbol.filter_ok = ok
 
 			return ok
-		}
-
-		let min_distance_threshold = 5 * 5
-		let closest_distance = 100000
-
-		function update_dcdf_closest_segment(symbol, p0x, p0y, p1x, p1y) {
-			// a --> p0 to mouse
-			// b --> p0 to p1
-			// a.b = |a|*|b|*cos(Theta)
-			// a.b/|b| = |a|*cos(theta)
-			// |a|^2 - (|a|*cos(theta))^2 = h^2
-			// |a|^2 - (a.b/|b|)^2 = h^2
-			let ax = local_mouse_pos[0] - p0x
-			let ay = local_mouse_pos[1] - p0y
-
-			let bx = p1x - p0x
-			let by = p1y - p0y
-
-			let a_len_sq = (ax*ax)+(ay*ay)
-			let b_len_sq = (bx*bx)+(by*by)
-			let a_dot_b  = (ax*bx)+(ay*by)
-
-			if (a_dot_b < 0) { return }
-
-			let a_shadow_b_len_sq = (a_dot_b*a_dot_b)/b_len_sq
-			if (a_shadow_b_len_sq > b_len_sq) {
-				return
-			}
-
-			let h_sq = a_len_sq - a_shadow_b_len_sq
-
-			let dist = h_sq
-			if (dist <= min_distance_threshold && dist < closest_distance) {
-				ed_cdf_closest_symbol = symbol
-			}
 		}
 
 		function draw_symbol_dcdf(symbol, focused, color) {
