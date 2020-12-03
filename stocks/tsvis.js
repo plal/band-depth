@@ -2878,17 +2878,17 @@ function update_ts()
 				let panel_rect = null
 				if (i==offseted_wws.length) {
 					panel_rect = [ dcdf_rect[RECT.LEFT]+(dcdf_rect[RECT.WIDTH]*offset),
-								   dcdf_rect[RECT.TOP],
+								   dcdf_rect[RECT.TOP]+10,
 								   dcdf_rect[RECT.WIDTH]*(1.0-offset),
-								   dcdf_rect[RECT.HEIGHT] ]
+								   dcdf_rect[RECT.HEIGHT]-20 ]
 					ctx.rect(panel_rect[RECT.LEFT], panel_rect[RECT.TOP],
 							 panel_rect[RECT.WIDTH], panel_rect[RECT.HEIGHT])
 					ctx.fill()
 				} else {
 					panel_rect = [ dcdf_rect[RECT.LEFT]+(dcdf_rect[RECT.WIDTH]*offset),
-								   dcdf_rect[RECT.TOP],
+								   dcdf_rect[RECT.TOP]+10,
 								   dcdf_rect[RECT.WIDTH]*offseted_wws[i]-2,
-								   dcdf_rect[RECT.HEIGHT] ]
+								   dcdf_rect[RECT.HEIGHT]-20 ]
 					ctx.rect(panel_rect[RECT.LEFT], panel_rect[RECT.TOP],
 							 panel_rect[RECT.WIDTH], panel_rect[RECT.HEIGHT])
 					ctx.fill()
@@ -2933,13 +2933,12 @@ function update_ts()
 
 				function panel_rect_map(x, y) {
 					let px = (panel_rect[RECT.LEFT] + (1.0 * (x - panel_x_min) / (panel_x_max - panel_x_min)) * panel_rect[RECT.WIDTH])
-					 		 //+ Math.floor((panel_rect[RECT.WIDTH]-panel_rect[RECT.LEFT]/(offset_end-offset_start+1)))
 					let py = panel_rect[RECT.TOP] + (panel_rect[RECT.HEIGHT] - 1 - (1.0 * (y - panel_y_min) / (panel_y_max - panel_y_min)) * panel_rect[RECT.HEIGHT])
 					return [px,py]
 				}
 
 
-				let x_axis_offset = Math.floor(panel_rect[RECT.WIDTH]/(offset_end-offset_start+1))
+				let x_axis_offset = (panel_rect[RECT.WIDTH]/(offset_end-offset_start))/2
 
 				function draw_symbol_on_panel(symbol, focused, color) {
 					let current_values
@@ -2960,22 +2959,22 @@ function update_ts()
 					}
 
 					let curve_color = "#FFFFFF44"
-					let point_color = "#FFFFFF44"
+
 					if (typeof color !== "undefined") {
 						curve_color = color
-						point_color = color
 					}
 
 					ctx.save()
 					if (focused) {
 						ctx.lineWidth = 4
 						curve_color = global.chart_colors[idx]
-						point_color = global.chart_colors[idx]
 					} else {
 						ctx.lineWidth = 2
 					}
 
 					ctx.strokeStyle = curve_color
+					ctx.fillStyle = curve_color
+
 
 					let first_point_drawn = false
 
@@ -2991,7 +2990,7 @@ function update_ts()
 							}
 
 							let p = panel_rect_map(j,yi)
-							// p[0] = p[0] + x_axis_offset
+							p[0] = p[0] + x_axis_offset
 							if (p_prev) {
 								update_dcdf_closest_segment(symbol, p_prev[0], p_prev[1], p[0], p[1])
 							}
@@ -3015,10 +3014,17 @@ function update_ts()
 						}
 
 						let p = panel_rect_map(x, y)
+						p[0] = p[0] +x_axis_offset
+						if (p_prev) {
+							update_dcdf_closest_segment(symbol, p_prev[0], p_prev[1], p[0], p[1])
+						}
+
+						p_prev = p
 						// update_closest_point(symbol, x, p[0], p[1])
-						ctx.fillStyle = curve_color
+
 						ctx.beginPath()
 						ctx.arc(p[0], p[1], 5, 0, 2 * Math.PI)
+						ctx.closePath()
 						ctx.fill()
 						ctx.stroke()
 					}
@@ -3042,7 +3048,7 @@ function update_ts()
 
 					let p0 = panel_rect_map(panel_x_ticks[l], panel_y_min)
 					let p1 = panel_rect_map(panel_x_ticks[l], panel_y_max)
-					// p0[0] = p0[0] + x_axis_offset
+					p0[0] = p0[0] + x_axis_offset
 
 					let tick_text
 					if (global.aux_view == 'dcdf') {
