@@ -2850,9 +2850,7 @@ function update_ts()
 		}
 
 		ctx.fillStyle = "#555555"
-		console.log(global.split_cdf.breaks)
-		console.log(global.split_cdf.ww)
-		console.log(global.split_cdf.realign)
+
 		if (global.split_cdf.ww.length > 0) {
 			let sorted_wws = global.split_cdf.ww.sort()
 			let offseted_wws = []
