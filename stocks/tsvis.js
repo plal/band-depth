@@ -2810,6 +2810,7 @@ function update_ts()
 			// a.b/|b| = |a|*cos(theta)
 			// |a|^2 - (|a|*cos(theta))^2 = h^2
 			// |a|^2 - (a.b/|b|)^2 = h^2
+
 			let ax = local_mouse_pos[0] - p0x
 			let ay = local_mouse_pos[1] - p0y
 
@@ -2835,6 +2836,16 @@ function update_ts()
 			}
 		}
 
+		function update_closest_point(symbol, rank, px, py) {
+			let dx = local_mouse_pos[0] - px
+			let dy = local_mouse_pos[1] - py
+			let dist = dx * dx + dy * dy
+			if (dist <= min_distance_threshold && dist < closest_distance) {
+				ed_cdf_closest_symbol = symbol
+				closest_rank = rank
+			}
+		}
+
 		if (global.key_break) {
 			if(point_inside_rect(local_mouse_pos, dcdf_rect)) {
 				let break_pt = dcdf_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
@@ -2849,8 +2860,6 @@ function update_ts()
 			}
 		}
 
-		ctx.fillStyle = "#555555"
-
 		if (global.split_cdf.ww.length > 0) {
 			let sorted_wws = global.split_cdf.ww.sort()
 			let offseted_wws = []
@@ -2864,6 +2873,8 @@ function update_ts()
 
 			let offset = 0
 			for (let i=0; i<=offseted_wws.length; i++) {
+				ctx.save()
+				ctx.fillStyle = "#555555"
 				let panel_rect = null
 				if (i==offseted_wws.length) {
 					panel_rect = [ dcdf_rect[RECT.LEFT]+(dcdf_rect[RECT.WIDTH]*offset),
@@ -2883,6 +2894,7 @@ function update_ts()
 					ctx.fill()
 					offset += offseted_wws[i]
 				}
+				ctx.restore()
 
 				let offset_start = global.split_cdf.breaks[i]
 				let offset_end
@@ -2920,10 +2932,14 @@ function update_ts()
 				}
 
 				function panel_rect_map(x, y) {
-					let px = (panel_rect[RECT.LEFT] + (1.0 * (x - panel_x_min) / (panel_x_max - panel_x_min)) * panel_rect[RECT.WIDTH]) //+ Math.floor((panel_rect[RECT.WIDTH]-panel_rect[RECT.LEFT]/(offset_end-offset_start+1)))
+					let px = (panel_rect[RECT.LEFT] + (1.0 * (x - panel_x_min) / (panel_x_max - panel_x_min)) * panel_rect[RECT.WIDTH])
+					 		 //+ Math.floor((panel_rect[RECT.WIDTH]-panel_rect[RECT.LEFT]/(offset_end-offset_start+1)))
 					let py = panel_rect[RECT.TOP] + (panel_rect[RECT.HEIGHT] - 1 - (1.0 * (y - panel_y_min) / (panel_y_max - panel_y_min)) * panel_rect[RECT.HEIGHT])
 					return [px,py]
 				}
+
+
+				let x_axis_offset = Math.floor(panel_rect[RECT.WIDTH]/(offset_end-offset_start+1))
 
 				function draw_symbol_on_panel(symbol, focused, color) {
 					let current_values
@@ -2944,13 +2960,17 @@ function update_ts()
 					}
 
 					let curve_color = "#FFFFFF44"
+					let point_color = "#FFFFFF44"
 					if (typeof color !== "undefined") {
 						curve_color = color
+						point_color = color
 					}
 
+					ctx.save()
 					if (focused) {
 						ctx.lineWidth = 4
 						curve_color = global.chart_colors[idx]
+						point_color = global.chart_colors[idx]
 					} else {
 						ctx.lineWidth = 2
 					}
@@ -2961,28 +2981,48 @@ function update_ts()
 
 					ctx.beginPath()
 					let p_prev = null
-					for (let j=offset_start;j<offset_end;j++) {
-						let yi
+					if ((offset_end-offset_start) > 1) {
+						for (let j=offset_start;j<offset_end;j++) {
+							let yi
+							if (i==0) {
+								yi = current_values[j]
+							} else {
+								yi = current_values[j] - current_values[offset_start-1]
+							}
+
+							let p = panel_rect_map(j,yi)
+							// p[0] = p[0] + x_axis_offset
+							if (p_prev) {
+								update_dcdf_closest_segment(symbol, p_prev[0], p_prev[1], p[0], p[1])
+							}
+
+							p_prev = p
+							if (!first_point_drawn) {
+								ctx.moveTo(p[0],p[1])
+								first_point_drawn = true
+							} else {
+								ctx.lineTo(p[0],p[1])
+							}
+						}
+						ctx.stroke()
+					} else {
+						let x = offset_start
+						let y
 						if (i==0) {
-							yi = current_values[j]
+							y = current_values[offset_start]
 						} else {
-							yi = current_values[j] - current_values[offset_start-1]
+							y = current_values[offset_start] - current_values[offset_start-1]
 						}
 
-						let p = panel_rect_map(j,yi)
-						if (p_prev) {
-							update_dcdf_closest_segment(symbol, p_prev[0], p_prev[1], p[0], p[1])
-						}
-
-						p_prev = p
-						if (!first_point_drawn) {
-							ctx.moveTo(p[0],p[1])
-							first_point_drawn = true
-						} else {
-							ctx.lineTo(p[0],p[1])
-						}
+						let p = panel_rect_map(x, y)
+						// update_closest_point(symbol, x, p[0], p[1])
+						ctx.fillStyle = curve_color
+						ctx.beginPath()
+						ctx.arc(p[0], p[1], 5, 0, 2 * Math.PI)
+						ctx.fill()
+						ctx.stroke()
 					}
-					ctx.stroke()
+					ctx.restore()
 				}
 
 				for (let m=0;m<global.extremal_depth.ranked_symbols.length;m++) {
@@ -3002,6 +3042,7 @@ function update_ts()
 
 					let p0 = panel_rect_map(panel_x_ticks[l], panel_y_min)
 					let p1 = panel_rect_map(panel_x_ticks[l], panel_y_max)
+					// p0[0] = p0[0] + x_axis_offset
 
 					let tick_text
 					if (global.aux_view == 'dcdf') {
