@@ -1513,6 +1513,7 @@ const KEY_B		 = 66
 const KEY_PERIOD = 190
 const KEY_COMMA  = 188
 const KEY_BCKSPC = 8
+const KEY_ESC	 = 27
 //--------------
 //processing events as they arrive
 //--------------
@@ -1614,6 +1615,12 @@ function process_event_queue()
 				} else if (e.raw.keyCode == KEY_BCKSPC) {
 					if (global.filter_list.length > 0) {
 						global.filter_list.pop()
+					}
+				} else if (e.raw.keyCode == KEY_ESC) {
+					if (global.split_cdf.ww.length > 0) {
+						global.split_cdf.breaks.pop()
+						global.split_cdf.ww.pop()
+						global.split_cdf.realign.pop()
 					}
 				}
 			}
@@ -2843,7 +2850,9 @@ function update_ts()
 		}
 
 		ctx.fillStyle = "#555555"
-
+		console.log(global.split_cdf.breaks)
+		console.log(global.split_cdf.ww)
+		console.log(global.split_cdf.realign)
 		if (global.split_cdf.ww.length > 0) {
 			let sorted_wws = global.split_cdf.ww.sort()
 			let offseted_wws = []
@@ -3043,7 +3052,7 @@ function update_ts()
 					ctx.font = '14px Monospace';
 					ctx.fillStyle = "#FFFFFF"
 					ctx.textAlign = 'center';
-					ctx.fillText(text, (panel_rect[0]+panel_rect[2])-(panel_rect[2]/2), 40);
+					ctx.fillText(text, (dcdf_rect[0]+dcdf_rect[2])-(dcdf_rect[2]/2), 40);
 					ctx.restore()
 
 				}
