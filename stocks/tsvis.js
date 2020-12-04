@@ -2878,17 +2878,19 @@ function update_ts()
 				let panel_rect = null
 				if (i==offseted_wws.length) {
 					panel_rect = [ dcdf_rect[RECT.LEFT]+(dcdf_rect[RECT.WIDTH]*offset),
-								   dcdf_rect[RECT.TOP]+10,
+								   dcdf_rect[RECT.TOP]+5,
 								   dcdf_rect[RECT.WIDTH]*(1.0-offset),
-								   dcdf_rect[RECT.HEIGHT]-20 ]
+								   dcdf_rect[RECT.HEIGHT]-10 ]
+					ctx.beginPath()
 					ctx.rect(panel_rect[RECT.LEFT], panel_rect[RECT.TOP],
 							 panel_rect[RECT.WIDTH], panel_rect[RECT.HEIGHT])
 					ctx.fill()
 				} else {
 					panel_rect = [ dcdf_rect[RECT.LEFT]+(dcdf_rect[RECT.WIDTH]*offset),
-								   dcdf_rect[RECT.TOP]+10,
+								   dcdf_rect[RECT.TOP]+5,
 								   dcdf_rect[RECT.WIDTH]*offseted_wws[i]-2,
-								   dcdf_rect[RECT.HEIGHT]-20 ]
+								   dcdf_rect[RECT.HEIGHT]-10 ]
+					ctx.beginPath()
 					ctx.rect(panel_rect[RECT.LEFT], panel_rect[RECT.TOP],
 							 panel_rect[RECT.WIDTH], panel_rect[RECT.HEIGHT])
 					ctx.fill()
@@ -2978,9 +2980,9 @@ function update_ts()
 
 					let first_point_drawn = false
 
-					ctx.beginPath()
 					let p_prev = null
 					if ((offset_end-offset_start) > 1) {
+						ctx.beginPath()
 						for (let j=offset_start;j<offset_end;j++) {
 							let yi
 							if (i==0) {
