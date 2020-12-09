@@ -122,10 +122,6 @@ function value_running_avg(date, values, window_size) {
 	let end_date 	  = date_offset(global.date_end)
 	let end_date_dist = end_date - date
 
-	// console.log(pad)
-	// console.log(start_date, start_date_dist)
-	// console.log(end_date, end_date_dist)
-
 	let count = 0
 	if(start_date_dist < pad) {
 		for(let i=start_date; i<=start_date+window_size-1; i++) {
@@ -152,7 +148,6 @@ function value_running_avg(date, values, window_size) {
 			}
 		}
 	}
-	// console.log(date_offset_to_string(date)+': value = '+values[date]+' // count = '+count+' // running avg = '+(count/window_size))
 
 	return count/window_size
 }
@@ -352,7 +347,6 @@ function create_group() {
 		update_groups_table()
 	}
 
-	// console.log(global.groups)
 }
 
 function add_group_to_chart(group) {
@@ -1244,16 +1238,10 @@ function run_extremal_depth_algorithm()
 	let n_of_pwdepth_unique_values  = global.tsvis_wasm_module.exports.ed_get_pointwise_depth_unique_values(ed_raw_p)
 	let n_of_points 				= global.tsvis_wasm_module.exports.ed_get_number_of_points(ed_raw_p)
 
-	// console.log(lt_matrix_raw_p)
-	// console.log(gt_matrix_raw_p)
-
 	const rank = new Int32Array(global.tsvis_wasm_module.exports.memory.buffer, rank_raw_p, symbols_ed.length);
 	const cdf_matrix = new Int32Array(global.tsvis_wasm_module.exports.memory.buffer, cdf_matrix_raw_p, n * n_of_pwdepth_unique_values)
 	const lt_matrix = new Int32Array(global.tsvis_wasm_module.exports.memory.buffer, lt_matrix_raw_p, n * n_of_points)
 	const gt_matrix = new Int32Array(global.tsvis_wasm_module.exports.memory.buffer, gt_matrix_raw_p, n * n_of_points)
-
-	// console.log(lt_matrix)
-	// console.log(gt_matrix)
 
 	global.extremal_depth.ranked_symbols = []
 	for (let i=0;i<symbols_ed.length;i++) {
@@ -1303,8 +1291,6 @@ function run_extremal_depth_algorithm()
 			lt_ranks_dist.push(count_lt_rankj/n_of_points)
 			gt_ranks_dist.push(count_gt_rankj/n_of_points)
 		}
-		// console.log(symbol_i.name, lt_ranks, lt_ranks_dist)
-		// console.log(symbol_i.name, gt_ranks, gt_ranks_dist)
 
 		symbol_i.lt_ranks_dist = lt_ranks_dist
 		symbol_i.gt_ranks_dist = gt_ranks_dist
@@ -1578,14 +1564,12 @@ function process_event_queue()
 					if(group.fbed.active) {
 						console.log("ran ed algorithm with group " + group.name)
 						run_depth_algorithm_group(group, "ed")
-						// console.log(group)
 					}
 				}
 				if (e.raw.getModifierState("Control")) {
 					group.fbmbd.active = !group.fbmbd.active
 					if(group.fbmbd.active) {
 						run_depth_algorithm_group(group, "mbd")
-						// console.log(group)
 					}
 				}
 			} else {
@@ -1675,13 +1659,10 @@ function process_event_queue()
 			if (e.raw.getModifierState("Shift")) {
 				global.filter_state = FILTER_STATE.START
 				global.filter_type  = FILTER_TYPE.BLUE
-				console.log("shift clicked")
-
 			}
 			if (e.raw.getModifierState("Control")) {
 				global.filter_state = FILTER_STATE.START
 				global.filter_type  = FILTER_TYPE.RED
-				console.log("ctrl clicked")
 			}
 
 			global.split_cdf.panel_state = PANEL_STATE.START_RESIZE
@@ -2332,7 +2313,6 @@ function update_ts()
 					if(global.ui.normalize_btn.checked) {
 						value = value / norm_value
 					}
-					// console.log(value)
 					let color = "#2f3233"
 					let color_scale = ['#ffffd9','#edf8b1','#c7e9b4','#7fcdbb','#41b6c4','#1d91c0','#225ea8','#253494','#081d58','#081d58']
 					// ['#fff7ec','#fee8c8','#fdd49e','#fdbb84','#fc8d59','#ef6548','#d7301f','#b30000','#7f0000', '#7f0000']
@@ -2557,7 +2537,6 @@ function update_ts()
 			}
 
 			if (depth_type == "mbd") {
-				// console.log(depth_type)
 				group_depth = group.fbmbd
 			}
 
@@ -2717,8 +2696,6 @@ function update_ts()
 	let ed_cdf_closest_symbol = null
 
 	if (global.aux_view != 'none') {
-
-		// console.log(global.aux_view)
 
 		ctx.font = "bold 14pt Courier"
 		ctx.fillStyle = "#FFFFFF";
@@ -2910,7 +2887,7 @@ function update_ts()
 					breaks.push(split_rank)
 					rotate(breaks, split_rank_idx, breaks.length)
 
-					console.log(global.split_cdf.breaks, global.split_cdf.ww)
+					// console.log(global.split_cdf.breaks, global.split_cdf.ww)
 
 					global.split_cdf.filters.push([])
 					global.split_cdf.realign.push(true)
@@ -3058,7 +3035,7 @@ function update_ts()
 							global.filter_state  = FILTER_STATE.MOVE
 						} else {
 							let dm_filter_pos = panel_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
-							console.log(dm_filter_pos)
+
 							let filter = { y: dm_filter_pos[1], type: global.filter_type, panel: i }
 
 							global.filter_list.push(filter)
@@ -3079,7 +3056,6 @@ function update_ts()
 				}
 
 				for (let f=0; f<global.filter_list.length; f++) {
-					// console.log(panel_filters[f])
 					let filter = global.filter_list[f]
 
 					if (filter.panel == i) {
@@ -3105,7 +3081,6 @@ function update_ts()
 				}
 
 				function check_filters(symbol) {
-				// 	console.log("checking filters")
 					let current_values
 					if (global.aux_view == 'dcdf') {
 						current_values = symbol.cdf_current_values
@@ -3177,7 +3152,6 @@ function update_ts()
 						current_values = symbol.cdf_current_values
 					} else if (global.aux_view == 'rcdf') {
 						current_values = symbol.ranks_current_values
-						// console.log(symbol.name, current_values)
 					}
 					if (current_values == null) {
 						// console.log("Not drawing cdf for symbol ", symbol.name);
@@ -3561,7 +3535,6 @@ function update_ts()
 					current_values = symbol.cdf_current_values
 				} else if (global.aux_view == 'rcdf') {
 					current_values = symbol.ranks_current_values
-					// console.log(symbol.name, current_values)
 				}
 				if (current_values == null) {
 					// console.log("Not drawing cdf for symbol ", symbol.name);
