@@ -18,6 +18,17 @@ const FILTER_TYPE = {
 	RED: 1,
 }
 
+const PANEL_STATE = {
+	INACTIVE: 0,
+	START_RESIZE: 1,
+	RESIZING: 2
+}
+
+const PANEL_RESIZE_SIDE = {
+	LEFT:0,
+	RIGHT:1
+}
+
 const FILTER_COLORS = ["#8888FF", "#FF8888"]
 
 const EVENT= {
@@ -72,7 +83,7 @@ var global = {
 	drag: { active:false, startpos:[0,0] },
 	filter_list:[],
 	aux_view:'none',
-	split_cdf: { breaks:[0], ww:[], realign:[]}
+	split_cdf: { breaks:[0], ww:[1], realign:[], split_rank: null, panel_resize_index: null, panel_resize_side: null, panel_resize_last_x: null, filters: [[]]}
 }
 
 function install_event_listener(component, raw_event_type, context, event_type)
@@ -1671,10 +1682,14 @@ function process_event_queue()
 				global.filter_type  = FILTER_TYPE.RED
 			}
 
+			global.split_cdf.panel_state = PANEL_STATE.START_RESIZE
+
 		} else if (e.event_type == EVENT.MOUSEUP) {
 			global.drag.active = false
-			// console.log("drag end position: " + e.raw.x + ", " + e.raw.y)
 			global.filter_state = FILTER_STATE.INACTIVE
+
+			global.split_cdf.panel_state = PANEL_STATE.INACTIVE
+
 		} else if (e.event_type == EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM) {
 			global.extremal_depth.fbplot.active = !global.extremal_depth.fbplot.active
 			if (global.extremal_depth.fbplot.active) {
@@ -1731,10 +1746,10 @@ function update_ts()
 	}
 
 	let rect = [0, 0, canvas.width, canvas.height]
-	let dcdf_rect_inf = null
+	let aux_rect_inf = null
 	if (global.aux_view != 'none') {
 		rect = [0, 0, canvas.width/2, canvas.height]
-		dcdf_rect_inf = [canvas.width/2, 0, canvas.width/2, canvas.height]
+		aux_rect_inf = [canvas.width/2, 0, canvas.width/2, canvas.height]
 	}
 
 	let margin = [ 100, 55, 5, 5 ]
@@ -1744,13 +1759,13 @@ function update_ts()
 		        	rect[2] - margin[SIDE.LEFT] - margin[SIDE.RIGHT],
 		        	rect[3] - margin[SIDE.BOTTOM] - margin[SIDE.TOP] ]
 
-	let dcdf_rect = null
-	let dcdf_rect_margins = [ 100, 33, 5, 5 ]
+	let aux_rect = null
+	let aux_rect_margins = [ 100, 33, 5, 5 ]
 	if (global.aux_view != 'none') {
-		dcdf_rect = [ dcdf_rect_inf[0] + dcdf_rect_margins[SIDE.LEFT],
-					  dcdf_rect_inf[1] + dcdf_rect_margins[SIDE.TOP],
-					  dcdf_rect_inf[2] - dcdf_rect_margins[SIDE.LEFT] - dcdf_rect_margins[SIDE.RIGHT],
-					  dcdf_rect_inf[3] - dcdf_rect_margins[SIDE.BOTTOM] - dcdf_rect_margins[SIDE.TOP] ]
+		aux_rect = [ aux_rect_inf[0] + aux_rect_margins[SIDE.LEFT],
+					  aux_rect_inf[1] + aux_rect_margins[SIDE.TOP],
+					  aux_rect_inf[2] - aux_rect_margins[SIDE.LEFT] - aux_rect_margins[SIDE.RIGHT],
+					  aux_rect_inf[3] - aux_rect_margins[SIDE.BOTTOM] - aux_rect_margins[SIDE.TOP] ]
 	}
 
 
@@ -1768,8 +1783,8 @@ function update_ts()
 		ctx.fill()
 
 		if (global.aux_view != 'none') {
-			ctx.moveTo(dcdf_rect_inf[0], dcdf_rect_inf[1])
-			ctx.rect(dcdf_rect[RECT.LEFT], dcdf_rect[RECT.TOP], dcdf_rect[RECT.WIDTH], dcdf_rect[RECT.HEIGHT])
+			ctx.moveTo(aux_rect_inf[0], aux_rect_inf[1])
+			ctx.rect(aux_rect[RECT.LEFT], aux_rect[RECT.TOP], aux_rect[RECT.WIDTH], aux_rect[RECT.HEIGHT])
 			ctx.fill()
 		}
 		ctx.clip()
@@ -2716,12 +2731,12 @@ function update_ts()
 
 		ctx.beginPath()
 		//y axis
-		ctx.moveTo(dcdf_rect[RECT.LEFT], dcdf_rect[RECT.TOP])
-		ctx.lineTo(dcdf_rect[RECT.LEFT], dcdf_rect[RECT.HEIGHT]+6)
+		ctx.moveTo(aux_rect[RECT.LEFT], aux_rect[RECT.TOP])
+		ctx.lineTo(aux_rect[RECT.LEFT], aux_rect[RECT.HEIGHT]+6)
 		ctx.stroke()
 		//x axis
-		ctx.moveTo(dcdf_rect[RECT.LEFT], dcdf_rect[RECT.HEIGHT]+6)
-		ctx.lineTo(dcdf_rect[RECT.LEFT] + dcdf_rect[RECT.WIDTH], dcdf_rect[RECT.HEIGHT]+6)
+		ctx.moveTo(aux_rect[RECT.LEFT], aux_rect[RECT.HEIGHT]+6)
+		ctx.lineTo(aux_rect[RECT.LEFT] + aux_rect[RECT.WIDTH], aux_rect[RECT.HEIGHT]+6)
 		ctx.stroke()
 
 		ctx.restore()
@@ -2788,22 +2803,22 @@ function update_ts()
 			aux_x_max = global.extremal_depth.ranked_symbols.length - 1
 		}
 
-		function dcdf_rect_map(x, y) {
-			let px = dcdf_rect[RECT.LEFT] + (1.0 * (x - aux_x_min) / (aux_x_max - aux_x_min)) * dcdf_rect[RECT.WIDTH]
-			let py = dcdf_rect[RECT.TOP] + (dcdf_rect[RECT.HEIGHT] - 1 - (1.0 * (y - aux_y_min) / (aux_y_max - aux_y_min)) * dcdf_rect[RECT.HEIGHT])
+		function aux_rect_map(x, y) {
+			let px = aux_rect[RECT.LEFT] + (1.0 * (x - aux_x_min) / (aux_x_max - aux_x_min)) * aux_rect[RECT.WIDTH]
+			let py = aux_rect[RECT.TOP] + (aux_rect[RECT.HEIGHT] - 1 - (1.0 * (y - aux_y_min) / (aux_y_max - aux_y_min)) * aux_rect[RECT.HEIGHT])
 			return [px,py]
 		}
 
-		function dcdf_rect_inverse_map(px, py) {
-			let x = ((px - dcdf_rect[RECT.LEFT]) / dcdf_rect[RECT.WIDTH]) * (1.0*(aux_x_max - aux_x_min)) + aux_x_min
-			let y = -((((py - dcdf_rect[RECT.TOP] - dcdf_rect[RECT.HEIGHT] + 1) * (1.0 * (aux_y_max - aux_y_min))) / dcdf_rect[RECT.HEIGHT]) - aux_y_min)
+		function aux_rect_inverse_map(px, py) {
+			let x = ((px - aux_rect[RECT.LEFT]) / aux_rect[RECT.WIDTH]) * (1.0*(aux_x_max - aux_x_min)) + aux_x_min
+			let y = -((((py - aux_rect[RECT.TOP] - aux_rect[RECT.HEIGHT] + 1) * (1.0 * (aux_y_max - aux_y_min))) / aux_rect[RECT.HEIGHT]) - aux_y_min)
 			return [x,y]
 		}
 
 		let min_distance_threshold = 5 * 5
 		let closest_distance = 100000
 
-		function update_dcdf_closest_segment(symbol, p0x, p0y, p1x, p1y) {
+		function update_aux_closest_segment(symbol, p0x, p0y, p1x, p1y) {
 			// a --> p0 to mouse
 			// b --> p0 to p1
 			// a.b = |a|*|b|*cos(Theta)
@@ -2846,72 +2861,122 @@ function update_ts()
 			}
 		}
 
-		if (global.key_break) {
-			if(point_inside_rect(local_mouse_pos, dcdf_rect)) {
-				let break_pt = dcdf_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
-				break_pt = [Math.floor(break_pt[0]), break_pt[1]]
+		let n_ranks = global.extremal_depth.ranked_symbols.length
 
-				let weight = break_pt[0]/(global.extremal_depth.ranked_symbols.length-1)
+		function rotate(arr, a, b) {
+			let x = arr[b-1]
+			for (let i=b-1; i>a; i--) {
+				arr[i] = arr[i-1]
+			}
+			arr[a] = x
+		}
 
-				global.split_cdf.breaks.push(break_pt[0])
-				global.split_cdf.ww.push(weight)
-				global.split_cdf.realign.push(true)
-				global.key_break = false
+		//performing split on given rank
+		if (global.split_cdf.split_rank) {
+			let breaks  = global.split_cdf.breaks
+			let weights = global.split_cdf.ww
+
+			let split_rank = global.split_cdf.split_rank
+			global.split_cdf.split_rank = null
+
+			if (split_rank < n_ranks) {
+				let split_rank_idx = -breaks.length-1
+				for (let i=0; i<breaks.length; i++) {
+					if (breaks[i] == split_rank) {
+						split_rank_idx = i
+						break
+					} else if (breaks[i] > split_rank) {
+						split_rank_idx = -i-1
+						break
+					}
+				}
+				if (split_rank_idx < 0) { //negative number means split_rank doesnt exist yet, it'll be added
+					split_rank_idx  = -split_rank_idx-1
+					let curr_weight = weights[split_rank_idx-1]
+
+					let left  		= breaks[split_rank_idx-1]
+					let right 		= (split_rank_idx == breaks.length) ? n_ranks : breaks[split_rank_idx]
+
+					let curr_bins   = right - left
+					let left_bins   = split_rank - left
+					let right_bins  = right - split_rank
+
+					weights[split_rank_idx-1] = curr_weight * (left_bins / curr_bins)
+					weights.push(curr_weight * (right_bins / curr_bins))
+					rotate(weights, split_rank_idx, weights.length)
+
+					breaks.push(split_rank)
+					rotate(breaks, split_rank_idx, breaks.length)
+
+					console.log(global.split_cdf.breaks, global.split_cdf.ww)
+
+					global.split_cdf.filters.push([])
+					global.split_cdf.realign.push(true)
+				}
+
+			}
+
+		}
+
+		if (global.split_cdf.panel_state == PANEL_STATE.RESIZING) {
+			let dx = local_mouse_pos[0] - global.split_cdf.panel_resize_last_x //global.mouse.position[0] - global.mouse.last_position[0]
+			global.split_cdf.panel_resize_last_x = local_mouse_pos[0]
+
+			let panel_idx 		   = global.split_cdf.panel_resize_index
+			let panel_resize_width = global.split_cdf.ww[panel_idx] * aux_rect[RECT.WIDTH]
+			let panel_resize_side  = global.split_cdf.panel_resize_side
+
+			let delta = dx / panel_resize_width
+			if (panel_resize_side == PANEL_RESIZE_SIDE.LEFT) {
+				if (delta > 0) {
+					global.split_cdf.ww[panel_idx] -= delta
+					global.split_cdf.ww[panel_idx-1] += delta
+				} else {
+					global.split_cdf.ww[panel_idx] -= delta
+					global.split_cdf.ww[panel_idx-1] += delta
+				}
+			} else {
+				if (delta > 0) {
+					global.split_cdf.ww[panel_idx] += delta
+					global.split_cdf.ww[panel_idx+1] -= delta
+				} else {
+					global.split_cdf.ww[panel_idx] += delta
+					global.split_cdf.ww[panel_idx+1] -= delta
+				}
 			}
 		}
 
+
 		if (global.split_cdf.ww.length > 0) {
-			let sorted_wws = global.split_cdf.ww.sort()
-			let offseted_wws = []
+			let sorted_wws 	  = global.split_cdf.ww
+			let sorted_breaks = global.split_cdf.breaks
+
+			let offset = aux_rect[RECT.LEFT]
 			for (let i=0; i<sorted_wws.length; i++) {
-				if (i>0) {
-					offseted_wws.push(sorted_wws[i]-sorted_wws[i-1])
-				} else {
-					offseted_wws.push(sorted_wws[i])
-				}
-			}
-
-			let offset = 0
-			for (let i=0; i<=offseted_wws.length; i++) {
-				ctx.save()
 				ctx.fillStyle = "#555555"
-				let panel_rect = null
-				if (i==offseted_wws.length) {
-					panel_rect = [ dcdf_rect[RECT.LEFT]+(dcdf_rect[RECT.WIDTH]*offset),
-								   dcdf_rect[RECT.TOP]+5,
-								   dcdf_rect[RECT.WIDTH]*(1.0-offset),
-								   dcdf_rect[RECT.HEIGHT]-10 ]
-					ctx.beginPath()
-					ctx.rect(panel_rect[RECT.LEFT], panel_rect[RECT.TOP],
-							 panel_rect[RECT.WIDTH], panel_rect[RECT.HEIGHT])
-					ctx.fill()
-				} else {
-					panel_rect = [ dcdf_rect[RECT.LEFT]+(dcdf_rect[RECT.WIDTH]*offset),
-								   dcdf_rect[RECT.TOP]+5,
-								   dcdf_rect[RECT.WIDTH]*offseted_wws[i]-2,
-								   dcdf_rect[RECT.HEIGHT]-10 ]
-					ctx.beginPath()
-					ctx.rect(panel_rect[RECT.LEFT], panel_rect[RECT.TOP],
-							 panel_rect[RECT.WIDTH], panel_rect[RECT.HEIGHT])
-					ctx.fill()
-					offset += offseted_wws[i]
-				}
-				ctx.restore()
 
-				let offset_start = global.split_cdf.breaks[i]
-				let offset_end
-				if (i==offseted_wws.length) {
-					offset_end = global.extremal_depth.ranked_symbols.length
-				} else {
-					offset_end = global.split_cdf.breaks[i+1]
-				}
+				let panel_rect = null
+				let panel_width = aux_rect[RECT.WIDTH]*sorted_wws[i]
+				panel_rect = [ offset,
+							   aux_rect[RECT.TOP]+5,
+							   panel_width,
+							   aux_rect[RECT.HEIGHT]-10 ]
+
+				offset += panel_width
+				ctx.beginPath()
+				ctx.rect(panel_rect[RECT.LEFT], panel_rect[RECT.TOP],
+						 panel_rect[RECT.WIDTH], panel_rect[RECT.HEIGHT])
+				ctx.fill()
+
+				let offset_start = sorted_breaks[i]
+				let offset_end = (i==sorted_wws.length-1) ? n_ranks : sorted_breaks[i+1]
 
 				let panel_x_min = offset_start
 				let panel_x_max = offset_end
 				let panel_y_min = 0
 				let panel_y_max = 0
 
-				for (let j=0; j<global.extremal_depth.ranked_symbols.length; j++) {
+				for (let j=0; j<n_ranks; j++) {
 
 					let symbol = global.extremal_depth.ranked_symbols[j]
 					let current_values
@@ -2939,6 +3004,103 @@ function update_ts()
 					return [px,py]
 				}
 
+				function panel_rect_inverse_map(px, py) {
+					let x = ((px - panel_rect[RECT.LEFT]) / panel_rect[RECT.WIDTH]) * (1.0*(panel_x_max - panel_x_min)) + panel_x_min
+					let y = -((((py - panel_rect[RECT.TOP] - panel_rect[RECT.HEIGHT] + 1) * (1.0 * (panel_y_max - panel_y_min))) / panel_rect[RECT.HEIGHT]) - panel_y_min)
+					return [x,y]
+				}
+
+				if(point_inside_rect(local_mouse_pos, panel_rect)) {
+					if (global.key_break) {
+						let break_pt = panel_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+						global.split_cdf.split_rank = Math.floor(break_pt[0])
+						global.key_break = false
+					}
+
+					if (global.split_cdf.panel_state == PANEL_STATE.START_RESIZE) {
+						global.split_cdf.panel_resize_index  = i
+						global.split_cdf.panel_resize_last_x = local_mouse_pos[0]
+
+						if (i==0) {
+							global.split_cdf.panel_resize_side = PANEL_RESIZE_SIDE.RIGHT
+						} else if (i==(sorted_wws.length-1)) {
+							global.split_cdf.panel_resize_side = PANEL_RESIZE_SIDE.LEFT
+						} else {
+							let mouse_on_left_half = local_mouse_pos[0] < (panel_rect[RECT.LEFT]+panel_rect[RECT.WIDTH]/2)
+							global.split_cdf.panel_resize_side = (mouse_on_left_half) ? PANEL_RESIZE_SIDE.LEFT : PANEL_RESIZE_SIDE.RIGHT
+						}
+
+						global.split_cdf.panel_state = PANEL_STATE.RESIZING
+					}
+
+				}
+
+				// FILTER STUFF
+				let panel_filters = global.split_cdf.filters[i]
+				console.log(i, panel_filters)
+
+				function detect_click_inside_filter(local_click_pos) {
+					let clicked_filter = null
+					for(let i=0; i<panel_filters.length; i++) {
+						let filter = panel_filters[i]
+						if(point_inside_rect(local_click_pos, filter.rect)) {
+							clicked_filter = filter
+						}
+					}
+
+					return clicked_filter
+				}
+
+				if (global.filter_state == FILTER_STATE.START) {
+					if (!point_inside_rect(local_mouse_pos, panel_rect)) {
+						global.filter_state = FILTER_STATE.INACTIVE
+					} else {
+						let clicked_filter = detect_click_inside_filter(local_mouse_pos)
+						if (clicked_filter) {
+							global.filter_moving = clicked_filter
+							global.filter_state  = FILTER_STATE.MOVE
+						} else {
+							let dm_filter_pos = panel_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+
+							let filter = { y: dm_filter_pos[1], type: global.filter_type }
+
+							panel_filters.push(filter)
+							// global.filter_state = FILTER_STATE.UPDATE
+						}
+
+					}
+				} else if (global.filter_state == FILTER_STATE.MOVE) {
+					if (point_inside_rect(local_mouse_pos, aux_rect)) {
+						let filter = global.filter_moving
+						let dm_filter_newpos = panel_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+
+						filter.y = dm_filter_newpos[1]
+
+					}
+				}
+
+				// console.log(global.split_cdf.filters)
+
+				// for (let f=0; f<panel_filters.length; f++) {
+				// 	console.log(panel_filters[f])
+				// 	// let filter = panel_filters[i]
+				// 	//
+				// 	// let cv_filter_startpos = panel_rect_map(offset_start, filter.y)
+				// 	// let cv_filter_endpos   = panel_rect_map(offset_end-1, filter.y)
+				// 	//
+				// 	// let filter_rect = [cv_filter_startpos[0], cv_filter_startpos[1], cv_filter_endpos[0]-cv_filter_startpos[0], 4]
+				// 	// filter.rect = filter_rect
+				// 	//
+				// 	// let color
+				// 	// if (filter.type == FILTER_TYPE.RED) {
+				// 	// 	color = "#FF8888"
+				// 	// } else {
+				// 	// 	color = "#8888FF"
+				// 	// }
+				// 	//
+				// 	// ctx.fillStyle = color
+				// 	// ctx.fillRect(filter_rect[RECT.LEFT], filter_rect[RECT.TOP], filter_rect[RECT.WIDTH], filter_rect[RECT.HEIGHT])
+				// }
 
 				let x_axis_offset = (panel_rect[RECT.WIDTH]/(offset_end-offset_start))/2
 
@@ -2994,7 +3156,7 @@ function update_ts()
 							let p = panel_rect_map(j,yi)
 							p[0] = p[0] + x_axis_offset
 							if (p_prev) {
-								update_dcdf_closest_segment(symbol, p_prev[0], p_prev[1], p[0], p[1])
+								update_aux_closest_segment(symbol, p_prev[0], p_prev[1], p[0], p[1])
 							}
 
 							p_prev = p
@@ -3018,7 +3180,7 @@ function update_ts()
 						let p = panel_rect_map(x, y)
 						p[0] = p[0] +x_axis_offset
 						if (p_prev) {
-							update_dcdf_closest_segment(symbol, p_prev[0], p_prev[1], p[0], p[1])
+							update_aux_closest_segment(symbol, p_prev[0], p_prev[1], p[0], p[1])
 						}
 
 						p_prev = p
@@ -3099,13 +3261,11 @@ function update_ts()
 					ctx.font = '14px Monospace';
 					ctx.fillStyle = "#FFFFFF"
 					ctx.textAlign = 'center';
-					ctx.fillText(text, (dcdf_rect[0]+dcdf_rect[2])-(dcdf_rect[2]/2), 40);
+					ctx.fillText(text, (aux_rect[0]+aux_rect[2])-(aux_rect[2]/2), 40);
 					ctx.restore()
 
 				}
 
-				// TODO:
-				// 1. center labels and drawings on x axis
 			}
 		} else {
 			//--------------
@@ -3122,8 +3282,8 @@ function update_ts()
 				ctx.strokeStyle = "#555555";
 				ctx.lineWidth   = 1;
 
-				let p0 = dcdf_rect_map(aux_x_min, y_ticks[i])
-				let p1 = dcdf_rect_map(aux_x_max, y_ticks[i])
+				let p0 = aux_rect_map(aux_x_min, y_ticks[i])
+				let p1 = aux_rect_map(aux_x_max, y_ticks[i])
 
 				// ctx.beginPath()
 				// ctx.moveTo(p0[0], p0[1])
@@ -3164,8 +3324,8 @@ function update_ts()
 				ctx.strokeStyle = "#555555";
 				ctx.lineWidth   = 1;
 
-				let p0 = dcdf_rect_map(x_ticks[i], aux_y_min)
-				let p1 = dcdf_rect_map(x_ticks[i], aux_y_max)
+				let p0 = aux_rect_map(x_ticks[i], aux_y_min)
+				let p1 = aux_rect_map(x_ticks[i], aux_y_max)
 
 				// ctx.beginPath()
 				// ctx.moveTo(p0[0], p0[1])
@@ -3206,7 +3366,7 @@ function update_ts()
 			}
 
 			if (global.filter_state == FILTER_STATE.START) {
-				if (!point_inside_rect(local_mouse_pos, dcdf_rect)) {
+				if (!point_inside_rect(local_mouse_pos, aux_rect)) {
 					global.filter_state = FILTER_STATE.INACTIVE
 				} else {
 					let clicked_filter = detect_click_inside_filter(local_mouse_pos)
@@ -3214,7 +3374,7 @@ function update_ts()
 						global.filter_moving = clicked_filter
 						global.filter_state  = FILTER_STATE.MOVE
 					} else {
-						let dm_filter_pos = dcdf_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+						let dm_filter_pos = aux_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
 
 						let filter = {offset: dm_filter_pos[0], length: 0, y: dm_filter_pos[1], type: global.filter_type}
 
@@ -3224,8 +3384,8 @@ function update_ts()
 
 				}
 			} else if (global.filter_state == FILTER_STATE.UPDATE) {
-				if (point_inside_rect(local_mouse_pos, dcdf_rect)) {
-					let dm_filter_pos = dcdf_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+				if (point_inside_rect(local_mouse_pos, aux_rect)) {
+					let dm_filter_pos = aux_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
 
 					let filter = global.filter_list[global.filter_list.length-1]
 					let x = dm_filter_pos[0]
@@ -3233,10 +3393,10 @@ function update_ts()
 					filter.length = length
 				}
 			} else if (global.filter_state == FILTER_STATE.MOVE) {
-				if (point_inside_rect(local_mouse_pos, dcdf_rect)) {
+				if (point_inside_rect(local_mouse_pos, aux_rect)) {
 					let filter = global.filter_moving
 
-					let dm_filter_newpos = dcdf_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+					let dm_filter_newpos = aux_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
 
 					filter.offset = dm_filter_newpos[0] - (filter.length/2)
 					filter.y 	  = dm_filter_newpos[1]
@@ -3248,8 +3408,8 @@ function update_ts()
 
 				let filter = global.filter_list[i]
 
-				let cv_filter_startpos = dcdf_rect_map(filter.offset, filter.y)
-				let cv_filter_endpos   = dcdf_rect_map(filter.offset + filter.length, filter.y)
+				let cv_filter_startpos = aux_rect_map(filter.offset, filter.y)
+				let cv_filter_endpos   = aux_rect_map(filter.offset + filter.length, filter.y)
 
 				let filter_rect = [cv_filter_startpos[0], cv_filter_startpos[1], cv_filter_endpos[0]-cv_filter_startpos[0], 4]
 				filter.rect = filter_rect
@@ -3364,9 +3524,9 @@ function update_ts()
 				let p_prev = null
 				for (let j=0;j<current_values.length;j++) {
 					let yi = current_values[j]
-					let p = dcdf_rect_map(j,yi)
+					let p = aux_rect_map(j,yi)
 					if (p_prev) {
-						update_dcdf_closest_segment(symbol, p_prev[0], p_prev[1], p[0], p[1])
+						update_aux_closest_segment(symbol, p_prev[0], p_prev[1], p[0], p[1])
 					}
 					// update_dcdf_closest_point(symbol, p[0], p[1])
 					p_prev = p
@@ -3398,7 +3558,7 @@ function update_ts()
 				ctx.font = '14px Monospace';
 				ctx.fillStyle = "#FFFFFF"
 				ctx.textAlign = 'center';
-				ctx.fillText(text, (dcdf_rect[0]+dcdf_rect[2])-(dcdf_rect[2]/2), 40);
+				ctx.fillText(text, (aux_rect[0]+aux_rect[2])-(aux_rect[2]/2), 40);
 
 			}
 
