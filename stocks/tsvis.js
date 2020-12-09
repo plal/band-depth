@@ -2501,7 +2501,7 @@ function update_ts()
 				let symbol = global.chart_symbols[i]
 
 				if(global.focused_symbol == null || global.chart_symbols[i] != global.focused_symbol) {
-					if (symbol.filter_ok) {
+					if (symbol.filter == 0) {
 						draw_timeseries(symbol, false)
 					}
 				}
@@ -2958,6 +2958,9 @@ function update_ts()
 				for (let j=0; j<n_ranks; j++) {
 
 					let symbol = global.extremal_depth.ranked_symbols[j]
+					if (symbol.filter != 0) {
+						continue
+					}
 					let current_values
 					if (global.aux_view == 'dcdf') {
 						current_values = symbol.cdf_current_values
@@ -3141,7 +3144,10 @@ function update_ts()
 					}
 
 					let ok = (ok_red && ok_blue) || (panel_filters_count == 0)
-					symbol.filter_ok = ok
+					const mask = (1 << 30)-1
+					const panel_mask = (1 << i)
+					symbol.filter = (symbol.filter & (mask ^ panel_mask)) | (ok ? 0 : panel_mask)
+					// symbol.filter_ok = ok
 					return ok
 
 				}
@@ -3239,7 +3245,8 @@ function update_ts()
 				for (let m=0;m<global.extremal_depth.ranked_symbols.length;m++) {
 
 					let symbol = global.extremal_depth.ranked_symbols[m]
-					if (check_filters(symbol)) {
+					check_filters(symbol)
+					if (symbol.filter == 0) {
 						draw_symbol_on_panel(symbol, false)
 					}
 
@@ -3523,7 +3530,7 @@ function update_ts()
 				}
 
 				let ok = (ok_red && ok_blue) || (global.filter_list.length == 0)
-				symbol.filter_ok = ok
+				// symbol.filter_ok = ok
 
 				return ok
 			}
@@ -3646,7 +3653,7 @@ async function main()
 		for (let i=0;i<symbol_names.length;i++) {
 			symbols.push({ name:symbol_names[i], ui_row:null, ui_col:null,
 						   on_table:true, on_chart:false, data: null,
-						   ts_current_values: null, ed_rank:null, mbd_rank:null, filter_ok:true })
+						   ts_current_values: null, ed_rank:null, mbd_rank:null, filter:0 })
 		}
 		global.symbols = symbols
 		global.toggle_state = 0
