@@ -51,7 +51,6 @@ const EVENT= {
 	MOUSEUP: "event_mouseup",
 	DBCLICK: "event_dbclick",
 	KEYDOWN: "event_keydown",
-	DRAWING_FILTER: "event_drawing_filter",
 	CHANGE_AUX_VIEW: "event_change_aux_view"
 }
 
@@ -1056,7 +1055,7 @@ function prepare_ui()
 	install_event_listener(ts_canvas, "mousedown", ts_canvas, EVENT.MOUSEDOWN)
 	install_event_listener(ts_canvas, "mouseup", ts_canvas, EVENT.MOUSEUP)
 	install_event_listener(ts_canvas, "dblclick", ts_canvas, EVENT.DBCLICK)
-	install_event_listener(ts_canvas, "click", ts_canvas, EVENT.DRAWING_FILTER)
+	install_event_listener(ts_canvas, "click", ts_canvas, EVENT.CLICK)
 
 	let main_div = document.createElement('div')
 	global.ui.main_div = main_div
@@ -1521,6 +1520,7 @@ const KEY_S      = 83
 const KEY_E      = 69
 const KEY_N      = 78
 const KEY_B		 = 66
+const KEY_F		 = 70
 const KEY_PERIOD = 190
 const KEY_COMMA  = 188
 const KEY_BCKSPC = 8
@@ -1675,11 +1675,13 @@ function process_event_queue()
 			if (e.raw.getModifierState("Shift")) {
 				global.filter_state = FILTER_STATE.START
 				global.filter_type  = FILTER_TYPE.BLUE
+				console.log("shift clicked")
 
 			}
 			if (e.raw.getModifierState("Control")) {
 				global.filter_state = FILTER_STATE.START
 				global.filter_type  = FILTER_TYPE.RED
+				console.log("ctrl clicked")
 			}
 
 			global.split_cdf.panel_state = PANEL_STATE.START_RESIZE
@@ -3010,6 +3012,22 @@ function update_ts()
 					return [x,y]
 				}
 
+				let x_axis_offset = (panel_rect[RECT.WIDTH]/(offset_end-offset_start))/2
+
+				// FILTER STUFF
+
+				function detect_click_inside_filter(local_click_pos) {
+					let clicked_filter = null
+					for(let i=0; i<global.filter_list.length; i++) {
+						let filter = global.filter_list[i]
+						if(point_inside_rect(local_click_pos, filter.rect)) {
+							clicked_filter = filter
+						}
+					}
+
+					return clicked_filter
+				}
+
 				if(point_inside_rect(local_mouse_pos, panel_rect)) {
 					if (global.key_break) {
 						let break_pt = panel_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
@@ -3033,76 +3051,125 @@ function update_ts()
 						global.split_cdf.panel_state = PANEL_STATE.RESIZING
 					}
 
-				}
-
-				// FILTER STUFF
-				let panel_filters = global.split_cdf.filters[i]
-				console.log(i, panel_filters)
-
-				function detect_click_inside_filter(local_click_pos) {
-					let clicked_filter = null
-					for(let i=0; i<panel_filters.length; i++) {
-						let filter = panel_filters[i]
-						if(point_inside_rect(local_click_pos, filter.rect)) {
-							clicked_filter = filter
-						}
-					}
-
-					return clicked_filter
-				}
-
-				if (global.filter_state == FILTER_STATE.START) {
-					if (!point_inside_rect(local_mouse_pos, panel_rect)) {
-						global.filter_state = FILTER_STATE.INACTIVE
-					} else {
+					if (global.filter_state == FILTER_STATE.START) {
 						let clicked_filter = detect_click_inside_filter(local_mouse_pos)
 						if (clicked_filter) {
 							global.filter_moving = clicked_filter
 							global.filter_state  = FILTER_STATE.MOVE
 						} else {
 							let dm_filter_pos = panel_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+							console.log(dm_filter_pos)
+							let filter = { y: dm_filter_pos[1], type: global.filter_type, panel: i }
 
-							let filter = { y: dm_filter_pos[1], type: global.filter_type }
+							global.filter_list.push(filter)
+							global.filter_state = FILTER_STATE.INACTIVE
 
-							panel_filters.push(filter)
-							// global.filter_state = FILTER_STATE.UPDATE
+						}
+					} else if (global.filter_state == FILTER_STATE.MOVE) {
+						if (point_inside_rect(local_mouse_pos, panel_rect)) {
+							let filter = global.filter_moving
+							let dm_filter_newpos = panel_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+
+							filter.y = dm_filter_newpos[1]
+
+						}
+					}
+
+
+				}
+
+				for (let f=0; f<global.filter_list.length; f++) {
+					// console.log(panel_filters[f])
+					let filter = global.filter_list[f]
+
+					if (filter.panel == i) {
+						let cv_filter_startpos = panel_rect_map(offset_start, filter.y)
+						cv_filter_startpos[0] = cv_filter_startpos[0] + x_axis_offset
+
+						let cv_filter_endpos   = panel_rect_map(offset_end-1, filter.y)
+						cv_filter_endpos[0] = cv_filter_endpos[0] + x_axis_offset
+
+						let filter_rect = [cv_filter_startpos[0], cv_filter_startpos[1], cv_filter_endpos[0]-cv_filter_startpos[0], 4]
+						filter.rect = filter_rect
+
+						let color
+						if (filter.type == FILTER_TYPE.RED) {
+							color = "#FF8888"
+						} else {
+							color = "#8888FF"
 						}
 
-					}
-				} else if (global.filter_state == FILTER_STATE.MOVE) {
-					if (point_inside_rect(local_mouse_pos, aux_rect)) {
-						let filter = global.filter_moving
-						let dm_filter_newpos = panel_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
-
-						filter.y = dm_filter_newpos[1]
-
+						ctx.fillStyle = color
+						ctx.fillRect(filter_rect[RECT.LEFT], filter_rect[RECT.TOP], filter_rect[RECT.WIDTH], filter_rect[RECT.HEIGHT])
 					}
 				}
 
-				// console.log(global.split_cdf.filters)
+				function check_filters(symbol) {
+				// 	console.log("checking filters")
+					let current_values
+					if (global.aux_view == 'dcdf') {
+						current_values = symbol.cdf_current_values
+					} else if (global.aux_view == 'rcdf') {
+						current_values = symbol.ranks_current_values
+					}
+					if (current_values == null) {
+						// console.log("Not drawing cdf for symbol ", symbol.name);
+						return;
+					}
 
-				// for (let f=0; f<panel_filters.length; f++) {
-				// 	console.log(panel_filters[f])
-				// 	// let filter = panel_filters[i]
-				// 	//
-				// 	// let cv_filter_startpos = panel_rect_map(offset_start, filter.y)
-				// 	// let cv_filter_endpos   = panel_rect_map(offset_end-1, filter.y)
-				// 	//
-				// 	// let filter_rect = [cv_filter_startpos[0], cv_filter_startpos[1], cv_filter_endpos[0]-cv_filter_startpos[0], 4]
-				// 	// filter.rect = filter_rect
-				// 	//
-				// 	// let color
-				// 	// if (filter.type == FILTER_TYPE.RED) {
-				// 	// 	color = "#FF8888"
-				// 	// } else {
-				// 	// 	color = "#8888FF"
-				// 	// }
-				// 	//
-				// 	// ctx.fillStyle = color
-				// 	// ctx.fillRect(filter_rect[RECT.LEFT], filter_rect[RECT.TOP], filter_rect[RECT.WIDTH], filter_rect[RECT.HEIGHT])
-				// }
+					let ok_blue = true
+					let ok_red  = true
+					let panel_filters_count = 0
+					for (let f=0; f<global.filter_list.length; f++) {
+						let filter = global.filter_list[f]
+						if (filter.panel == i) {
+							panel_filters_count += 1
+							if (filter.type == FILTER_TYPE.RED) {
+								for (let c=offset_start;c<offset_end;c++) {
+									let yj
+									if (i==0) {
+										yj = current_values[c]
+									} else {
+										yj = current_values[c] - current_values[offset_start-1]
+									}
+				//
+									let point_over_y = (yj > filter.y)
+				//
+									if (point_over_y) {
+										ok_red = false
+										break
+									}
+								}
+							}
+							if (filter.type == FILTER_TYPE.BLUE) {
+								let at_least_one_over = false
+								for (let c=offset_start;c<offset_end;c++) {
+									let yj
+									if (i==0) {
+										yj = current_values[c]
+									} else {
+										yj = current_values[c] - current_values[offset_start-1]
+									}
+				//
+									let point_over_y = (yj > filter.y)
+				//
+									if (point_over_y) {
+										at_least_one_over = true
+									}
+								}
+								ok_blue = at_least_one_over
+								if (ok_blue == false) { break }
+							}
 
-				let x_axis_offset = (panel_rect[RECT.WIDTH]/(offset_end-offset_start))/2
+						}
+
+					}
+
+					let ok = (ok_red && ok_blue) || (panel_filters_count == 0)
+					symbol.filter_ok = ok
+					return ok
+
+				}
 
 				function draw_symbol_on_panel(symbol, focused, color) {
 					let current_values
@@ -3198,7 +3265,9 @@ function update_ts()
 				for (let m=0;m<global.extremal_depth.ranked_symbols.length;m++) {
 
 					let symbol = global.extremal_depth.ranked_symbols[m]
-					draw_symbol_on_panel(symbol, false)
+					if (check_filters(symbol)) {
+						draw_symbol_on_panel(symbol, false)
+					}
 
 				}
 
