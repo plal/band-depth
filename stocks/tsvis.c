@@ -1120,9 +1120,262 @@ curves_density_matrix(CurveList *curve_list, s32 rows, s32 cols, f32 viewbox_x, 
 	return result;
 
 }
+
+// multivariate curves
+
+//
+// [ Curve ... values ... ]
+//
+typedef struct {
+	s32 num_points;
+	s32 num_stats;
+	f64 values[];
+} MCurve;
+
+typedef struct {
+	s32 num_curves;
+	s32 max_curves;
+	MCurve* curves[];
+} MCurveList;
+
+MCurveList*
+tsvis_MCurveList_new(s32 max_curves)
+{
+	MCurveList *curve_list = tsvis_malloc(sizeof(MCurveList) + max_curves * sizeof(MCurve*));
+	if (!curve_list) { return 0; }
+	curve_list[0] = (MCurveList) {
+		.num_curves = 0,
+		.max_curves = max_curves
+	};
+	return curve_list;
+}
+
+s32
+tsvis_MCurveList_append(MCurveList *self, MCurve *curve)
+{
+	if (self->num_curves == self->max_curves) { return 0; }
+	self->curves[self->num_curves] = curve;
+	++self->num_curves;
+	return 1;
+}
+
+MCurve*
+tsvis_MCurve_new(s32 num_points, s32 num_stats)
+{
+	MCurve *curve = tsvis_malloc(sizeof(MCurve) + sizeof(f64) * num_points * num_stats);
+	if (!curve) { return 0; }
+	// for (s32 i=0;i<sizeof(MCurve);++i) { ((u8*)curve)[i] = 0; }
+	*curve = (MCurve) { 0 };
+	curve->num_points = num_points;
+	curve->num_stats  = num_stats;
+	return curve;
+}
+
+s32
+tsvis_MCurve_num_points(MCurve* self)
+{
+	return self->num_points;
+}
+
+f64*
+tsvis_MCurve_values(MCurve* self)
+{
+	return self->values;
+}
+
+void
+print_MCurve(MCurve* self)
+{
+	s32 n_points = self->num_points;
+	s32 n_stats  = self->num_stats;
+	s32 offset	 = 0;
+
+	printf("[ ");
+	for (s32 i=0;i<n_points;++i) {
+		printf("[");
+		for (s32 j=0;j<n_stats;++j) {
+			if (j<(n_stats-1)) {
+				printf("%f,", self->values[offset+j]);
+			} else {
+				printf("%f", self->values[offset+j]);
+			}
+		}
+		printf("] ");
+		offset += n_stats;
+	}
+	printf(" ]\n");
+}
+
+
+typedef struct {
+	MCurveList *mcurve_list;
+	s32 n; // num curves
+	s32 p; // num points
+	s32 s; // num stats
+	s32 lt_matrix;
+	s32 gt_matrix;
+	s32 left;
+	s32 length;
+} RankCDF;
+
+s32*
+rcdf_get_gt_matrix(RankCDF *self) { return OffsetedPointer(self,self->gt_matrix); }
+
+static s32*
+rcdf_get_gt_for_curve(RankCDF *self, s32 curve) { return rcdf_get_gt_matrix(self) + curve * self->p; }
+
+s32*
+rcdf_get_lt_matrix(RankCDF *self) { return OffsetedPointer(self,self->lt_matrix); }
+
+static s32*
+rcdf_get_lt_for_curve(RankCDF *self, s32 curve) { return rcdf_get_lt_matrix(self) + curve * self->p; }
+
+static void
+rcdf_print_gt(RankCDF *self) {
+	for (s32 i=0;i<self->n;++i) {
+		s32 *gt = rcdf_get_gt_for_curve(self, i);
+		for (s32 j=0;j<self->p;++j) {
+			printf("%-6d ", gt[j]);
+		}
+		printf("\n");
+	}
+}
+
+static void
+rcdf_print_lt(RankCDF *self) {
+	for (s32 i=0;i<self->n;++i) {
+		s32 *lt = rcdf_get_lt_for_curve(self, i);
+		for (s32 j=0;j<self->p;++j) {
+			printf("%-6d ", lt[j]);
+		}
+		printf("\n");
+	}
+}
+
+RankCDF*
+rcdf_rank_cdf_run(MCurveList *curve_list)
+{
+	s32 num_curves = curve_list->num_curves;
+	MCurve* *curves = curve_list->curves;
+
+	s32 n = num_curves;
+	s32 p = curves[0]->num_points;
+	s32 s = curves[0]->num_stats; // 0, 1, ... n
+
+	s32 header_storage = RAlign(sizeof(RankCDF),8);
+	// add an extra column for an auxiliar space
+	s32 lt_matrix_storage = RAlign(n * p * sizeof(s32),8);
+	s32 gt_matrix_storage = RAlign(n * p * sizeof(s32),8);
+	s32 storage = header_storage + lt_matrix_storage + gt_matrix_storage;
+
+	RankCDF *rcdf = tsvis_malloc(storage);
+	if (!rcdf) { return 0; }
+	for (s32 i=0;i<storage;++i) ((u8*) rcdf)[i] = 0;
+
+	*rcdf = (RankCDF) {
+		.mcurve_list = curve_list,
+		.n = n,
+		.p = p,
+		.s = s,
+		.lt_matrix = header_storage,
+		.gt_matrix = header_storage + lt_matrix_storage,
+		.left = storage,
+		.length = storage
+	};
+
+	void *checkpoint = tsvis_mem_get_checkpoint();
+
+	// s32 *gt_matrix = rcdf_get_gt_matrix(rcdf);
+	// s32 *lt_matrix = rcdf_get_lt_matrix(rcdf);
+
+	s32 row_storage = sizeof(s32) * p;
+	s32 *aux_lt = tsvis_malloc(2*row_storage);
+	s32 *aux_gt = aux_lt + p;
+
+	for (s32 i=0; i<n; ++i) {
+
+		s32 *lt = rcdf_get_lt_for_curve(rcdf, i);
+		s32 *gt = rcdf_get_gt_for_curve(rcdf, i);
+
+		for (s32 j=0; j<p; j++) {
+			aux_lt[j] = 0;
+			aux_gt[j] = 0;
+		}
+
+		for (s32 j=0; j<p*s; j=j+s) {
+			// printf("comparing curve %d to others on point %d\n", i, j/s);
+			for (s32 k=0; k<n; ++k) {
+				if (i==k) { continue; }
+				s32 k_is_always_gt = 1;
+				s32 k_is_always_lt = 1;
+				for (s32 l=j; l<j+s; ++l) {
+					// printf("- point %d / stat %d: %d:%.2f %d:%.2f\n", j/s, l, i, curves[i]->values[l], k, curves[k]->values[l]);
+					if (curves[i]->values[l] >= curves[k]->values[l]) { k_is_always_gt = 0; }
+					if (curves[i]->values[l] <= curves[k]->values[l]) { k_is_always_lt = 0; }
+				}
+
+				// if (always_gt) { printf("curve %d is always gt than curve %d on point %d\n", i, k, j/s); }
+				// if (always_lt) { printf("curve %d is always lt than curve %d on point %d\n", i, k, j/s); }
+				aux_gt[j/s] += k_is_always_gt;
+				aux_lt[j/s] += k_is_always_lt;
+			}
+			// printf("curve %d point %d --> gt:%d lt:%d\n", i, j/s, gt, lt);
+		}
+
+		for (s32 j=0; j<p; ++j) {
+			gt[j] = aux_gt[j];
+			lt[j] = aux_lt[j];
+
+		}
+	}
+
+	tsvis_mem_set_checkpoint(checkpoint);
+
+	printf("lt\n");
+	rcdf_print_lt(rcdf);
+
+	printf("gt\n");
+	rcdf_print_gt(rcdf);
+
+	return rcdf;
+}
 #endif
 
 #ifndef WEBASSEMBLY
+
+static void
+test_mcurves()
+{
+
+	f64 curves_data[] = {
+		6.0,  2.0,  1.0, 4.0,  1.0, 0.0,
+		8.0,  6.0,  5.0, 16.0, 12.0, 13.0,
+		10.0, 10.0, 6.0, 8.0,  3.0, 6.0
+	};
+
+	s32 n   = 3;
+	s32 n_p = 2;
+	s32 n_s = 3;
+
+	MCurveList *mcurve_list = tsvis_MCurveList_new(n);
+
+	s32 offset = 0;
+	for (s32 i=0;i<n;++i) {
+		MCurve *mcurve = tsvis_MCurve_new(n_p,n_s);
+		for (s32 j=0;j<n_p*n_s;j++) {
+			mcurve->values[j] = curves_data[offset + j];
+		}
+		tsvis_MCurveList_append(mcurve_list, mcurve);
+		offset += n_p*n_s;
+	}
+
+	for (s32 i=0; i<mcurve_list->num_curves; i++) {
+		// printf("%lu", sizeof(mcurve_list[i]));
+		print_MCurve(mcurve_list->curves[i]);
+	}
+
+	RankCDF *rcdf = rcdf_rank_cdf_run(mcurve_list);
+}
 
 static void
 test_extremal_depth()
@@ -1292,7 +1545,8 @@ test_curves_density_matrix()
 int
 main(int argc, char *argv[])
 {
-	test_extremal_depth();
+	test_mcurves();
+	// test_extremal_depth();
 	// test_next_grid_intersection();
 	// test_curves_density_matrix();
 	return 0;

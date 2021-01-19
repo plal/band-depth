@@ -51,7 +51,9 @@ const EVENT= {
 	MOUSEUP: "event_mouseup",
 	DBCLICK: "event_dbclick",
 	KEYDOWN: "event_keydown",
-	CHANGE_AUX_VIEW: "event_change_aux_view"
+	CHANGE_AUX_VIEW: "event_change_aux_view",
+	GET_MULTIVARIATE_RANKS: "event_get_multivariate_ranks",
+	CLICKED_STAT: "event_clicked_stat"
 }
 
 var global = {
@@ -113,44 +115,6 @@ function date_offset_to_string(date_offset)
 		(x.getUTCDate()).toString().padStart(2,'0')
 }
 
-function value_running_avg(date, values, window_size) {
-	let pad = Math.floor(window_size/2)
-
-	let start_date 		= date_offset(global.date_start)
-	let start_date_dist = date - start_date
-
-	let end_date 	  = date_offset(global.date_end)
-	let end_date_dist = end_date - date
-
-	let count = 0
-	if(start_date_dist < pad) {
-		for(let i=start_date; i<=start_date+window_size-1; i++) {
-			if (values[i] == undefined) {
-				count += 0
-			} else {
-				count += values[i]
-			}
-		}
-	} else if (end_date_dist <= pad) {
-		for(let i=(end_date-window_size+1);i<=end_date;i++) {
-			if (values[i] == undefined) {
-				count += 0
-			} else {
-				count += values[i]
-			}
-		}
-	} else {
-		for(let i=(date-pad); i<=(date+pad); i++) {
-			if (values[i] == undefined) {
-				count += 0
-			} else {
-				count += values[i]
-			}
-		}
-	}
-
-	return count/window_size
-}
 
 function reset_zoom() {
 
@@ -210,13 +174,25 @@ async function download_symbol_data(symbol)
 		let result = await fetch(encodeURI('http://localhost:8888/get?p='+symbol.name))
 		let data   = await result.json()
 		let dict = {}
-		for (let i=0;i<data.data[0].y_values.length;i++) {
-			// let x_value = date_offset(data.data[0].x_values[i])
-			let x_value = parseInt(data.data[0].x_values[i])
-			let y_value = parseInt(data.data[0].y_values[i])
-			dict[x_value] = y_value
+		for (let i=0;i<data.data[0].game_ids.length;i++) {
+			let game_data = {}
+			let game_id = parseInt(data.data[0].game_ids[i])
+			if (game_id > 82) { continue }
+			game_data.team  	= data.data[0].teams[i]
+			game_data.date  	= data.data[0].dates[i]
+			game_data.points    = parseInt(data.data[0].points[i])
+			game_data.assists   = parseInt(data.data[0].assists[i])
+			game_data.rebounds  = parseInt(data.data[0].rebounds[i])
+			game_data.steals    = parseInt(data.data[0].steals[i])
+			game_data.blocks    = parseInt(data.data[0].blocks[i])
+			game_data.turnovers = parseInt(data.data[0].turnovers[i])
+			game_data.fouls 	= parseInt(data.data[0].fouls[i])
+
+			dict[game_id] = game_data
 		}
+
 		symbol.data = dict
+		// console.log(symbol)
 		global.recompute_viewbox = true
 	} catch (e) {
 		console.log("Fatal Error: couldn't download symbol data " + symbol.name)
@@ -248,7 +224,6 @@ function remove_symbol_from_chart(symbol) {
 // if state is odd we remove every symbol from the chart;
 //--------------
 
-
 function add_table_symbols() {
 	let symbols = global.symbols
 
@@ -264,11 +239,7 @@ function add_table_symbols() {
 		if (symbol.on_table) {
 			// add symbol to chart
 			if (!symbol.on_chart) {
-				symbol.on_chart = true
-				global.chart_symbols.push(symbol)
-				global.chart_colors.push(color)
-				symbol.ui_col.style.color = color
-				symbol.ui_col.style.fontWeight = 'bold'
+				add_symbol_to_chart(symbol,color)
 				download_symbol_data(symbol)
 			}
 		}
@@ -646,72 +617,186 @@ function prepare_fb_outliers(depth_type, group) {
 	}
 }
 
+function create_checkbox(name, value) {
+	let check = document.createElement('input');
+	check.type = "checkbox";
+	if (typeof name !== 'undefined') {
+		check.name = name;
+	}
+	if (typeof value !== 'undefined') {
+		check.value = value;
+	}
+
+	return check
+}
+
+function create_checkbox_label(check, text) {
+	let lbl = document.createElement('label');
+	lbl.setAttribute("for", check);
+	lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF';
+	lbl.innerHTML = text;
+
+	return lbl
+}
+
+function create_section_label(text) {
+	let lbl = document.createElement('label');
+	lbl.style = 'font-family:Courier; font-size:15pt; color: #FFFFFF';
+	lbl.innerHTML = text;
+
+	return lbl;
+}
+
 function prepare_ui()
 {
 
-	let start_date_input = document.createElement('input')
-	global.ui.start_date_input = start_date_input
-	start_date_input.setAttribute("type","date")
-	start_date_input.defaultValue = global.date_start
-	start_date_input.classList.add('date_input')
-	start_date_input.id = 'start_date_input'
-	install_event_listener(start_date_input, 'change', start_date_input, EVENT.UPDATE_START_DATE)
+	let stats_section_lbl = create_section_label('Stats');
 
-	let start_date_label = document.createElement('label')
-	global.ui.start_date_label = start_date_label
-	start_date_label.classList.add('date_input_label')
-	start_date_label.setAttribute("for", start_date_input)
-	start_date_label.innerHTML = "start"
+	//----------
+	// stats checkboxes
+	//----------
 
-	let start_date_grid = document.createElement('div')
-	global.ui.start_date_grid = start_date_grid
-	start_date_grid.id = start_date_grid
-	start_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
-	start_date_grid.appendChild(start_date_label)
-	start_date_grid.appendChild(start_date_input)
+	let pts_btn = create_checkbox('stat','points');
+	global.ui.pts_btn = pts_btn;
+	install_event_listener(pts_btn, 'click', pts_btn, EVENT.CLICKED_STAT);
 
+	let pts_lbl = create_checkbox_label(pts_btn, 'Points');
+	global.ui.pts_lbl = pts_lbl
 
-	let end_date_input = document.createElement('input')
-	global.ui.end_date_input = end_date_input
-	end_date_input.setAttribute("type","date")
-	end_date_input.defaultValue = global.date_end
-	end_date_input.classList.add('date_input')
-	end_date_input.id = 'end_date_input'
-	install_event_listener(end_date_input, 'change', end_date_input, EVENT.UPDATE_END_DATE)
+	let asts_btn = create_checkbox('stat','assists');
+	global.ui.asts_btn = asts_btn;
+	install_event_listener(asts_btn, 'click', asts_btn, EVENT.CLICKED_STAT);
 
-	let end_date_label = document.createElement('label')
-	global.ui.end_date_label = end_date_label
-	end_date_label.setAttribute("for", end_date_input)
-	end_date_label.classList.add('date_input_label')
-	end_date_label.innerHTML = "end"
+	let asts_lbl = create_checkbox_label(asts_btn, 'Assists');
+	global.ui.asts_lbl = asts_lbl;
 
-	let end_date_grid = document.createElement('div')
-	global.ui.end_date_grid = end_date_grid
-	end_date_grid.id = end_date_grid
-	end_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
-	end_date_grid.appendChild(end_date_label)
-	end_date_grid.appendChild(end_date_input)
+	let rbds_btn = create_checkbox('stat','rebounds');
+	global.ui.rbds_btn = rbds_btn;
+	install_event_listener(rbds_btn, 'click', rbds_btn, EVENT.CLICKED_STAT);
 
-	let norm_date_input = document.createElement('input')
-	global.ui.norm_date_input = norm_date_input
-	norm_date_input.setAttribute("type","date")
-	norm_date_input.defaultValue = global.date_norm
-	norm_date_input.classList.add('date_input')
-	norm_date_input.id = 'norm_date_input'
-	install_event_listener(norm_date_input, 'change', norm_date_input, EVENT.UPDATE)
+	let rbds_lbl = create_checkbox_label(rbds_btn, 'Rebounds');
+	global.ui.rbds_lbl = rbds_lbl;
 
-	let norm_date_label = document.createElement('label')
-	global.ui.norm_date_label = norm_date_label
-	norm_date_label.setAttribute("for", norm_date_input)
-	norm_date_label.classList.add('date_input_label')
-	norm_date_label.innerHTML = "norm"
+	let stls_btn = create_checkbox('stat','steals');
+	global.ui.stls_btn = stls_btn;
+	install_event_listener(stls_btn, 'click', stls_btn, EVENT.CLICKED_STAT);
 
-	let norm_date_grid = document.createElement('div')
-	global.ui.norm_date_grid = norm_date_grid
-	norm_date_grid.id = norm_date_grid
-	norm_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
-	norm_date_grid.appendChild(norm_date_label)
-	norm_date_grid.appendChild(norm_date_input)
+	let stls_lbl = create_checkbox_label(stls_btn, 'Steals');
+	global.ui.stls_lbl = stls_lbl;
+
+	let blcks_btn = create_checkbox('stat','blocks');
+	global.ui.blcks_btn = blcks_btn;
+	install_event_listener(blcks_btn, 'click', blcks_btn, EVENT.CLICKED_STAT);
+
+	let blcks_lbl = create_checkbox_label(blcks_btn, 'Blocks');
+	global.ui.blcks_lbl = blcks_lbl;
+
+	let tos_btn = create_checkbox('stat','turnovers');
+	global.ui.tos_btn = tos_btn;
+	install_event_listener(tos_btn, 'click', tos_btn, EVENT.CLICKED_STAT);
+
+	let tos_lbl = create_checkbox_label(tos_btn, 'Turnovers');
+	global.ui.tos_lbl = tos_lbl;
+
+	let fls_btn = create_checkbox('stat','fouls');
+	global.ui.fls_btn = fls_btn;
+	install_event_listener(fls_btn, 'click', fls_btn, EVENT.CLICKED_STAT);
+
+	let fls_lbl = create_checkbox_label(fls_btn, 'Fouls');
+	global.ui.fls_lbl = fls_lbl;
+
+	let stats_grid = document.createElement('div');
+	global.ui.stats_grid = stats_grid;
+	stats_grid.id = stats_grid;
+	stats_grid.style = 'display:grid; background-color:#2f3233; align-content:space-around; grid-template-columns:repeat(2, 50px)';
+	stats_grid.appendChild(pts_btn);
+	stats_grid.appendChild(pts_lbl);
+	stats_grid.appendChild(asts_btn);
+	stats_grid.appendChild(asts_lbl);
+	stats_grid.appendChild(rbds_btn);
+	stats_grid.appendChild(rbds_lbl);
+	stats_grid.appendChild(stls_btn);
+	stats_grid.appendChild(stls_lbl);
+	stats_grid.appendChild(blcks_btn);
+	stats_grid.appendChild(blcks_lbl);
+	stats_grid.appendChild(tos_btn);
+	stats_grid.appendChild(tos_lbl);
+	stats_grid.appendChild(fls_btn);
+	stats_grid.appendChild(fls_lbl);
+
+	let get_multivariate_ranks_btn = document.createElement('button')
+	global.ui.get_multivariate_ranks_btn = get_multivariate_ranks_btn
+	//get_multivariate_ranks_btn.setAttribute("type","button")
+	get_multivariate_ranks_btn.id = "get_multivariate_ranks_btn"
+	get_multivariate_ranks_btn.textContent = 'get multivariate ranks'
+	get_multivariate_ranks_btn.style = "position:relative; width:100%; margin:2px;\
+	 								  border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
+	install_event_listener(get_multivariate_ranks_btn, 'click', get_multivariate_ranks_btn, EVENT.GET_MULTIVARIATE_RANKS)
+
+	// let start_date_input = document.createElement('input')
+	// global.ui.start_date_input = start_date_input
+	// start_date_input.setAttribute("type","date")
+	// start_date_input.defaultValue = global.date_start
+	// start_date_input.classList.add('date_input')
+	// start_date_input.id = 'start_date_input'
+	// install_event_listener(start_date_input, 'change', start_date_input, EVENT.UPDATE_START_DATE)
+	//
+	// let start_date_label = document.createElement('label')
+	// global.ui.start_date_label = start_date_label
+	// start_date_label.classList.add('date_input_label')
+	// start_date_label.setAttribute("for", start_date_input)
+	// start_date_label.innerHTML = "start"
+	//
+	// let start_date_grid = document.createElement('div')
+	// global.ui.start_date_grid = start_date_grid
+	// start_date_grid.id = start_date_grid
+	// start_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
+	// start_date_grid.appendChild(start_date_label)
+	// start_date_grid.appendChild(start_date_input)
+	//
+	//
+	// let end_date_input = document.createElement('input')
+	// global.ui.end_date_input = end_date_input
+	// end_date_input.setAttribute("type","date")
+	// end_date_input.defaultValue = global.date_end
+	// end_date_input.classList.add('date_input')
+	// end_date_input.id = 'end_date_input'
+	// install_event_listener(end_date_input, 'change', end_date_input, EVENT.UPDATE_END_DATE)
+	//
+	// let end_date_label = document.createElement('label')
+	// global.ui.end_date_label = end_date_label
+	// end_date_label.setAttribute("for", end_date_input)
+	// end_date_label.classList.add('date_input_label')
+	// end_date_label.innerHTML = "end"
+	//
+	// let end_date_grid = document.createElement('div')
+	// global.ui.end_date_grid = end_date_grid
+	// end_date_grid.id = end_date_grid
+	// end_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
+	// end_date_grid.appendChild(end_date_label)
+	// end_date_grid.appendChild(end_date_input)
+	//
+	// let norm_date_input = document.createElement('input')
+	// global.ui.norm_date_input = norm_date_input
+	// norm_date_input.setAttribute("type","date")
+	// norm_date_input.defaultValue = global.date_norm
+	// norm_date_input.classList.add('date_input')
+	// norm_date_input.id = 'norm_date_input'
+	// install_event_listener(norm_date_input, 'change', norm_date_input, EVENT.UPDATE)
+	//
+	// let norm_date_label = document.createElement('label')
+	// global.ui.norm_date_label = norm_date_label
+	// norm_date_label.setAttribute("for", norm_date_input)
+	// norm_date_label.classList.add('date_input_label')
+	// norm_date_label.innerHTML = "norm"
+	//
+	// let norm_date_grid = document.createElement('div')
+	// global.ui.norm_date_grid = norm_date_grid
+	// norm_date_grid.id = norm_date_grid
+	// norm_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
+	// norm_date_grid.appendChild(norm_date_label)
+	// norm_date_grid.appendChild(norm_date_input)
+
 
 	let normalize_btn = document.createElement('input')
 	global.ui.normalize_btn = normalize_btn
@@ -996,9 +1081,12 @@ function prepare_ui()
    	global.ui.left_panel = left_panel
    	left_panel.id = 'left_panel'
    	left_panel.style = 'display:flex; flex-direction:column; background-color:#2f3233; align-content:space-around;'
-	left_panel.appendChild(start_date_grid)
-	left_panel.appendChild(end_date_grid)
-	left_panel.appendChild(norm_date_grid)
+	left_panel.appendChild(stats_section_lbl)
+	left_panel.appendChild(stats_grid)
+	left_panel.appendChild(get_multivariate_ranks_btn)
+	// left_panel.appendChild(start_date_grid)
+	// left_panel.appendChild(end_date_grid)
+	// left_panel.appendChild(norm_date_grid)
 	left_panel.appendChild(normalize_grid)
 	left_panel.appendChild(modified_band_depth_grid)
 	left_panel.appendChild(mbd_draw_outliers_grid)
@@ -1174,11 +1262,193 @@ function run_modified_band_depth_algorithm() {
 	}
 }
 
+function get_multivariate_ranks()
+{
+
+	if (global.chart_symbols.length == 0) {
+		window.alert("No players selected!");
+		return;
+	}
+
+	let n = global.chart_symbols.length;
+
+	let symbols_ranks = [];
+
+	// let n = 3
+	// let p = 2
+	// let s = 3
+
+	let mem_checpoint_raw_p = global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint();
+
+	let mcurve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_MCurveList_new(n);
+	while (mcurve_list_raw_p == 0) {
+		grow_heap();
+		mcurve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_MCurveList_new(n);
+	}
+
+	let range = [1, 82]
+	let p = range[1];
+	let s = 3;
+
+	for (let i=0; i<n; i++) {
+		let symbol = global.chart_symbols[i];
+		let values = [];
+
+		for (let j=range[0]; j<=range[1]; j++) {
+			if (j in symbol.data) {
+				values.push(symbol.data[j].points);
+				values.push(symbol.data[j].assists);
+				values.push(symbol.data[j].rebounds);
+			} else {
+				values.push(0);
+				values.push(0);
+				values.push(0);
+			}
+		}
+
+		symbols_ranks.push(symbol);
+
+		// console.log(symbol.name, values);
+
+		let mcurve_raw_p  = global.tsvis_wasm_module.exports.tsvis_MCurve_new(p,s);
+		while (mcurve_raw_p == 0) {
+			grow_heap();
+			mcurve_raw_p = global.tsvis_wasm_module.exports.tsvis_MCurve_new(p,s);
+		}
+
+		let values_raw_p = global.tsvis_wasm_module.exports.tsvis_MCurve_values(mcurve_raw_p);
+
+		const c_curve_values = new Float64Array(global.tsvis_wasm_module.exports.memory.buffer, values_raw_p, p*s);
+		c_curve_values.set(values);
+
+		let ok = global.tsvis_wasm_module.exports.tsvis_MCurveList_append(mcurve_list_raw_p, mcurve_raw_p);
+
+	}
+
+	// let values = []
+	// values.push([6,2,1,4,1,0])
+	// values.push([8,6,5,16,12,13])
+	// values.push([10,10,6,8,3,6])
+	//
+	// for (let i=0;i<n;i++) {
+	//
+	// 	let mcurve_raw_p  = global.tsvis_wasm_module.exports.tsvis_MCurve_new(p,s);
+	// 	while (mcurve_raw_p == 0) {
+	// 		grow_heap();
+	// 		mcurve_raw_p = global.tsvis_wasm_module.exports.tsvis_MCurve_new(p,s);
+	// 	}
+	//
+	// 	let values_raw_p = global.tsvis_wasm_module.exports.tsvis_MCurve_values(mcurve_raw_p);
+	// 	console.log(values[i])
+	// 	const c_curve_values = new Float64Array(global.tsvis_wasm_module.exports.memory.buffer, values_raw_p, p*s);
+	// 	c_curve_values.set(values[i]);
+	//
+	// 	let ok = global.tsvis_wasm_module.exports.tsvis_MCurveList_append(mcurve_list_raw_p, mcurve_raw_p);
+	//
+	// }
+
+	let rcdf_raw_p = global.tsvis_wasm_module.exports.rcdf_rank_cdf_run(mcurve_list_raw_p);
+	while (rcdf_raw_p == 0) {
+		grow_heap();
+		rcdf_raw_p = global.tsvis_wasm_module.exports.rcdf_rank_cdf_run(mcurve_list_raw_p);
+	}
+
+	let lt_matrix_raw_p	= global.tsvis_wasm_module.exports.rcdf_get_lt_matrix(rcdf_raw_p);
+	let gt_matrix_raw_p	= global.tsvis_wasm_module.exports.rcdf_get_gt_matrix(rcdf_raw_p);
+
+	const lt_matrix = new Int32Array(global.tsvis_wasm_module.exports.memory.buffer, lt_matrix_raw_p, n * p);
+	const gt_matrix = new Int32Array(global.tsvis_wasm_module.exports.memory.buffer, gt_matrix_raw_p, n * p);
+	// console.log(gt_matrix)
+
+	for (let i=0; i<n; i++) {
+		let symbol_i = symbols_ranks[i];
+
+		let lt_ranks = [];
+		let gt_ranks = [];
+
+		for (let j=0; j<p; j++) {
+			let ltgt_matrix_index = (p*i)+j
+
+			let lt_rank = lt_matrix[ltgt_matrix_index];
+			let gt_rank = gt_matrix[ltgt_matrix_index];
+			lt_ranks.push(lt_rank);
+			gt_ranks.push(gt_rank);
+		}
+
+		let lt_ranks_dist = []
+		let gt_ranks_dist = []
+		for (let j=0; j<n; j++) {
+			let count_lt_rankj = 0
+			let count_gt_rankj = 0
+			for (let k=0; k<p; k++) {
+				if (lt_ranks[k] <= j) {
+					count_lt_rankj += 1
+				}
+
+				if (gt_ranks[k] <= j) {
+					count_gt_rankj += 1
+				}
+			}
+			lt_ranks_dist.push(count_lt_rankj/range[1])
+			gt_ranks_dist.push(count_gt_rankj/range[1])
+		}
+
+		// console.log(symbol_i.name, gt_ranks);
+		// console.log(symbol_i.name, gt_ranks_dist);
+		// console.log(symbol_i.name, lt_ranks);
+		// console.log(symbol_i.name, lt_ranks_dist);
+
+		symbol_i.lt_ranks_dist = lt_ranks_dist
+		symbol_i.gt_ranks_dist = gt_ranks_dist
+
+
+	}
+
+	// for (let i=0; i<symbols_ranks.length; i++) {
+	// 	let symbol_i = symbols_ranks[i];
+	//
+	// 	let lt_ranks = [];
+	// 	let gt_ranks = [];
+	// 	for (let j=0; j<range[1]; j++) {
+	// 		let lt_rank = lt_matrix[(n*j)+i];
+	// 		let gt_rank = gt_matrix[(n*j)+i];
+	// 		lt_ranks.push(lt_rank);
+	// 		gt_ranks.push(gt_rank);
+	// 	}
+	// 	console.log(symbol_i.name, gt_ranks);
+	// 	console.log(symbol_i.name, lt_ranks);
+	//
+	// 	let lt_ranks_dist = []
+	// 	let gt_ranks_dist = []
+	// 	for (let j=0; j<n; j++) {
+	// 		let count_lt_rankj = 0
+	// 		let count_gt_rankj = 0
+	// 		for (let k=0; k<range[1]; k++) {
+	// 			if (lt_ranks[k] <= j) {
+	// 				count_lt_rankj += 1
+	// 			}
+	//
+	// 			if (gt_ranks[k] <= j) {
+	// 				count_gt_rankj += 1
+	// 			}
+	// 		}
+	// 		lt_ranks_dist.push(count_lt_rankj/range[1])
+	// 		gt_ranks_dist.push(count_gt_rankj/range[1])
+	// 	}
+	//
+	// 	symbol_i.lt_ranks_dist = lt_ranks_dist
+	// 	symbol_i.gt_ranks_dist = gt_ranks_dist
+	//
+	// }
+
+	global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p);
+}
+
 function run_extremal_depth_algorithm()
 {
 
 	if (global.chart_symbols.length == 0) {
-		window.alert("No symbols selected!")
+		window.alert("No players selected!")
 		return
 	}
 
@@ -1273,6 +1543,8 @@ function run_extremal_depth_algorithm()
 			lt_ranks.push(lt_rank)
 			gt_ranks.push(gt_rank)
 		}
+		// console.log(symbol_i.name)
+		// console.log(gt_ranks)
 
 		let lt_ranks_dist = []
 		let gt_ranks_dist = []
@@ -1612,10 +1884,10 @@ function process_event_queue()
 						global.filter_list.pop()
 					}
 				} else if (e.raw.keyCode == KEY_ESC) {
-					if (global.split_cdf.ww.length > 0) {
-						global.split_cdf.breaks.pop()
-						global.split_cdf.ww.pop()
-						global.split_cdf.realign.pop()
+					if (global.split_cdf.ww.length > 1) {
+						global.split_cdf.breaks = [0]
+						global.split_cdf.ww = [1]
+						global.split_cdf.realign = []
 					}
 				}
 			}
@@ -1687,6 +1959,11 @@ function process_event_queue()
 			global.denselines.active = !global.denselines.active
 		} else if (e.event_type == EVENT.CHANGE_AUX_VIEW) {
 			global.aux_view = global.ui.rank_depth_select.value
+		} else if (e.event_type == EVENT.GET_MULTIVARIATE_RANKS) {
+			get_multivariate_ranks()
+		} else if (e.event_type == EVENT.CLICKED_STAT) {
+			console.log(e.context.value)
+			// console.log(global.symbols[0].data[1][e.context.value])
 		}
 	}
 	global.events.length = 0
@@ -1828,18 +2105,13 @@ function update_ts()
 		let y_min = 1.0
 		let y_max = 1.0
 
-		let x_min = 1.0
-		let x_max = 1.0
+		let x_min = 1
+		let x_max = 82
 		let last_valid_value = 1
 
 		for (let i=0;i<global.chart_symbols.length;i++) {
 			let symbol = global.chart_symbols[i]
 
-			for (const key in symbol.data) {
-				if (symbol.data.hasOwnProperty(key)) {
-					x_max = Math.max(x_max, parseInt(key))
-				}
-			}
 			symbol.ts_current_values = null
 			if (symbol.data == null) {
 				continue
@@ -1862,7 +2134,12 @@ function update_ts()
 			let ts_current_values = []
 			let ts_current_values_diffs = []
 			for (let j=x_min;j<=x_max;j++) {
-				let value = symbol.data[j] //value_running_avg(j, symbol.data, 7)
+				let value;
+				if (j in symbol.data) {
+					value = symbol.data[j].points
+				} else {
+					value = 0
+				}
 				let last_value = symbol.data[j-1]
 
 				if (value == undefined) {
@@ -1888,7 +2165,6 @@ function update_ts()
 					diff = value
 				}
 
-				// value = i
 				ts_current_values.push(value)
 				ts_current_values_diffs.push(diff)
 				last_valid_value = value
@@ -2230,8 +2506,8 @@ function update_ts()
 			ctx.beginPath()
 			let p_prev = null
 			for (let j=x_min;j<=x_max;j++) {
-				let date_offset = date_start+j
-				let yi = ts_current_values[j]
+				// let date_offset = date_start+j
+				let yi = ts_current_values[j-1]
 				let p = map(j,yi)
 				if (p_prev) {
 					update_closest_segment(symbol, j, p_prev[0], p_prev[1], p[0], p[1])
@@ -2728,8 +3004,8 @@ function update_ts()
 		let aux_y_max = 0.0
 		let last_valid_value = 1
 
-		for (let i=0;i<global.extremal_depth.ranked_symbols.length;i++) {
-			let symbol = global.extremal_depth.ranked_symbols[i]
+		for (let i=0;i<global.chart_symbols.length;i++) {
+			let symbol = global.chart_symbols[i]
 
 			symbol.cdf_current_values = null
 			symbol.ranks_current_values = null
@@ -2777,9 +3053,9 @@ function update_ts()
 		let aux_x_min = 0
 		let aux_x_max
 		if (global.aux_view == 'dcdf') {
-			aux_x_max = global.extremal_depth.ranked_symbols[0].cdf_matrix_row.length - 1
+			aux_x_max = global.chart_symbols[0].cdf_matrix_row.length - 1
 		} else if (global.aux_view == 'rcdf') {
-			aux_x_max = global.extremal_depth.ranked_symbols.length - 1
+			aux_x_max = global.chart_symbols.length - 1
 		}
 
 		function aux_rect_map(x, y) {
@@ -2840,7 +3116,7 @@ function update_ts()
 			}
 		}
 
-		let n_ranks = global.extremal_depth.ranked_symbols.length
+		let n_ranks = global.chart_symbols.length
 
 		function rotate(arr, a, b) {
 			let x = arr[b-1]
@@ -2957,7 +3233,7 @@ function update_ts()
 
 				for (let j=0; j<n_ranks; j++) {
 
-					let symbol = global.extremal_depth.ranked_symbols[j]
+					let symbol = global.chart_symbols[j]
 					if (symbol.filter != 0) {
 						continue
 					}
@@ -3242,9 +3518,9 @@ function update_ts()
 					ctx.restore()
 				}
 
-				for (let m=0;m<global.extremal_depth.ranked_symbols.length;m++) {
+				for (let m=0;m<global.chart_symbols.length;m++) {
 
-					let symbol = global.extremal_depth.ranked_symbols[m]
+					let symbol = global.chart_symbols[m]
 					check_filters(symbol)
 					if (symbol.filter == 0) {
 						draw_symbol_on_panel(symbol, false)
@@ -3294,9 +3570,9 @@ function update_ts()
 					ctx.font = "bold 10pt Courier"
 					ctx.fillStyle = "#FFFFFF88"
 					if(l==(panel_y_ticks.length-1)) {
-						ctx.fillText(panel_y_ticks[l].toFixed(2), p0[0]+20, p0[1]+8);
+						ctx.fillText((panel_y_ticks[l]*82).toFixed(2), p0[0]+20, p0[1]+8);
 					} else {
-						ctx.fillText(panel_y_ticks[l].toFixed(2), p0[0]+20, p0[1]);
+						ctx.fillText((panel_y_ticks[l]*82).toFixed(2), p0[0]+20, p0[1]);
 					}
 					ctx.restore()
 
@@ -3649,6 +3925,7 @@ async function main()
 
 		let result = await fetch('http://localhost:8888/desc')
 		let symbol_names = await result.json()
+		// console.log(symbol_names)
 		let symbols = []
 		for (let i=0;i<symbol_names.length;i++) {
 			symbols.push({ name:symbol_names[i], ui_row:null, ui_col:null,

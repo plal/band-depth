@@ -27,15 +27,9 @@ ts_server = None
 ap = argparse.ArgumentParser()
 ap.add_argument("-d", "--data", required=True, type=str,
                 help="Path to data folder")
-ap.add_argument("-x", "--xvalues", required=True, type=int,
-                help="Column with values to be put in x axis")
-ap.add_argument("-y", "--yvalues", required=True, type=int,
-                help="Column with values to be put in y axis")
 args = vars(ap.parse_args())
 
-c_ID = 0
-c_X  = args["xvalues"]
-c_Y  = args["yvalues"]
+c_NAME,c_DATE,c_TEAM,c_POINTS,c_ASSISTS,c_REBOUNDS,c_STEALS,c_BLOCKS,c_TURNOVERS,c_FOULS,c_GAMEID = range(11)
 
 class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
     # Handler for the GET requests
@@ -59,20 +53,46 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
             for id in ids:
                 id = unquote(id)
                 try:
-                    x_values  = []
-                    y_values = []
+                    # x_values  = []
+                    # y_values = []
+                    teams = []
+                    dates = []
+                    pts   = []
+                    asts  = []
+                    rbds  = []
+                    stls  = []
+                    blcks = []
+                    tos   = []
+                    fouls = []
+                    gids  = []
+
                     with open(args["data"]+'/%s' % id,'r') as fp:
+                        next(fp)
                         for line in fp:
                             tokens = line.strip().split('|')
                             try:
-                                d = tokens[c_X]
-                                v = float(tokens[c_Y])
-                                x_values.append(d)
-                                y_values.append(v)
+                                # x  = tokens[c_X]
+                                # ys = []
+                                # for i in range(len(c_Y)):
+                                #     ys.append(float(tokens[int(c_Y[i])]))
+                                # # v = float(tokens[c_Y])
+                                # x_values.append(x)
+                                # y_values.append(ys)
+                                teams.append(tokens[c_TEAM])
+                                dates.append(tokens[c_DATE])
+                                pts.append(tokens[c_POINTS])
+                                asts.append(tokens[c_ASSISTS])
+                                rbds.append(tokens[c_REBOUNDS])
+                                stls.append(tokens[c_STEALS])
+                                blcks.append(tokens[c_BLOCKS])
+                                tos.append(tokens[c_TURNOVERS])
+                                fouls.append(tokens[c_FOULS])
+                                gids.append(tokens[c_GAMEID])
                             except:
-                                # couldn't parse NA price possibly
                                 pass
-                    id_data.append( { 'id':id, 'x_values':x_values, 'y_values':y_values } )
+                    # id_data.append( { 'id':id, 'x_values':x_values, 'y_values':y_values } )
+                    id_data.append( { 'id':id, 'teams':teams, 'dates':dates, 'points':pts, 'assists':asts, 'rebounds':rbds,
+                                      'steals':stls, 'blocks':blcks, 'turnovers':tos, 'fouls':fouls, 'game_ids':gids } )
                 except:
                     error.append(id)
             result = json.dumps({'data': id_data,'error':error}).encode('utf-8')
