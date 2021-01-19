@@ -65,6 +65,7 @@ var global = {
 	group_count: 0,
 	chart_groups: [],
 	events: [],
+	chosen_stats:[],
 	date_start: "2018-10-01",
 	date_end: "2019-06-13",
 	date_norm: "2020-07-15",
@@ -1288,7 +1289,7 @@ function get_multivariate_ranks()
 
 	let range = [1, 82]
 	let p = range[1];
-	let s = 3;
+	let s = global.chosen_stats.length;
 
 	for (let i=0; i<n; i++) {
 		let symbol = global.chart_symbols[i];
@@ -1296,13 +1297,13 @@ function get_multivariate_ranks()
 
 		for (let j=range[0]; j<=range[1]; j++) {
 			if (j in symbol.data) {
-				values.push(symbol.data[j].points);
-				values.push(symbol.data[j].assists);
-				values.push(symbol.data[j].rebounds);
+				for (let k=0; k<s; k++) {
+					values.push(symbol.data[j][global.chosen_stats[k]]);
+				}
 			} else {
-				values.push(0);
-				values.push(0);
-				values.push(0);
+				for (let k=0; k<s; k++) {
+					values.push(0);
+				}
 			}
 		}
 
@@ -1962,8 +1963,14 @@ function process_event_queue()
 		} else if (e.event_type == EVENT.GET_MULTIVARIATE_RANKS) {
 			get_multivariate_ranks()
 		} else if (e.event_type == EVENT.CLICKED_STAT) {
-			console.log(e.context.value)
-			// console.log(global.symbols[0].data[1][e.context.value])
+			if (e.context.checked) {
+				global.chosen_stats.push(e.context.value)
+			} else {
+				let to_remove = global.chosen_stats.indexOf(e.context.value)
+				if (to_remove > -1) {
+				  global.chosen_stats.splice(to_remove, 1);
+				}
+			}
 		}
 	}
 	global.events.length = 0
