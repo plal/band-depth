@@ -122,17 +122,9 @@ class TSServer:
         self.ids = os.listdir(args["data"])
         self.datasets = []
 
-    def set_datasets(self, datasets_path_list):
-        self.datasets = datasets_path_list
 
 if __name__ == "__main__":
     ts_server = TSServer()
-
-    datasets_paths = []
-    for root, dirs, files in os.walk('data/'):
-        if files != []:
-            datasets_paths.append(root)
-    ts_server.set_datasets(datasets_paths)
 
     port = 8888
     server = http.server.HTTPServer(('', port), CustomHTTPHandler)

@@ -53,7 +53,8 @@ const EVENT= {
 	KEYDOWN: "event_keydown",
 	CHANGE_AUX_VIEW: "event_change_aux_view",
 	GET_MULTIVARIATE_RANKS: "event_get_multivariate_ranks",
-	CLICKED_STAT: "event_clicked_stat"
+	CLICKED_STAT: "event_clicked_stat",
+	CLICK_POS: "event_clicked_pos"
 }
 
 var global = {
@@ -66,6 +67,7 @@ var global = {
 	chart_groups: [],
 	events: [],
 	chosen_stats:[],
+	chosen_pos:[],
 	date_start: "2018-10-01",
 	date_end: "2019-06-13",
 	date_norm: "2020-07-15",
@@ -734,6 +736,44 @@ function prepare_ui()
 	 								  border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
 	install_event_listener(get_multivariate_ranks_btn, 'click', get_multivariate_ranks_btn, EVENT.GET_MULTIVARIATE_RANKS)
 
+	let pos_section_lbl = create_section_label('Positions');
+
+	//----------
+	// positions checkboxes
+	//----------
+
+	let g_btn = create_checkbox('position','G');
+	global.ui.g_btn = g_btn;
+	install_event_listener(g_btn, 'click', g_btn, EVENT.CLICKED_POS);
+
+	let g_lbl = create_checkbox_label(g_btn, 'Guard');
+	global.ui.g_lbl = g_lbl
+
+	let f_btn = create_checkbox('position','F');
+	global.ui.f_btn = f_btn;
+	install_event_listener(f_btn, 'click', f_btn, EVENT.CLICKED_POS);
+
+	let f_lbl = create_checkbox_label(f_btn, 'Forward');
+	global.ui.f_lbl = f_lbl
+
+	let c_btn = create_checkbox('position','C');
+	global.ui.c_btn = c_btn;
+	install_event_listener(c_btn, 'click', c_btn, EVENT.CLICKED_POS);
+
+	let c_lbl = create_checkbox_label(c_btn, 'Center');
+	global.ui.c_lbl = c_lbl
+
+	let pos_grid = document.createElement('div');
+	global.ui.pos_grid = pos_grid;
+	pos_grid.id = pos_grid;
+	pos_grid.style = 'display:grid; background-color:#2f3233; align-content:space-around; grid-template-columns:repeat(2, 50px)';
+	pos_grid.appendChild(g_btn);
+	pos_grid.appendChild(g_lbl);
+	pos_grid.appendChild(f_btn);
+	pos_grid.appendChild(f_lbl);
+	pos_grid.appendChild(c_btn);
+	pos_grid.appendChild(c_lbl);
+
 	// let start_date_input = document.createElement('input')
 	// global.ui.start_date_input = start_date_input
 	// start_date_input.setAttribute("type","date")
@@ -1085,6 +1125,8 @@ function prepare_ui()
 	left_panel.appendChild(stats_section_lbl)
 	left_panel.appendChild(stats_grid)
 	left_panel.appendChild(get_multivariate_ranks_btn)
+	left_panel.appendChild(pos_section_lbl)
+	left_panel.appendChild(pos_grid)
 	// left_panel.appendChild(start_date_grid)
 	// left_panel.appendChild(end_date_grid)
 	// left_panel.appendChild(norm_date_grid)
@@ -1775,6 +1817,26 @@ function build_curves_density_matrix() {
 
 }
 
+function check_position_filters(symbol) {
+	if (global.chosen_pos.length == 0) {
+		return true
+	} else if (symbol.position == null) {
+		return true
+	} else {
+		if (global.chosen_pos.includes(symbol.position)) {
+			return true
+		} else {
+			for (let i=0; i<global.chosen_pos.length; i++) {
+				if (symbol.position.includes(global.chosen_pos[i])) {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
 const KEY_S      = 83
 const KEY_E      = 69
 const KEY_N      = 78
@@ -1971,6 +2033,17 @@ function process_event_queue()
 				  global.chosen_stats.splice(to_remove, 1);
 				}
 			}
+		} else if (e.event_type == EVENT.CLICKED_POS) {
+			if (e.context.checked) {
+				global.chosen_pos.push(e.context.value)
+			} else {
+				let to_remove = global.chosen_pos.indexOf(e.context.value)
+				if (to_remove > -1) {
+				  global.chosen_pos.splice(to_remove, 1);
+				}
+			}
+
+			// console.log(global.chosen_pos)
 		}
 	}
 	global.events.length = 0
@@ -2116,6 +2189,15 @@ function update_ts()
 		let x_max = 82
 		let last_valid_value = 1
 
+		// console.log(global.chosen_pos)
+
+		let main_stat;
+		if (typeof global.chosen_stats[0] !== 'undefined' ) {
+			main_stat = global.chosen_stats[0];
+		} else {
+			main_stat = "points";
+		}
+
 		for (let i=0;i<global.chart_symbols.length;i++) {
 			let symbol = global.chart_symbols[i]
 
@@ -2140,10 +2222,12 @@ function update_ts()
 			}
 			let ts_current_values = []
 			let ts_current_values_diffs = []
+			// console.log("before finding values")
+			// console.log(global.chosen_stats)
 			for (let j=x_min;j<=x_max;j++) {
 				let value;
 				if (j in symbol.data) {
-					value = symbol.data[j].points
+					value = symbol.data[j][main_stat];
 				} else {
 					value = 0
 				}
@@ -2785,7 +2869,11 @@ function update_ts()
 
 				if(global.focused_symbol == null || global.chart_symbols[i] != global.focused_symbol) {
 					if (symbol.filter == 0) {
-						draw_timeseries(symbol, false)
+						if (check_position_filters(symbol)) {
+							draw_timeseries(symbol, false)
+						} else {
+							remove_symbol_from_chart(symbol)
+						}
 					}
 				}
 			}
@@ -2893,8 +2981,7 @@ function update_ts()
 			let record = global.focused_symbol
 			let value = global.focused_symbol.data[global.focused_date]
 			let date = date_offset_to_string(date_start+global.focused_date)
-			let text = `symbol: ${global.focused_symbol.name} // date: ${date} // ED rank: #${global.focused_symbol.ed_rank+1} // `+
-						`MBD rank: #${global.focused_symbol.mbd_rank+1}`
+			let text = `player: ${global.focused_symbol.name} // position: ${global.focused_symbol.position}`
 
 			if (global.aux_view != 'none') {
 				ctx.font = '14px Monospace';
