@@ -192,8 +192,8 @@ async function download_symbol_data(symbol)
 			dict[game_id] = game_data
 		}
 
+		symbol.position = data.data[0].position
 		symbol.data = dict
-		// console.log(symbol)
 		global.recompute_viewbox = true
 	} catch (e) {
 		console.log("Fatal Error: couldn't download symbol data " + symbol.name)
@@ -3935,7 +3935,7 @@ async function main()
 		// console.log(symbol_names)
 		let symbols = []
 		for (let i=0;i<symbol_names.length;i++) {
-			symbols.push({ name:symbol_names[i], ui_row:null, ui_col:null,
+			symbols.push({ name:symbol_names[i], position:null, ui_row:null, ui_col:null,
 						   on_table:true, on_chart:false, data: null,
 						   ts_current_values: null, ed_rank:null, mbd_rank:null, filter:0 })
 		}

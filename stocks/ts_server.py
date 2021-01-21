@@ -29,7 +29,7 @@ ap.add_argument("-d", "--data", required=True, type=str,
                 help="Path to data folder")
 args = vars(ap.parse_args())
 
-c_NAME,c_DATE,c_TEAM,c_POINTS,c_ASSISTS,c_REBOUNDS,c_STEALS,c_BLOCKS,c_TURNOVERS,c_FOULS,c_GAMEID = range(11)
+c_NAME,c_DATE,c_TEAM,c_POINTS,c_ASSISTS,c_REBOUNDS,c_STEALS,c_BLOCKS,c_TURNOVERS,c_FOULS,c_GAMEID, c_POSITION = range(12)
 
 class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
     # Handler for the GET requests
@@ -88,10 +88,11 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
                                 tos.append(tokens[c_TURNOVERS])
                                 fouls.append(tokens[c_FOULS])
                                 gids.append(tokens[c_GAMEID])
+                                position = tokens[c_POSITION]
                             except:
                                 pass
                     # id_data.append( { 'id':id, 'x_values':x_values, 'y_values':y_values } )
-                    id_data.append( { 'id':id, 'teams':teams, 'dates':dates, 'points':pts, 'assists':asts, 'rebounds':rbds,
+                    id_data.append( { 'id':id, 'position':position, 'teams':teams, 'dates':dates, 'points':pts, 'assists':asts, 'rebounds':rbds,
                                       'steals':stls, 'blocks':blcks, 'turnovers':tos, 'fouls':fouls, 'game_ids':gids } )
                 except:
                     error.append(id)
