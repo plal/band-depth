@@ -170,6 +170,35 @@ function drawTextBG(ctx, txt, x, y) {
     ctx.restore();
 }
 
+function byteCount(s) {
+    return encodeURI(s).split(/%..|./).length - 1;
+}
+
+async function project_chart_data() {
+	let data_to_send = {};
+
+	for (let i=0; i<global.chart_symbols.length; i++) {
+		let symbol = global.chart_symbols[i];
+		data_to_send[symbol.name] = symbol.gt_ranks_dist
+	}
+
+	let str_to_send = btoa(encodeURI(JSON.stringify(data_to_send)))
+
+	let result;
+	try {
+		let result = await fetch('http://localhost:8888/project?d='+str_to_send)
+		let data = await result.json()
+
+		for(let i=0; i<global.chart_symbols.length; i++) {
+			let symbol = global.chart_symbols[i];
+			symbol.projection_coords = data[symbol.name]
+		}
+	} catch (e) {
+		console.log("Fatal Error: couldn't project data")
+		return
+	}
+}
+
 async function download_symbol_data(symbol)
 {
 	let result
@@ -1882,7 +1911,9 @@ function process_event_queue()
 			if (!symbol.on_chart) {
 				// add symbol to chart
 				add_symbol_to_chart(symbol, color)
-				download_symbol_data(symbol)
+				if (symbol.data == null) {
+					download_symbol_data(symbol)
+				}
 			} else {
 				remove_symbol_from_chart(symbol)
 			}

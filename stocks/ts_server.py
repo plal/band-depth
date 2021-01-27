@@ -10,14 +10,35 @@
 # data/AAPL
 #
 
+from sklearn.manifold import TSNE
 from urllib.parse import unquote
 import http.server
 
 # I hate this extra dependency, but whatever for now...
 # import simplejson as json
+import base64
 import argparse
+import numpy as np
 import json
 import os
+
+def emd_np(ac, bc):
+    return np.sum(np.abs(ac-bc))
+
+def build_dissimilarity_matrix(players, data):
+    numPlayers = len(players)
+    dissimilarityMatrix = np.zeros((numPlayers,numPlayers))
+    for i in range(numPlayers):
+        pi = players[i]
+        ai = np.array(data[pi])
+        for j in range(i+1,numPlayers):
+            pj = players[j]
+            aj = np.array(data[pj])
+            dist = emd_np(ai, aj)
+            dissimilarityMatrix[i][j] = dist
+            dissimilarityMatrix[j][i] = dist
+
+    return dissimilarityMatrix
 
 ts_server = None
 
@@ -105,6 +126,35 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(result)
             self.wfile.flush()
+        elif path[0:11] == '/project?d=':
+            #reading data
+            str = path[11:]
+            sample_string_bytes = base64.b64decode(str)
+            # print(sample_string_bytes)
+            sample_string = unquote(sample_string_bytes.decode("utf-8"))
+            # print(sample_string)
+            data = json.loads(sample_string)
+
+            #tsne-emd stuff
+            players = list(data.keys())
+            dmatrix = build_dissimilarity_matrix(players, data)
+            projTSNEEMD5 = TSNE(n_components=2,perplexity=5,metric='precomputed').fit_transform(dmatrix)
+
+            proj_data = {}
+            for i in range(len(players)):
+                proj_data[players[i]] = [float(projTSNEEMD5[i][0]), float(projTSNEEMD5[i][1])]
+
+            #send response
+            result = json.dumps(proj_data).encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type','application/json')
+            self.send_header('Content-Length',len(result))
+            self.send_header('Access-Control-Allow-Origin','*')
+            self.end_headers()
+            self.wfile.write(result)
+            self.wfile.flush()
+
+
         else:
             msg="Invalid API"
             self.send_response(200)
@@ -114,8 +164,6 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(msg.encode('utf-8'))
             self.wfile.flush()
-
-
 
 class TSServer:
     def __init__(self):
