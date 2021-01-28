@@ -52,7 +52,7 @@ const EVENT= {
 	DBCLICK: "event_dbclick",
 	KEYDOWN: "event_keydown",
 	CHANGE_AUX_VIEW: "event_change_aux_view",
-	GET_MULTIVARIATE_RANKS: "event_get_multivariate_ranks",
+	GET_STATS_RANKS: "event_GET_STATS_RANKS",
 	CLICKED_STAT: "event_clicked_stat",
 	CLICK_POS: "event_clicked_pos"
 }
@@ -756,14 +756,14 @@ function prepare_ui()
 	stats_grid.appendChild(fls_btn);
 	stats_grid.appendChild(fls_lbl);
 
-	let get_multivariate_ranks_btn = document.createElement('button')
-	global.ui.get_multivariate_ranks_btn = get_multivariate_ranks_btn
-	//get_multivariate_ranks_btn.setAttribute("type","button")
-	get_multivariate_ranks_btn.id = "get_multivariate_ranks_btn"
-	get_multivariate_ranks_btn.textContent = 'get multivariate ranks'
-	get_multivariate_ranks_btn.style = "position:relative; width:100%; margin:2px;\
+	let GET_STATS_RANKS_btn = document.createElement('button')
+	global.ui.GET_STATS_RANKS_btn = GET_STATS_RANKS_btn
+	//GET_STATS_RANKS_btn.setAttribute("type","button")
+	GET_STATS_RANKS_btn.id = "GET_STATS_RANKS_btn"
+	GET_STATS_RANKS_btn.textContent = 'get multivariate ranks'
+	GET_STATS_RANKS_btn.style = "position:relative; width:100%; margin:2px;\
 	 								  border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
-	install_event_listener(get_multivariate_ranks_btn, 'click', get_multivariate_ranks_btn, EVENT.GET_MULTIVARIATE_RANKS)
+	install_event_listener(GET_STATS_RANKS_btn, 'click', GET_STATS_RANKS_btn, EVENT.GET_STATS_RANKS)
 
 	let pos_section_lbl = create_section_label('Positions');
 
@@ -1153,7 +1153,7 @@ function prepare_ui()
    	left_panel.style = 'display:flex; flex-direction:column; background-color:#2f3233; align-content:space-around;'
 	left_panel.appendChild(stats_section_lbl)
 	left_panel.appendChild(stats_grid)
-	left_panel.appendChild(get_multivariate_ranks_btn)
+	left_panel.appendChild(GET_STATS_RANKS_btn)
 	left_panel.appendChild(pos_section_lbl)
 	left_panel.appendChild(pos_grid)
 	// left_panel.appendChild(start_date_grid)
@@ -1334,7 +1334,7 @@ function run_modified_band_depth_algorithm() {
 	}
 }
 
-function get_multivariate_ranks()
+function get_stats_ranks()
 {
 
 	if (global.chart_symbols.length == 0) {
@@ -2053,8 +2053,9 @@ function process_event_queue()
 			global.denselines.active = !global.denselines.active
 		} else if (e.event_type == EVENT.CHANGE_AUX_VIEW) {
 			global.aux_view = global.ui.rank_depth_select.value
-		} else if (e.event_type == EVENT.GET_MULTIVARIATE_RANKS) {
-			get_multivariate_ranks()
+		} else if (e.event_type == EVENT.GET_STATS_RANKS) {
+			get_stats_ranks()
+			project_chart_data()
 		} else if (e.event_type == EVENT.CLICKED_STAT) {
 			if (e.context.checked) {
 				global.chosen_stats.push(e.context.value)
@@ -2118,12 +2119,12 @@ function update_ts()
 
 	let rect = [0, 0, canvas.width, canvas.height]
 	let aux_rect_inf = null
-	if (global.aux_view != 'none') {
+	{
 		rect = [0, 0, canvas.width/2, canvas.height]
-		aux_rect_inf = [canvas.width/2, 0, canvas.width/2, canvas.height]
+		aux_rect_inf = [canvas.width/2, 0, canvas.width/2, canvas.height/2]
 	}
 
-	let margin = [ 100, 55, 5, 5 ]
+	let margin = [ 30, 55, 5, 5 ]
 
 	let ts_rect = [ rect[0] + margin[SIDE.LEFT],
 		        	rect[1] + margin[SIDE.TOP],
@@ -2131,14 +2132,20 @@ function update_ts()
 		        	rect[3] - margin[SIDE.BOTTOM] - margin[SIDE.TOP] ]
 
 	let aux_rect = null
-	let aux_rect_margins = [ 100, 33, 5, 5 ]
-	if (global.aux_view != 'none') {
+	let aux_rect_margins = [ 20, 33, 5, 5 ]
+	{
 		aux_rect = [ aux_rect_inf[0] + aux_rect_margins[SIDE.LEFT],
 					  aux_rect_inf[1] + aux_rect_margins[SIDE.TOP],
 					  aux_rect_inf[2] - aux_rect_margins[SIDE.LEFT] - aux_rect_margins[SIDE.RIGHT],
 					  aux_rect_inf[3] - aux_rect_margins[SIDE.BOTTOM] - aux_rect_margins[SIDE.TOP] ]
 	}
 
+	let proj_rect_margins = [ 30, 33, 5, 5 ]
+	let proj_rect_inf = [canvas.width/2, canvas.height/2, canvas.width/2, canvas.height/2]
+	let proj_rect = [ proj_rect_inf[0] + proj_rect_margins[SIDE.LEFT],
+				  	  proj_rect_inf[1] + proj_rect_margins[SIDE.TOP],
+				  	  proj_rect_inf[2] - proj_rect_margins[SIDE.LEFT] - proj_rect_margins[SIDE.RIGHT],
+				  	  proj_rect_inf[3] - proj_rect_margins[SIDE.BOTTOM] - proj_rect_margins[SIDE.TOP] ]
 
 	ctx.clearRect(0,0,canvas.width, canvas.height)
 
@@ -2153,10 +2160,17 @@ function update_ts()
 		ctx.rect(ts_rect[RECT.LEFT],ts_rect[RECT.TOP],ts_rect[RECT.WIDTH],ts_rect[RECT.HEIGHT])
 		ctx.fill()
 
-		if (global.aux_view != 'none') {
+		{
 			ctx.moveTo(aux_rect_inf[0], aux_rect_inf[1])
 			ctx.rect(aux_rect[RECT.LEFT], aux_rect[RECT.TOP], aux_rect[RECT.WIDTH], aux_rect[RECT.HEIGHT])
 			ctx.fill()
+		}
+
+		{
+			ctx.moveTo(proj_rect_inf[0], proj_rect_inf[1])
+			ctx.rect(proj_rect[RECT.LEFT], proj_rect[RECT.TOP], proj_rect[RECT.WIDTH], proj_rect[RECT.HEIGHT])
+			ctx.fill()
+
 		}
 		ctx.clip()
 
@@ -3096,7 +3110,7 @@ function update_ts()
 
 	let ed_cdf_closest_symbol = null
 
-	if (global.aux_view != 'none') {
+	{
 
 		ctx.font = "bold 14pt Courier"
 		ctx.fillStyle = "#FFFFFF";
@@ -3718,311 +3732,128 @@ function update_ts()
 				}
 
 			}
-		} else {
-			//--------------
-			//y grid lines and ticks
-			//--------------
-			let y_num_ticks = 10
-			let y_ticks = []
-			for(let i=0; i<y_num_ticks; i++) {
-				let y_tick = aux_y_min+((1.0*i*(aux_y_max-aux_y_min))/(y_num_ticks-1))
-				y_ticks.push(y_tick)
+		}
+	} // ed-cdf drawings
+
+	let proj_closest_symbol = null
+
+	{
+
+		//--------------
+		// find y range
+		//--------------
+		let proj_y_min = 10000.0
+		let proj_y_max = -10000.0
+		let proj_x_min = 10000.0
+		let proj_x_max = -10000.0
+		let last_valid_value = 1
+
+		for (let i=0;i<global.chart_symbols.length;i++) {
+			let symbol = global.chart_symbols[i]
+
+			let proj_coords = symbol.projection_coords
+
+			if (proj_coords == null) {
+				continue
 			}
 
-			for(let i=0; i<y_ticks.length; i++) {
-				ctx.strokeStyle = "#555555";
-				ctx.lineWidth   = 1;
+			proj_x_min = Math.min(proj_x_min, proj_coords[0])
+			proj_x_max = Math.max(proj_x_max, proj_coords[0])
+			proj_y_min = Math.min(proj_y_min, proj_coords[1])
+			proj_y_max = Math.max(proj_y_max, proj_coords[1])
+		}
 
-				let p0 = aux_rect_map(aux_x_min, y_ticks[i])
-				let p1 = aux_rect_map(aux_x_max, y_ticks[i])
+		function proj_rect_map(x, y) {
+			let px = proj_rect[RECT.LEFT] + (1.0 * (x - proj_x_min) / (proj_x_max - proj_x_min)) * proj_rect[RECT.WIDTH]
+			let py = proj_rect[RECT.TOP] + (proj_rect[RECT.HEIGHT] - 1 - (1.0 * (y - proj_y_min) / (proj_y_max - proj_y_min)) * proj_rect[RECT.HEIGHT])
+			return [px,py]
+		}
 
-				// ctx.beginPath()
-				// ctx.moveTo(p0[0], p0[1])
-				// ctx.lineTo(p1[0], p1[1])
-				// ctx.stroke()
+		function proj_rect_inverse_map(px, py) {
+			let x = ((px - proj_rect[RECT.LEFT]) / proj_rect[RECT.WIDTH]) * (1.0*(proj_x_max - proj_x_min)) + proj_x_min
+			let y = -((((py - proj_rect[RECT.TOP] - proj_rect[RECT.HEIGHT] + 1) * (1.0 * (proj_y_max - proj_y_min))) / proj_rect[RECT.HEIGHT]) - proj_y_min)
+			return [x,y]
+		}
 
-				ctx.font = "bold 10pt Courier"
-				ctx.fillStyle = "#FFFFFF88"
-				if(i==(y_ticks.length-1)) {
-					ctx.fillText(y_ticks[i].toFixed(2), p0[0]+20, p0[1]+8);
-				} else {
-					ctx.fillText(y_ticks[i].toFixed(2), p0[0]+20, p0[1]+5);
-				}
+		let min_distance_threshold = 5 * 5
+		let closest_distance = 100000
 
+		function update_closest_point(symbol, px, py) {
+			let dx = local_mouse_pos[0] - px
+			let dy = local_mouse_pos[1] - py
+			let dist = dx * dx + dy * dy
+			if (dist <= min_distance_threshold && dist < closest_distance) {
+				ts_closest_symbol = symbol
+			}
+		}
+
+		function draw_symbol_projection(symbol, color, focused) {
+
+			let idx = global.chart_symbols.indexOf(symbol)
+			if (symbol.projection_coords == null) {
+				return
 			}
 
-			//--------------
-			//x axis grid lines and ticks
-			//--------------
-			let x_num_ticks
-			if (global.aux_view == 'dcdf') {
-				x_num_ticks = 10
-			} else if (global.aux_view == 'rcdf') {
-				if (global.extremal_depth.ranked_symbols.length <= 15) {
-					x_num_ticks = global.extremal_depth.ranked_symbols.length
-				} else {
-					x_num_ticks = 15
-				}
+			let point_color = "#FFFFFF44"
 
-			}
-			let x_ticks = []
-			for(let i=0; i<x_num_ticks; i++) {
-				let x_tick = (aux_x_min+(i*((aux_x_max-aux_x_min)/(x_num_ticks-1))))
-				x_ticks.push(x_tick)
+			if (typeof color !== "undefined") {
+				point_color = color
 			}
 
-			for(let i=0; i<x_ticks.length; i++) {
-				ctx.strokeStyle = "#555555";
-				ctx.lineWidth   = 1;
-
-				let p0 = aux_rect_map(x_ticks[i], aux_y_min)
-				let p1 = aux_rect_map(x_ticks[i], aux_y_max)
-
-				// ctx.beginPath()
-				// ctx.moveTo(p0[0], p0[1])
-				// ctx.lineTo(p1[0], p1[1])
-				// ctx.stroke()
-
-
-				ctx.font = "bold 10pt Courier"
-				ctx.fillStyle = "#FFFFFF"
-				// ctx.translate(p0[0], p0[1]+42);
-				// ctx.rotate(-Math.PI/4);
-				let tick_text
-				if (global.aux_view == 'dcdf') {
-					tick_text = (x_ticks[i]/aux_x_max).toFixed(2)
-				} else if (global.aux_view == 'rcdf') {
-					tick_text = Math.floor(x_ticks[i])
-				}
-				ctx.fillText(tick_text, p0[0], p0[1]+15);
+			ctx.save()
+			if (focused) {
+				point_color = global.chart_colors[idx]
 			}
 
-			//--------------
-			//
-			//cv_* --> canvas position (mouse position on canvas)
-			//dm_* --> domain position (position in x,y domain)
-			//
-			//--------------
+			ctx.fillStyle = point_color
 
-			function detect_click_inside_filter(local_click_pos) {
-				let clicked_filter = null
-				for(let i=0; i<global.filter_list.length; i++) {
-					let filter = global.filter_list[i]
-					if(point_inside_rect(local_click_pos, filter.rect)) {
-						clicked_filter = filter
-					}
-				}
 
-				return clicked_filter
-			}
+			let x = symbol.projection_coords[0];
+			let y = symbol.projection_coords[1];
 
-			if (global.filter_state == FILTER_STATE.START) {
-				if (!point_inside_rect(local_mouse_pos, aux_rect)) {
-					global.filter_state = FILTER_STATE.INACTIVE
-				} else {
-					let clicked_filter = detect_click_inside_filter(local_mouse_pos)
-					if (clicked_filter) {
-						global.filter_moving = clicked_filter
-						global.filter_state  = FILTER_STATE.MOVE
-					} else {
-						let dm_filter_pos = aux_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+			let p = proj_rect_map(x, y)
+			update_closest_point(symbol, p[0], p[1])
 
-						let filter = {offset: dm_filter_pos[0], length: 0, y: dm_filter_pos[1], type: global.filter_type}
+			ctx.beginPath()
+			ctx.arc(p[0], p[1], 4, 0, 2 * Math.PI)
+			ctx.closePath()
+			ctx.fill()
+			ctx.stroke()
 
-						global.filter_list.push(filter)
-						global.filter_state = FILTER_STATE.UPDATE
-					}
-
-				}
-			} else if (global.filter_state == FILTER_STATE.UPDATE) {
-				if (point_inside_rect(local_mouse_pos, aux_rect)) {
-					let dm_filter_pos = aux_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
-
-					let filter = global.filter_list[global.filter_list.length-1]
-					let x = dm_filter_pos[0]
-					let length = x - filter.offset
-					filter.length = length
-				}
-			} else if (global.filter_state == FILTER_STATE.MOVE) {
-				if (point_inside_rect(local_mouse_pos, aux_rect)) {
-					let filter = global.filter_moving
-
-					let dm_filter_newpos = aux_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
-
-					filter.offset = dm_filter_newpos[0] - (filter.length/2)
-					filter.y 	  = dm_filter_newpos[1]
-
-				}
-			}
-
-			for (let i=0; i<global.filter_list.length; i++) {
-
-				let filter = global.filter_list[i]
-
-				let cv_filter_startpos = aux_rect_map(filter.offset, filter.y)
-				let cv_filter_endpos   = aux_rect_map(filter.offset + filter.length, filter.y)
-
-				let filter_rect = [cv_filter_startpos[0], cv_filter_startpos[1], cv_filter_endpos[0]-cv_filter_startpos[0], 4]
-				filter.rect = filter_rect
-
-				let color
-				if (filter.type == FILTER_TYPE.RED) {
-					color = "#FF8888"
-				} else {
-					color = "#8888FF"
-				}
-
-				ctx.fillStyle = color
-				ctx.fillRect(filter_rect[RECT.LEFT], filter_rect[RECT.TOP], filter_rect[RECT.WIDTH], filter_rect[RECT.HEIGHT])
-			}
-
-			function check_filters(symbol) {
-				let current_values
-				if (global.aux_view == 'dcdf') {
-					current_values = symbol.cdf_current_values
-				} else if (global.aux_view == 'rcdf') {
-					current_values = symbol.ranks_current_values
-				}
-				if (current_values == null) {
-					// console.log("Not drawing cdf for symbol ", symbol.name);
-					return;
-				}
-
-				let ok_blue = true
-				let ok_red  = true
-				for (let i=0; i<global.filter_list.length; i++) {
-					let filter = global.filter_list[i]
-
-					if (filter.type == FILTER_TYPE.RED) {
-						for (let j=0;j<current_values.length;j++) {
-							let yj = current_values[j]
-							let point_inside_x_range
-							if (filter.length < 0) {
-								point_inside_x_range = (filter.offset >= j && j >= (filter.offset+filter.length))
-							} else {
-								point_inside_x_range = (filter.offset <= j && j <= (filter.offset+filter.length))
-							}
-							let point_over_y = (yj > filter.y)
-							if (point_inside_x_range && point_over_y) {
-								ok_red = false
-								break
-							}
-						}
-					}
-					if (filter.type == FILTER_TYPE.BLUE) {
-						let at_least_one_over = false
-						for (let j=0;j<current_values.length;j++) {
-							let yj = current_values[j]
-							let point_inside_x_range
-							if (filter.length < 0) {
-								point_inside_x_range = (filter.offset >= j && j >= (filter.offset+filter.length))
-							} else {
-								point_inside_x_range = (filter.offset <= j && j <= (filter.offset+filter.length))
-							}
-							let point_over_y = (yj > filter.y)
-
-							if (point_inside_x_range && point_over_y) {
-								at_least_one_over = true
-							}
-						}
-						ok_blue = at_least_one_over
-						if (ok_blue == false) { break }
-					}
-				}
-
-				let ok = (ok_red && ok_blue) || (global.filter_list.length == 0)
-				// symbol.filter_ok = ok
-
-				return ok
-			}
-
-			function draw_symbol_dcdf(symbol, focused, color) {
-
-				let current_values
-				if (global.aux_view == 'dcdf') {
-					current_values = symbol.cdf_current_values
-				} else if (global.aux_view == 'rcdf') {
-					current_values = symbol.ranks_current_values
-				}
-				if (current_values == null) {
-					// console.log("Not drawing cdf for symbol ", symbol.name);
-					return;
-				}
-
-				let i = global.chart_symbols.indexOf(symbol)
-				if (symbol.data == null) {
-					return
-				}
-
-				let curve_color = "#FFFFFF44"
-				if (typeof color !== "undefined") {
-					curve_color = color
-				}
-
-				if (focused) {
-					ctx.lineWidth = 4
-					curve_color = global.chart_colors[i]
-				} else {
-					ctx.lineWidth = 2
-				}
-
-				ctx.strokeStyle = curve_color
-
-				let first_point_drawn = false
-
-				ctx.beginPath()
-				let p_prev = null
-				for (let j=0;j<current_values.length;j++) {
-					let yi = current_values[j]
-					let p = aux_rect_map(j,yi)
-					if (p_prev) {
-						update_aux_closest_segment(symbol, p_prev[0], p_prev[1], p[0], p[1])
-					}
-					// update_dcdf_closest_point(symbol, p[0], p[1])
-					p_prev = p
-					if (!first_point_drawn) {
-						ctx.moveTo(p[0],p[1])
-						first_point_drawn = true
-					} else {
-						ctx.lineTo(p[0],p[1])
-					}
-				}
-				ctx.stroke()
-			}
-
-			for (let i=0;i<global.extremal_depth.ranked_symbols.length;i++) {
-
-				let symbol = global.extremal_depth.ranked_symbols[i]
-
-				if (check_filters(symbol)) {
-					draw_symbol_dcdf(symbol, false)
-				}
-
-			}
-
-			if (global.focused_symbol != null) {
-
-				draw_symbol_dcdf(global.focused_symbol, true)
-
-				let text = `symbol: ${global.focused_symbol.name}`
-				ctx.font = '14px Monospace';
-				ctx.fillStyle = "#FFFFFF"
-				ctx.textAlign = 'center';
-				ctx.fillText(text, (aux_rect[0]+aux_rect[2])-(aux_rect[2]/2), 40);
-
-			}
+			ctx.restore()
 
 		}
 
+		for (let m=0;m<global.chart_symbols.length;m++) {
 
+			let symbol = global.chart_symbols[m]
+			// check_filters(symbol)
+			draw_symbol_projection(symbol, false)
 
+		}
 
-	} // ed-cdf drawings
+		if (global.focused_symbol != null) {
+
+			draw_symbol_projection(global.focused_symbol, true)
+
+			let text = `symbol: ${global.focused_symbol.name}`
+			ctx.save()
+			ctx.font = '14px Monospace';
+			ctx.fillStyle = "#FFFFFF"
+			ctx.textAlign = 'center';
+			ctx.fillText(text, (proj_rect[0]+proj_rect[2])-(proj_rect[2]/2), 40);
+			ctx.restore()
+
+		}
+
+	} // projection drawings
 
 	if (ts_closest_symbol != null) {
 		global.focused_symbol = ts_closest_symbol
-	} else {
+	} else if (ed_cdf_closest_symbol != null) {
 		global.focused_symbol = ed_cdf_closest_symbol
+	} else {
+		global.focused_symbol = proj_closest_symbol
 	}
 
 }
