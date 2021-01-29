@@ -53,11 +53,6 @@ args = vars(ap.parse_args())
 c_NAME,c_DATE,c_TEAM,c_POINTS,c_ASSISTS,c_REBOUNDS,c_STEALS,c_BLOCKS,c_TURNOVERS,c_FOULS,c_GAMEID, c_POSITION = range(12)
 
 class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
-    # def do_OPTIONS(self):
-    #     self.send_response(200, "ok")
-    #     self.send_header('Access-Control-Allow-Origin', '*')
-    #     self.send_header('Access-Control-Allow-Methods', 'GET, POST')
-    # #     self.send_header("Access-Control-Allow-Headers", "X-Requested-With")
 
     # Handler for the GET requests
     def do_GET(self):
@@ -80,8 +75,6 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
             for id in ids:
                 id = unquote(id)
                 try:
-                    # x_values  = []
-                    # y_values = []
                     teams = []
                     dates = []
                     pts   = []
@@ -98,13 +91,6 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
                         for line in fp:
                             tokens = line.strip().split('|')
                             try:
-                                # x  = tokens[c_X]
-                                # ys = []
-                                # for i in range(len(c_Y)):
-                                #     ys.append(float(tokens[int(c_Y[i])]))
-                                # # v = float(tokens[c_Y])
-                                # x_values.append(x)
-                                # y_values.append(ys)
                                 teams.append(tokens[c_TEAM])
                                 dates.append(tokens[c_DATE])
                                 pts.append(tokens[c_POINTS])
@@ -118,13 +104,11 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
                                 position = tokens[c_POSITION]
                             except:
                                 pass
-                    # id_data.append( { 'id':id, 'x_values':x_values, 'y_values':y_values } )
                     id_data.append( { 'id':id, 'position':position, 'teams':teams, 'dates':dates, 'points':pts, 'assists':asts, 'rebounds':rbds,
                                       'steals':stls, 'blocks':blcks, 'turnovers':tos, 'fouls':fouls, 'game_ids':gids } )
                 except:
                     error.append(id)
             result = json.dumps({'data': id_data,'error':error}).encode('utf-8')
-            # print(result)
             self.send_response(200)
             self.send_header('Content-Type','application/json')
             self.send_header('Content-Length',len(result))
@@ -198,7 +182,7 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
             self.send_header('Access-Control-Allow-Origin','*')
             self.end_headers()
             self.wfile.write(result)
-            self.wfile.flush()            
+            self.wfile.flush()
 
 class TSServer:
     def __init__(self):

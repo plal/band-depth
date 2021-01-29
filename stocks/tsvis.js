@@ -190,34 +190,12 @@ async function project_chart_data() {
 	xhttp.responseType = 'json';
 	xhttp.send(str_to_send);
 
-	// var data;
 	xhttp.onload = function() {
 		for(let i=0; i<global.chart_symbols.length; i++) {
 			let symbol = global.chart_symbols[i];
 			symbol.projection_coords = xhttp.response[symbol.name]
 		}
-		// console.log(xhttp.response['Bam_Adebayo'])
 	}
-	// console.log(data)
-
-	// for(let i=0; i<global.chart_symbols.length; i++) {
-	// 	let symbol = global.chart_symbols[i];
-	// 	symbol.projection_coords = data[symbol.name]
-	// }
-
-	// let result;
-	// try {
-	// 	let result = await fetch('http://localhost:8888/project')
-	// 	let data = await result.json()
-	//
-	// 	for(let i=0; i<global.chart_symbols.length; i++) {
-	// 		let symbol = global.chart_symbols[i];
-	// 		symbol.projection_coords = data[symbol.name]
-	// 	}
-	// } catch (e) {
-	// 	console.log("Fatal Error: couldn't project data")
-	// 	return
-	// }
 }
 
 async function download_symbol_data(symbol)
