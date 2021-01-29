@@ -184,19 +184,40 @@ async function project_chart_data() {
 
 	let str_to_send = btoa(encodeURI(JSON.stringify(data_to_send)))
 
-	let result;
-	try {
-		let result = await fetch('http://localhost:8888/project?d='+str_to_send)
-		let data = await result.json()
+	var xhttp = new XMLHttpRequest();
+	xhttp.open("POST", "http://localhost:8888/project", true);
+	xhttp.setRequestHeader('Content-Type','text/plain');
+	xhttp.responseType = 'json';
+	xhttp.send(str_to_send);
 
+	// var data;
+	xhttp.onload = function() {
 		for(let i=0; i<global.chart_symbols.length; i++) {
 			let symbol = global.chart_symbols[i];
-			symbol.projection_coords = data[symbol.name]
+			symbol.projection_coords = xhttp.response[symbol.name]
 		}
-	} catch (e) {
-		console.log("Fatal Error: couldn't project data")
-		return
+		// console.log(xhttp.response['Bam_Adebayo'])
 	}
+	// console.log(data)
+
+	// for(let i=0; i<global.chart_symbols.length; i++) {
+	// 	let symbol = global.chart_symbols[i];
+	// 	symbol.projection_coords = data[symbol.name]
+	// }
+
+	// let result;
+	// try {
+	// 	let result = await fetch('http://localhost:8888/project')
+	// 	let data = await result.json()
+	//
+	// 	for(let i=0; i<global.chart_symbols.length; i++) {
+	// 		let symbol = global.chart_symbols[i];
+	// 		symbol.projection_coords = data[symbol.name]
+	// 	}
+	// } catch (e) {
+	// 	console.log("Fatal Error: couldn't project data")
+	// 	return
+	// }
 }
 
 async function download_symbol_data(symbol)
@@ -2170,7 +2191,6 @@ function update_ts()
 			ctx.moveTo(proj_rect_inf[0], proj_rect_inf[1])
 			ctx.rect(proj_rect[RECT.LEFT], proj_rect[RECT.TOP], proj_rect[RECT.WIDTH], proj_rect[RECT.HEIGHT])
 			ctx.fill()
-
 		}
 		ctx.clip()
 
@@ -3783,18 +3803,18 @@ function update_ts()
 			let dy = local_mouse_pos[1] - py
 			let dist = dx * dx + dy * dy
 			if (dist <= min_distance_threshold && dist < closest_distance) {
-				ts_closest_symbol = symbol
+				proj_closest_symbol = symbol
 			}
 		}
 
-		function draw_symbol_projection(symbol, color, focused) {
+		function draw_symbol_projection(symbol, focused, color ) {
 
 			let idx = global.chart_symbols.indexOf(symbol)
 			if (symbol.projection_coords == null) {
 				return
 			}
 
-			let point_color = "#FFFFFF44"
+			let point_color = "#FFFFFF99"
 
 			if (typeof color !== "undefined") {
 				point_color = color
@@ -3815,10 +3835,13 @@ function update_ts()
 			update_closest_point(symbol, p[0], p[1])
 
 			ctx.beginPath()
-			ctx.arc(p[0], p[1], 4, 0, 2 * Math.PI)
+			if (focused) {
+				ctx.arc(p[0], p[1], 6, 0, 2 * Math.PI)
+			} else {
+				ctx.arc(p[0], p[1], 4, 0, 2 * Math.PI)
+			}
 			ctx.closePath()
 			ctx.fill()
-			ctx.stroke()
 
 			ctx.restore()
 

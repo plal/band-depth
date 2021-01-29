@@ -53,6 +53,12 @@ args = vars(ap.parse_args())
 c_NAME,c_DATE,c_TEAM,c_POINTS,c_ASSISTS,c_REBOUNDS,c_STEALS,c_BLOCKS,c_TURNOVERS,c_FOULS,c_GAMEID, c_POSITION = range(12)
 
 class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
+    # def do_OPTIONS(self):
+    #     self.send_response(200, "ok")
+    #     self.send_header('Access-Control-Allow-Origin', '*')
+    #     self.send_header('Access-Control-Allow-Methods', 'GET, POST')
+    # #     self.send_header("Access-Control-Allow-Headers", "X-Requested-With")
+
     # Handler for the GET requests
     def do_GET(self):
         global ts_server
@@ -126,14 +132,54 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(result)
             self.wfile.flush()
-        elif path[0:11] == '/project?d=':
-            #reading data
-            str = path[11:]
-            sample_string_bytes = base64.b64decode(str)
-            # print(sample_string_bytes)
-            sample_string = unquote(sample_string_bytes.decode("utf-8"))
-            # print(sample_string)
-            data = json.loads(sample_string)
+        # elif path[0:11] == '/project?d=':
+        #     #reading data
+        #     str = path[11:]
+        #     sample_string_bytes = base64.b64decode(str)
+        #     # print(sample_string_bytes)
+        #     sample_string = unquote(sample_string_bytes.decode("utf-8"))
+        #     # print(sample_string)
+        #     data = json.loads(sample_string)
+        #
+        #     #tsne-emd stuff
+        #     players = list(data.keys())
+        #     dmatrix = build_dissimilarity_matrix(players, data)
+        #     projTSNEEMD5 = TSNE(n_components=2,perplexity=5,metric='precomputed').fit_transform(dmatrix)
+        #
+        #     proj_data = {}
+        #     for i in range(len(players)):
+        #         proj_data[players[i]] = [float(projTSNEEMD5[i][0]), float(projTSNEEMD5[i][1])]
+        #
+        #     #send response
+        #     result = json.dumps(proj_data).encode('utf-8')
+        #     self.send_response(200)
+        #     self.send_header('Content-Type','application/json')
+        #     self.send_header('Content-Length',len(result))
+        #     self.send_header('Access-Control-Allow-Origin','*')
+        #     self.end_headers()
+        #     self.wfile.write(result)
+        #     self.wfile.flush()
+        else:
+            msg="Invalid API"
+            self.send_response(200)
+            self.send_header('Content-Type','text/plain')
+            self.send_header('Content-Length',len(msg))
+            self.send_header('Access-Control-Allow-Origin','*')
+            self.end_headers()
+            self.wfile.write(msg.encode('utf-8'))
+            self.wfile.flush()
+
+    def do_POST(self):
+        global ts_server
+        path = self.path
+
+        if path == '/project':
+            #handling request and reading data
+            content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
+            post_data = self.rfile.read(content_length) # <--- Gets the data itself
+            data_bytes = base64.b64decode(post_data)
+            data_string = unquote(data_bytes.decode("utf-8"))
+            data = json.loads(data_string)
 
             #tsne-emd stuff
             players = list(data.keys())
@@ -152,18 +198,7 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
             self.send_header('Access-Control-Allow-Origin','*')
             self.end_headers()
             self.wfile.write(result)
-            self.wfile.flush()
-
-
-        else:
-            msg="Invalid API"
-            self.send_response(200)
-            self.send_header('Content-Type','text/plain')
-            self.send_header('Content-Length',len(msg))
-            self.send_header('Access-Control-Allow-Origin','*')
-            self.end_headers()
-            self.wfile.write(msg.encode('utf-8'))
-            self.wfile.flush()
+            self.wfile.flush()            
 
 class TSServer:
     def __init__(self):
