@@ -755,14 +755,14 @@ function prepare_ui()
 	stats_grid.appendChild(fls_btn);
 	stats_grid.appendChild(fls_lbl);
 
-	let GET_STATS_RANKS_btn = document.createElement('button')
-	global.ui.GET_STATS_RANKS_btn = GET_STATS_RANKS_btn
-	//GET_STATS_RANKS_btn.setAttribute("type","button")
-	GET_STATS_RANKS_btn.id = "GET_STATS_RANKS_btn"
-	GET_STATS_RANKS_btn.textContent = 'get multivariate ranks'
-	GET_STATS_RANKS_btn.style = "position:relative; width:100%; margin:2px;\
+	let get_stats_ranks_btn = document.createElement('button')
+	global.ui.get_stats_ranks_btn = get_stats_ranks_btn
+	//get_stats_ranks_btn.setAttribute("type","button")
+	get_stats_ranks_btn.id = "get_stats_ranks_btn"
+	get_stats_ranks_btn.textContent = 'get stats ranks'
+	get_stats_ranks_btn.style = "position:relative; width:100%; margin:2px;\
 	 								  border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
-	install_event_listener(GET_STATS_RANKS_btn, 'click', GET_STATS_RANKS_btn, EVENT.GET_STATS_RANKS)
+	install_event_listener(get_stats_ranks_btn, 'click', get_stats_ranks_btn, EVENT.GET_STATS_RANKS)
 
 	let pos_section_lbl = create_section_label('Positions');
 
@@ -1021,10 +1021,6 @@ function prepare_ui()
 	rcdf_option.value = 'rcdf'
 	rcdf_option.innerHTML = 'rank distribution'
 
-	// let diff_option = document.createElement('option')
-	// diff_option.value = 'diff'
-	// diff_option.innerHTML = 'diff distribution'
-
 	let none_option = document.createElement('option')
 	none_option.value = 'none'
 	none_option.innerHTML = 'none'
@@ -1032,7 +1028,6 @@ function prepare_ui()
 	rank_depth_select.appendChild(hidden_option)
 	rank_depth_select.appendChild(dcdf_option)
 	rank_depth_select.appendChild(rcdf_option)
-	// rank_depth_select.appendChild(diff_option)
 	rank_depth_select.appendChild(none_option)
 
 	let draw_ed_dcdf_agg = document.createElement('input')
@@ -1152,7 +1147,7 @@ function prepare_ui()
    	left_panel.style = 'display:flex; flex-direction:column; background-color:#2f3233; align-content:space-around;'
 	left_panel.appendChild(stats_section_lbl)
 	left_panel.appendChild(stats_grid)
-	left_panel.appendChild(GET_STATS_RANKS_btn)
+	left_panel.appendChild(get_stats_ranks_btn)
 	left_panel.appendChild(pos_section_lbl)
 	left_panel.appendChild(pos_grid)
 	// left_panel.appendChild(start_date_grid)
@@ -1197,6 +1192,12 @@ function prepare_ui()
 	global.ui.ts_div = ts_div
 	ts_div.id = 'ts_div'
 	ts_div.style = 'background-color:#6b6f71'
+
+	let chosen_stats_select = document.createElement('select')
+	global.ui.chosen_stats_select = chosen_stats_select
+	chosen_stats_select.style = 'background-color:#2f3233; width:125px; font-family:Courier; font-size:13pt; color: #FFFFFF;'
+
+	ts_div.append(chosen_stats_select)
 
 	let ts_canvas = ts_div.appendChild(document.createElement('canvas'))
 	global.ui.ts_canvas = ts_canvas
@@ -2058,7 +2059,17 @@ function process_event_queue()
 		} else if (e.event_type == EVENT.CLICKED_STAT) {
 			if (e.context.checked) {
 				global.chosen_stats.push(e.context.value)
+				let option = document.createElement("option");
+		    	option.value = e.context.value;
+		    	option.innerHTML = e.context.value;
+		    	global.ui.chosen_stats_select.appendChild(option);
+
 			} else {
+				for(let i=0; i<global.ui.chosen_stats_select.length; i++) {
+					if (global.ui.chosen_stats_select.options[i].value == e.context.value) {
+						global.ui.chosen_stats_select.remove(i);
+					}
+				}
 				let to_remove = global.chosen_stats.indexOf(e.context.value)
 				if (to_remove > -1) {
 				  global.chosen_stats.splice(to_remove, 1);
@@ -2119,8 +2130,8 @@ function update_ts()
 	let rect = [0, 0, canvas.width, canvas.height]
 	let aux_rect_inf = null
 	{
-		rect = [0, 0, canvas.width/2, canvas.height]
-		aux_rect_inf = [canvas.width/2, 0, canvas.width/2, canvas.height/2]
+		rect = [0, 0, canvas.width, canvas.height/2]
+		aux_rect_inf = [0, canvas.height/2, canvas.width/2, canvas.height/2]
 	}
 
 	let margin = [ 30, 55, 5, 5 ]
@@ -2235,11 +2246,16 @@ function update_ts()
 		// console.log(global.chosen_pos)
 
 		let main_stat;
-		if (typeof global.chosen_stats[0] !== 'undefined' ) {
-			main_stat = global.chosen_stats[0];
-		} else {
-			main_stat = "points";
+		let selected_stat = global.ui.chosen_stats_select.value
+		if (selected_stat !== '') {
+			main_stat = selected_stat
 		}
+		global.recompute_viewbox = true
+		// if (typeof global.chosen_stats[0] !== 'undefined' ) {
+		// 	main_stat = global.chosen_stats[0];
+		// } else {
+		// 	main_stat = "points";
+		// }
 
 		for (let i=0;i<global.chart_symbols.length;i++) {
 			let symbol = global.chart_symbols[i]
@@ -3121,17 +3137,17 @@ function update_ts()
 		ctx.strokeStyle = "#FFFFFF";
 		ctx.lineWidth   = 2;
 
-		ctx.beginPath()
-		//y axis
-		ctx.moveTo(aux_rect[RECT.LEFT], aux_rect[RECT.TOP])
-		ctx.lineTo(aux_rect[RECT.LEFT], aux_rect[RECT.HEIGHT]+6)
-		ctx.stroke()
-		//x axis
-		ctx.moveTo(aux_rect[RECT.LEFT], aux_rect[RECT.HEIGHT]+6)
-		ctx.lineTo(aux_rect[RECT.LEFT] + aux_rect[RECT.WIDTH], aux_rect[RECT.HEIGHT]+6)
-		ctx.stroke()
-
-		ctx.restore()
+		// ctx.beginPath()
+		// //y axis
+		// ctx.moveTo(aux_rect[RECT.LEFT], aux_rect[RECT.TOP])
+		// ctx.lineTo(aux_rect[RECT.LEFT], aux_rect[RECT.HEIGHT]+6)
+		// ctx.stroke()
+		// //x axis
+		// ctx.moveTo(aux_rect[RECT.LEFT], aux_rect[RECT.HEIGHT]+6)
+		// ctx.lineTo(aux_rect[RECT.LEFT] + aux_rect[RECT.WIDTH], aux_rect[RECT.HEIGHT]+6)
+		// ctx.stroke()
+		//
+		// ctx.restore()
 
 
 		//--------------
@@ -3719,13 +3735,13 @@ function update_ts()
 
 					draw_symbol_on_panel(global.focused_symbol, true)
 
-					let text = `symbol: ${global.focused_symbol.name}`
-					ctx.save()
-					ctx.font = '14px Monospace';
-					ctx.fillStyle = "#FFFFFF"
-					ctx.textAlign = 'center';
-					ctx.fillText(text, (aux_rect[0]+aux_rect[2])-(aux_rect[2]/2), 40);
-					ctx.restore()
+					// let text = `symbol: ${global.focused_symbol.name}`
+					// ctx.save()
+					// ctx.font = '14px Monospace';
+					// ctx.fillStyle = "#FFFFFF"
+					// ctx.textAlign = 'center';
+					// ctx.fillText(text, (aux_rect[0]+aux_rect[2])-(aux_rect[2]/2), 40);
+					// ctx.restore()
 
 				}
 
@@ -3837,13 +3853,13 @@ function update_ts()
 
 			draw_symbol_projection(global.focused_symbol, true)
 
-			let text = `symbol: ${global.focused_symbol.name}`
-			ctx.save()
-			ctx.font = '14px Monospace';
-			ctx.fillStyle = "#FFFFFF"
-			ctx.textAlign = 'center';
-			ctx.fillText(text, (proj_rect[0]+proj_rect[2])-(proj_rect[2]/2), 40);
-			ctx.restore()
+			// let text = `symbol: ${global.focused_symbol.name}`
+			// ctx.save()
+			// ctx.font = '14px Monospace';
+			// ctx.fillStyle = "#FFFFFF"
+			// ctx.textAlign = 'center';
+			// ctx.fillText(text, (proj_rect[0]+proj_rect[2])-(proj_rect[2]/2), 40);
+			// ctx.restore()
 
 		}
 
