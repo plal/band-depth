@@ -678,6 +678,14 @@ function create_section_label(text) {
 	return lbl;
 }
 
+function create_option(value, text) {
+	let opt = document.createElement('option')
+	opt.value = value
+	opt.innerHTML = text
+
+	return opt
+}
+
 function prepare_ui()
 {
 
@@ -866,7 +874,6 @@ function prepare_ui()
 	// norm_date_grid.appendChild(norm_date_label)
 	// norm_date_grid.appendChild(norm_date_input)
 
-
 	let normalize_btn = document.createElement('input')
 	global.ui.normalize_btn = normalize_btn
 	normalize_btn.type = "checkbox"
@@ -876,7 +883,6 @@ function prepare_ui()
 	global.ui.normalize_lbl = normalize_lbl
 	normalize_lbl.setAttribute("for", normalize_btn)
 	normalize_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
-	//normalize_lbl.classList.add('checkbox_input_label')
 	normalize_lbl.innerHTML = 'Normalize values'
 
 	let normalize_grid = document.createElement('div')
@@ -894,7 +900,6 @@ function prepare_ui()
 	global.ui.use_diffs_lbl = use_diffs_lbl
 	use_diffs_lbl.setAttribute("for", use_diffs_btn)
 	use_diffs_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:120px'
-	//extremal_depth_lbl.classList.add('checkbox_input_label')
 	use_diffs_lbl.innerHTML = 'Use diffs on aux view'
 
 	let use_diffs_grid = document.createElement('div')
@@ -907,14 +912,12 @@ function prepare_ui()
 	let modified_band_depth_btn = document.createElement('input')
 	global.ui.modified_band_depth_btn = modified_band_depth_btn
 	modified_band_depth_btn.type = "checkbox"
-	//modified_band_depth_btn.classList.add('checkbox_input')
 	install_event_listener(modified_band_depth_btn, 'click', modified_band_depth_btn, EVENT.RUN_MODIFIED_BAND_DEPTH_ALGORITHM)
 
 	let modified_band_depth_lbl = document.createElement('label')
 	global.ui.modified_band_depth_lbl = modified_band_depth_lbl
 	modified_band_depth_lbl.setAttribute("for", modified_band_depth_btn)
 	modified_band_depth_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
-	//modified_band_depth_lbl.classList.add('checkbox_input_label')
 	modified_band_depth_lbl.innerHTML = 'Functional Boxplot MBD'
 
 	let modified_band_depth_grid = document.createElement('div')
@@ -926,14 +929,12 @@ function prepare_ui()
 
 	let mbd_draw_outliers_btn = document.createElement('input')
 	global.ui.mbd_draw_outliers_btn = mbd_draw_outliers_btn
-	//mbd_draw_outliers_btn.checkmbd = 'true'
 	mbd_draw_outliers_btn.type = "checkbox"
 
 	let mbd_draw_outliers_lbl = document.createElement('label')
 	global.ui.mbd_draw_outliers_lbl = mbd_draw_outliers_lbl
 	mbd_draw_outliers_lbl.setAttribute("for", mbd_draw_outliers_btn)
 	mbd_draw_outliers_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
-	//extremal_depth_lbl.classList.add('checkbox_input_label')
 	mbd_draw_outliers_lbl.innerHTML = '- Draw outliers'
 
 	let mbd_draw_outliers_grid = document.createElement('div')
@@ -946,14 +947,12 @@ function prepare_ui()
 	let extremal_depth_btn = document.createElement('input')
 	global.ui.extremal_depth_btn = extremal_depth_btn
 	extremal_depth_btn.type = "checkbox"
-	//extremal_depth_btn.classList.add('checkbox_input')
 	install_event_listener(extremal_depth_btn, 'click', extremal_depth_btn, EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM)
 
 	let extremal_depth_lbl = document.createElement('label')
 	global.ui.extremal_depth_lbl = extremal_depth_lbl
 	extremal_depth_lbl.setAttribute("for", extremal_depth_btn)
 	extremal_depth_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
-	//extremal_depth_lbl.classList.add('checkbox_input_label')
 	extremal_depth_lbl.innerHTML = 'Functional Boxplot ED'
 
 	let extremal_depth_grid = document.createElement('div')
@@ -972,7 +971,6 @@ function prepare_ui()
 	global.ui.draw_curves_lbl = draw_curves_lbl
 	draw_curves_lbl.setAttribute("for", draw_curves_btn)
 	draw_curves_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:120px'
-	//extremal_depth_lbl.classList.add('checkbox_input_label')
 	draw_curves_lbl.innerHTML = 'Draw curves'
 
 	let draw_curves_grid = document.createElement('div')
@@ -1000,75 +998,6 @@ function prepare_ui()
 	ed_draw_outliers_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around;' //justify-content:flex-end'
 	ed_draw_outliers_grid.appendChild(ed_draw_outliers_lbl)
 	ed_draw_outliers_grid.appendChild(ed_draw_outliers_btn)
-
-	let rank_depth_select = document.createElement('select')
-	global.ui.rank_depth_select = rank_depth_select
-	rank_depth_select.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around;\
-							   font-family:Courier; font-size:13pt; color: #FFFFFF;'
-	install_event_listener(rank_depth_select, 'change', rank_depth_select, EVENT.CHANGE_AUX_VIEW)
-
-	let hidden_option = document.createElement('option')
-	hidden_option.selected = 'selected'
-	hidden_option.hidden = 'hidden'
-	hidden_option.value = 'none'
-	hidden_option.innerHTML = 'aux view'
-
-	let dcdf_option = document.createElement('option')
-	dcdf_option.value = 'dcdf'
-	dcdf_option.innerHTML = 'pw depth distribution'
-
-	let rcdf_option = document.createElement('option')
-	rcdf_option.value = 'rcdf'
-	rcdf_option.innerHTML = 'rank distribution'
-
-	let none_option = document.createElement('option')
-	none_option.value = 'none'
-	none_option.innerHTML = 'none'
-
-	rank_depth_select.appendChild(hidden_option)
-	rank_depth_select.appendChild(dcdf_option)
-	rank_depth_select.appendChild(rcdf_option)
-	rank_depth_select.appendChild(none_option)
-
-	let draw_ed_dcdf_agg = document.createElement('input')
-	global.ui.draw_ed_dcdf_agg = draw_ed_dcdf_agg
-	draw_ed_dcdf_agg.type = 'radio'
-	draw_ed_dcdf_agg.checked = true
-	draw_ed_dcdf_agg.name = 'dcdf-vis-choice'
-
-	let draw_ed_dcdf_agg_lbl = document.createElement('label')
-	global.ui.draw_ed_dcdf_lbl = draw_ed_dcdf_agg_lbl
-	draw_ed_dcdf_agg_lbl.setAttribute("for", draw_ed_dcdf_agg)
-	draw_ed_dcdf_agg_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
-	//extremal_depth_lbl.classList.add('checkbox_input_label')
-	draw_ed_dcdf_agg_lbl.innerHTML = '-- Aggregated'
-
-	let draw_ed_dcdf_agg_grid = document.createElement('div')
-	global.ui.draw_ed_dcdf_agg_grid = draw_ed_dcdf_agg_grid
-	draw_ed_dcdf_agg_grid.id = draw_ed_dcdf_agg_grid
-	draw_ed_dcdf_agg_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around;' //justify-content:flex-end'
-	draw_ed_dcdf_agg_grid.appendChild(draw_ed_dcdf_agg_lbl)
-	draw_ed_dcdf_agg_grid.appendChild(draw_ed_dcdf_agg)
-
-	let draw_ed_dcdf_sep = document.createElement('input')
-	global.ui.draw_ed_dcdf_sep = draw_ed_dcdf_sep
-	draw_ed_dcdf_sep.type = 'radio'
-	draw_ed_dcdf_sep.name = 'dcdf-vis-choice'
-
-	let draw_ed_dcdf_sep_lbl = document.createElement('label')
-	global.ui.draw_ed_dcdf_lbl = draw_ed_dcdf_sep_lbl
-	draw_ed_dcdf_sep_lbl.setAttribute("for", draw_ed_dcdf_sep)
-	draw_ed_dcdf_sep_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
-	//extremal_depth_lbl.classList.add('checkbox_input_label')
-	draw_ed_dcdf_sep_lbl.innerHTML = '-- Separated'
-
-	let draw_ed_dcdf_sep_grid = document.createElement('div')
-	global.ui.draw_ed_dcdf_sep_grid = draw_ed_dcdf_sep_grid
-	draw_ed_dcdf_sep_grid.id = draw_ed_dcdf_sep_grid
-	draw_ed_dcdf_sep_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around;' //justify-content:flex-end'
-	draw_ed_dcdf_sep_grid.appendChild(draw_ed_dcdf_sep_lbl)
-	draw_ed_dcdf_sep_grid.appendChild(draw_ed_dcdf_sep)
-
 
 	let filter_input = document.createElement('input')
 	global.ui.filter_input = filter_input
@@ -1101,14 +1030,6 @@ function prepare_ui()
 	remove_active_groups_btn.style = "position:relative; width:100%; margin:2px;\
 	 								  border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
 	install_event_listener(remove_active_groups_btn, 'click', remove_active_groups_btn, EVENT.REMOVE_ACTIVE_GROUPS)
-
-	let clear_chart_btn = document.createElement('button')
-	global.ui.clear_chart_btn = clear_chart_btn
-	//clear_chart_btn.setAttribute("type","button")
-	clear_chart_btn.id = "clear_chart_btn"
-	clear_chart_btn.textContent = 'clear chart'
-	clear_chart_btn.style = "position:relative; width:100%; margin:2px; border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
-	install_event_listener(clear_chart_btn, 'click', clear_chart_btn, EVENT.CLEAR_CHART)
 
 	let symbols_table_div = document.createElement('div')
 	global.ui.symbols_table_div = symbols_table_div
@@ -1153,20 +1074,20 @@ function prepare_ui()
 	// left_panel.appendChild(start_date_grid)
 	// left_panel.appendChild(end_date_grid)
 	// left_panel.appendChild(norm_date_grid)
-	left_panel.appendChild(normalize_grid)
+	// left_panel.appendChild(normalize_grid)
 	left_panel.appendChild(modified_band_depth_grid)
 	left_panel.appendChild(mbd_draw_outliers_grid)
 	left_panel.appendChild(extremal_depth_grid)
 	left_panel.appendChild(ed_draw_outliers_grid)
-	left_panel.appendChild(use_diffs_grid)
-	left_panel.appendChild(rank_depth_select)
-	left_panel.appendChild(draw_ed_dcdf_agg_grid)
-	left_panel.appendChild(draw_ed_dcdf_sep_grid)
+	// left_panel.appendChild(use_diffs_grid)
+	// left_panel.appendChild(rank_depth_select)
+	// left_panel.appendChild(draw_ed_dcdf_agg_grid)
+	// left_panel.appendChild(draw_ed_dcdf_sep_grid)
 	left_panel.appendChild(draw_curves_grid)
 	left_panel.appendChild(create_curve_density_matrix_grid)
 	left_panel.appendChild(filter_input)
 	left_panel.appendChild(add_table_symbols_btn)
-	left_panel.appendChild(clear_chart_btn)
+	// left_panel.appendChild(clear_chart_btn)
    	left_panel.appendChild(symbols_table_div)
 	left_panel.appendChild(create_group_btn)
 	left_panel.appendChild(remove_active_groups_btn)
@@ -1195,9 +1116,79 @@ function prepare_ui()
 
 	let chosen_stats_select = document.createElement('select')
 	global.ui.chosen_stats_select = chosen_stats_select
-	chosen_stats_select.style = 'background-color:#2f3233; width:125px; font-family:Courier; font-size:13pt; color: #FFFFFF;'
+	chosen_stats_select.style = 'background-color:#2f3233; position:absolute; left:17.1%; top:0.5%; width:125px;\
+	 							 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 
-	ts_div.append(chosen_stats_select)
+	let clear_chart_btn = document.createElement('button')
+	global.ui.clear_chart_btn = clear_chart_btn
+	//clear_chart_btn.setAttribute("type","button")
+	clear_chart_btn.id = "clear_chart_btn"
+	clear_chart_btn.textContent = 'clear chart'
+	clear_chart_btn.style = "position:absolute; left:92%; top:0.5%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+							 font-family:Courier; font-size:12pt; z-index:2;"
+	install_event_listener(clear_chart_btn, 'click', clear_chart_btn, EVENT.CLEAR_CHART)
+
+	let rank_depth_select = document.createElement('select')
+	global.ui.rank_depth_select = rank_depth_select
+	rank_depth_select.style = 'position:absolute; left:17.1%; top:49.1%; background-color:#2f3233; \
+							   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
+	install_event_listener(rank_depth_select, 'change', rank_depth_select, EVENT.CHANGE_AUX_VIEW)
+
+	let hidden_option = create_option('none','aux view')
+	hidden_option.selected = 'selected'
+	hidden_option.hidden = 'hidden'
+
+	let dcdf_option = create_option('dcdf', 'pw depth distribution')
+
+	let rcdf_option = create_option('rcdf','rank distribution')
+
+	let none_option = create_option('none', 'none')
+
+	rank_depth_select.appendChild(hidden_option)
+	rank_depth_select.appendChild(dcdf_option)
+	rank_depth_select.appendChild(rcdf_option)
+	rank_depth_select.appendChild(none_option)
+
+	let draw_aux_view_agg = document.createElement('input')
+	global.ui.draw_aux_view_agg = draw_aux_view_agg
+	draw_aux_view_agg.type = 'radio'
+	draw_aux_view_agg.checked = true
+	draw_aux_view_agg.name = 'dcdf-vis-choice'
+
+	let draw_aux_view_agg_lbl = document.createElement('label')
+	global.ui.draw_aux_view_lbl = draw_aux_view_agg_lbl
+	draw_aux_view_agg_lbl.setAttribute("for", draw_aux_view_agg)
+	draw_aux_view_agg_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
+	draw_aux_view_agg_lbl.innerHTML = 'Aggregated'
+
+	let draw_aux_view_sep = document.createElement('input')
+	global.ui.draw_aux_view_sep = draw_aux_view_sep
+	draw_aux_view_sep.type = 'radio'
+	draw_aux_view_sep.name = 'dcdf-vis-choice'
+	draw_aux_view_sep.style = 'margin-top:4px'
+
+	let draw_aux_view_sep_lbl = document.createElement('label')
+	global.ui.draw_aux_view_lbl = draw_aux_view_sep_lbl
+	draw_aux_view_sep_lbl.setAttribute("for", draw_aux_view_sep)
+	draw_aux_view_sep_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
+	draw_aux_view_sep_lbl.innerHTML = 'Separated'
+
+	let draw_aux_view_type_grid = document.createElement('div')
+	global.ui.draw_aux_view_type_grid = draw_aux_view_type_grid
+	draw_aux_view_type_grid.id = draw_aux_view_type_grid
+	draw_aux_view_type_grid.style = 'position:absolute; left:33.5%; top:49.3%; display:grid; background-color:#6b6f71;\
+									 align-items:baseline; justify-items:baseline;\
+									 grid-template-rows: 10px; grid-template-columns:repeat(4, 110px); z-index:2'
+
+	draw_aux_view_type_grid.appendChild(draw_aux_view_agg_lbl)
+	draw_aux_view_type_grid.appendChild(draw_aux_view_agg)
+ 	draw_aux_view_type_grid.appendChild(draw_aux_view_sep_lbl)
+	draw_aux_view_type_grid.appendChild(draw_aux_view_sep)
+
+	ts_div.appendChild(chosen_stats_select)
+	ts_div.appendChild(clear_chart_btn)
+	ts_div.appendChild(rank_depth_select)
+	ts_div.appendChild(draw_aux_view_type_grid)
 
 	let ts_canvas = ts_div.appendChild(document.createElement('canvas'))
 	global.ui.ts_canvas = ts_canvas
@@ -1220,7 +1211,7 @@ function prepare_ui()
 
 	var body = document.getElementsByTagName('body')[0]
 	global.ui.body = body
-	body.style = 'margin:0px; background-color:#2f3233'
+	body.style = 'margin:0px 2px 2px 0px; background-color:#2f3233'
 	body.appendChild(main_div)
 
 	install_event_listener(window, "keydown", window, EVENT.KEYDOWN)
@@ -2142,7 +2133,7 @@ function update_ts()
 		        	rect[3] - margin[SIDE.BOTTOM] - margin[SIDE.TOP] ]
 
 	let aux_rect = null
-	let aux_rect_margins = [ 20, 33, 5, 5 ]
+	let aux_rect_margins = [ 40, 55, 15, 5 ]
 	{
 		aux_rect = [ aux_rect_inf[0] + aux_rect_margins[SIDE.LEFT],
 					  aux_rect_inf[1] + aux_rect_margins[SIDE.TOP],
@@ -2150,7 +2141,7 @@ function update_ts()
 					  aux_rect_inf[3] - aux_rect_margins[SIDE.BOTTOM] - aux_rect_margins[SIDE.TOP] ]
 	}
 
-	let proj_rect_margins = [ 30, 33, 5, 5 ]
+	let proj_rect_margins = [ 40, 20, 15, 10 ]
 	let proj_rect_inf = [canvas.width/2, canvas.height/2, canvas.width/2, canvas.height/2]
 	let proj_rect = [ proj_rect_inf[0] + proj_rect_margins[SIDE.LEFT],
 				  	  proj_rect_inf[1] + proj_rect_margins[SIDE.TOP],
@@ -2250,12 +2241,7 @@ function update_ts()
 		if (selected_stat !== '') {
 			main_stat = selected_stat
 		}
-		global.recompute_viewbox = true
-		// if (typeof global.chosen_stats[0] !== 'undefined' ) {
-		// 	main_stat = global.chosen_stats[0];
-		// } else {
-		// 	main_stat = "points";
-		// }
+		// global.recompute_viewbox = true
 
 		for (let i=0;i<global.chart_symbols.length;i++) {
 			let symbol = global.chart_symbols[i]
@@ -2741,9 +2727,6 @@ function update_ts()
 					}
 					let color = "#2f3233"
 					let color_scale = ['#ffffd9','#edf8b1','#c7e9b4','#7fcdbb','#41b6c4','#1d91c0','#225ea8','#253494','#081d58','#081d58']
-					// ['#fff7ec','#fee8c8','#fdd49e','#fdbb84','#fc8d59','#ef6548','#d7301f','#b30000','#7f0000', '#7f0000']
-					// ['#ffffcc','#ffeda0','#fed976','#feb24c','#fd8d3c','#fc4e2a','#e31a1c','#bd0026','#800026']
-					// ['#67001f','#b2182b','#d6604d','#f4a582','#fddbc7','#f7f7f7','#d1e5f0','#92c5de','#4393c3','#2166ac','#053061']
 
 					if (value > 0.0) {
 						let x = value * (color_scale.length-1)
@@ -3137,19 +3120,6 @@ function update_ts()
 		ctx.strokeStyle = "#FFFFFF";
 		ctx.lineWidth   = 2;
 
-		// ctx.beginPath()
-		// //y axis
-		// ctx.moveTo(aux_rect[RECT.LEFT], aux_rect[RECT.TOP])
-		// ctx.lineTo(aux_rect[RECT.LEFT], aux_rect[RECT.HEIGHT]+6)
-		// ctx.stroke()
-		// //x axis
-		// ctx.moveTo(aux_rect[RECT.LEFT], aux_rect[RECT.HEIGHT]+6)
-		// ctx.lineTo(aux_rect[RECT.LEFT] + aux_rect[RECT.WIDTH], aux_rect[RECT.HEIGHT]+6)
-		// ctx.stroke()
-		//
-		// ctx.restore()
-
-
 		//--------------
 		// find y range
 		//--------------
@@ -3185,7 +3155,7 @@ function update_ts()
 				// if drawing separated values for pointwise depths cdfs
 				// dissipate them
 				//--------------
-				if(global.ui.draw_ed_dcdf_sep.checked) {
+				if(global.ui.draw_aux_view_sep.checked) {
 					if (j>0) {
 						value = values[j] - values[j-1]
 					}
@@ -3778,16 +3748,16 @@ function update_ts()
 		}
 
 		function proj_rect_map(x, y) {
-			let px = proj_rect[RECT.LEFT] + (1.0 * (x - proj_x_min) / (proj_x_max - proj_x_min)) * proj_rect[RECT.WIDTH]
-			let py = proj_rect[RECT.TOP] + (proj_rect[RECT.HEIGHT] - 1 - (1.0 * (y - proj_y_min) / (proj_y_max - proj_y_min)) * proj_rect[RECT.HEIGHT])
+			let px = (proj_rect[RECT.LEFT]+4) + (1.0 * (x - proj_x_min) / (proj_x_max - proj_x_min)) * (proj_rect[RECT.WIDTH]-8)
+			let py = (proj_rect[RECT.TOP]+4) + ((proj_rect[RECT.HEIGHT]-8) - 1 - (1.0 * (y - proj_y_min) / (proj_y_max - proj_y_min)) * (proj_rect[RECT.HEIGHT]-8))
 			return [px,py]
 		}
 
-		function proj_rect_inverse_map(px, py) {
-			let x = ((px - proj_rect[RECT.LEFT]) / proj_rect[RECT.WIDTH]) * (1.0*(proj_x_max - proj_x_min)) + proj_x_min
-			let y = -((((py - proj_rect[RECT.TOP] - proj_rect[RECT.HEIGHT] + 1) * (1.0 * (proj_y_max - proj_y_min))) / proj_rect[RECT.HEIGHT]) - proj_y_min)
-			return [x,y]
-		}
+		// function proj_rect_inverse_map(px, py) {
+		// 	let x = ((px - (proj_rect[RECT.LEFT]-4)) / (proj_rect[RECT.WIDTH]+4)) * (1.0*(proj_x_max - proj_x_min)) + proj_x_min
+		// 	let y = -((((py - (proj_rect[RECT.TOP]-4) - (proj_rect[RECT.HEIGHT]+4) + 1) * (1.0 * (proj_y_max - proj_y_min))) / (proj_rect[RECT.HEIGHT]+4)) - proj_y_min)
+		// 	return [x,y]
+		// }
 
 		let min_distance_threshold = 5 * 5
 		let closest_distance = 100000
