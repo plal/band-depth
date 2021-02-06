@@ -1,5 +1,12 @@
 "use strict";
 
+const VIEWS_MARGINS = 15
+
+const TSVIEW_MARGINS = {
+	X:15,
+	Y:28
+}
+
 const AUX_VIEW = {
 	DCDF: 0,
 	RCDF: 1,
@@ -60,6 +67,7 @@ const EVENT= {
 var global = {
 	ui:{},
 	symbols: [],
+	selected_symbols: [],
 	chart_symbols: [],
 	chart_colors: [],
 	groups: [],
@@ -237,6 +245,13 @@ function add_symbol_to_chart(symbol, color) {
 	global.chart_colors.push(color)
 	symbol.ui_col.style.color = color
 	symbol.ui_col.style.fontWeight = 'bold'
+}
+
+function remove_symbol_from_list(symbol, list) {
+	let to_remove = list.indexOf(symbol)
+	if (to_remove > -1) {
+	  list.splice(to_remove, 1);
+	}
 }
 
 function remove_symbol_from_chart(symbol) {
@@ -1130,7 +1145,7 @@ function prepare_ui()
 
 	let rank_depth_select = document.createElement('select')
 	global.ui.rank_depth_select = rank_depth_select
-	rank_depth_select.style = 'position:absolute; left:17.1%; top:49.1%; background-color:#2f3233; \
+	rank_depth_select.style = 'position:absolute; left:17.1%; top:48.7%; background-color:#2f3233; \
 							   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 	install_event_listener(rank_depth_select, 'change', rank_depth_select, EVENT.CHANGE_AUX_VIEW)
 
@@ -1906,7 +1921,16 @@ function process_event_queue()
 					download_symbol_data(symbol)
 				}
 			} else {
-				remove_symbol_from_chart(symbol)
+				if (e.raw.getModifierState("Shift")) {
+					// symbol.selected = !symbol.selected
+					if (!global.selected_symbols.includes(symbol)) {
+						global.selected_symbols.push(symbol);
+					} else {
+						remove_symbol_from_list(symbol, global.selected_symbols);
+					}
+				} else {
+					remove_symbol_from_chart(symbol)
+				}
 			}
 		} else if (e.event_type == EVENT.ADD_TABLE_SYMBOLS) {
 			add_table_symbols()
@@ -2359,14 +2383,14 @@ function update_ts()
 		global.viewbox.cols = cols
 
 		function map(x, y) {
-			let px = ts_rect[RECT.LEFT] + (1.0 * (x - x_min) / (x_max - x_min)) * ts_rect[RECT.WIDTH]
-			let py = ts_rect[RECT.TOP] + (ts_rect[RECT.HEIGHT] - 1 - (1.0 * (y - y_min) / (y_max - y_min)) * ts_rect[RECT.HEIGHT])
+			let px = (ts_rect[RECT.LEFT]+TSVIEW_MARGINS.X) + (1.0 * (x - x_min) / (x_max - x_min)) * (ts_rect[RECT.WIDTH]-2*TSVIEW_MARGINS.X)
+			let py = (ts_rect[RECT.TOP]+TSVIEW_MARGINS.Y) + ((ts_rect[RECT.HEIGHT]-TSVIEW_MARGINS.Y) - 1 - (1.0 * (y - y_min) / (y_max - y_min)) * (ts_rect[RECT.HEIGHT]-TSVIEW_MARGINS.Y))
 			return [px,py]
 		}
 
 		function inverse_map(px, py) {
-			let x = (px - ts_rect[RECT.LEFT]) / ts_rect[RECT.WIDTH] * (1.0*(x_max - x_min)) + x_min
-			let y = -((((py - ts_rect[RECT.TOP] - ts_rect[RECT.HEIGHT] + 1) * (1.0 * (y_max - y_min))) / ts_rect[RECT.HEIGHT]) - y_min)
+			let x = (px - (ts_rect[RECT.LEFT]+TSVIEW_MARGINS.X)) / (ts_rect[RECT.WIDTH]-2*TSVIEW_MARGINS.X) * (1.0*(x_max - x_min)) + x_min
+			let y = -((((py - (ts_rect[RECT.TOP]+TSVIEW_MARGINS.Y) - (ts_rect[RECT.HEIGHT]-TSVIEW_MARGINS.Y) + 1) * (1.0 * (y_max - y_min))) / (ts_rect[RECT.HEIGHT]-TSVIEW_MARGINS.Y)) - y_min)
 			return [x,y]
 		}
 
@@ -2501,9 +2525,9 @@ function update_ts()
 			ctx.font = "bold 10pt Courier"
 			ctx.fillStyle = "#FFFFFF"
 			if(i==(y_ticks.length-1)) {
-				ctx.fillText(y_ticks[i].toFixed(2), p0[0]-20, p0[1]+8);
+				ctx.fillText(parseInt(y_ticks[i]), p0[0]-25, p0[1]+8);
 			} else {
-				ctx.fillText(y_ticks[i].toFixed(2), p0[0]-20, p0[1]+5);
+				ctx.fillText(parseInt(y_ticks[i]), p0[0]-25, p0[1]+5);
 			}
 
 		}
@@ -3022,7 +3046,6 @@ function update_ts()
 
 			let record = global.focused_symbol
 			let value = global.focused_symbol.data[global.focused_date]
-			let date = date_offset_to_string(date_start+global.focused_date)
 			let text = `player: ${global.focused_symbol.name} // position: ${global.focused_symbol.position}`
 
 			if (global.aux_view != 'none') {
@@ -3032,6 +3055,11 @@ function update_ts()
 			}
 			ctx.textAlign = 'center';
 			ctx.fillText(text, ts_rect[2]/2, 40);
+		}
+
+		for (let i=0; i<global.selected_symbols.length; i++) {
+			let symbol = global.selected_symbols[i]
+			draw_timeseries(symbol, true)
 		}
 
 
@@ -3046,14 +3074,14 @@ function update_ts()
 		pt[0] = clamp(pt[0],x_min,x_max)
 		pt[1] = clamp(pt[1],y_min,y_max)
 
-		let y_p0 = map(Math.floor(0.5+pt[0]),y_min)
-		let y_p1 = map(Math.floor(0.5+pt[0]),y_max)
+		// let y_p0 = map(Math.floor(0.5+pt[0]),y_min)
+		// let y_p1 = map(Math.floor(0.5+pt[0]),y_max)
 
 		ctx.strokeStyle = "#555555"
-		ctx.beginPath()
-		ctx.moveTo(y_p0[0], y_p0[1])
-		ctx.lineTo(y_p1[0], y_p1[1])
-		ctx.stroke()
+		// ctx.beginPath()
+		// ctx.moveTo(y_p0[0], y_p0[1])
+		// ctx.lineTo(y_p1[0], y_p1[1])
+		// ctx.stroke()
 
 		let x_p0 = map(x_min, pt[1])
 		let x_p1 = map(x_max, pt[1])
@@ -3065,7 +3093,7 @@ function update_ts()
 
 		ctx.restore() // TS_RECT CLIP END
 
-		drawTextBG(ctx, date_offset_to_string(date_start+pt[0]), y_p0[0], y_p0[1])
+		// drawTextBG(ctx, date_offset_to_string(date_start+pt[0]), y_p0[0], y_p0[1])
 		drawTextBG(ctx, pt[1].toFixed(2), x_p0[0], x_p0[1])
 
 
@@ -3178,20 +3206,36 @@ function update_ts()
 		if (global.aux_view == 'dcdf') {
 			aux_x_max = global.chart_symbols[0].cdf_matrix_row.length - 1
 		} else if (global.aux_view == 'rcdf') {
-			aux_x_max = global.chart_symbols.length - 1
+
+			let last_rank = 0
+
+			for (let i=0; i<global.chart_symbols.length; i++) {
+
+				let symbol = global.chart_symbols[i]
+				if (symbol.ranks_current_values == null) { continue }
+				for (let j=0; j<symbol.ranks_current_values.length; j++) {
+					if (symbol.ranks_current_values[j] == 1.0) {
+						last_rank = Math.max(last_rank, j)
+						break
+					}
+				}
+
+			}
+
+			aux_x_max = last_rank + 1
 		}
 
-		function aux_rect_map(x, y) {
-			let px = aux_rect[RECT.LEFT] + (1.0 * (x - aux_x_min) / (aux_x_max - aux_x_min)) * aux_rect[RECT.WIDTH]
-			let py = aux_rect[RECT.TOP] + (aux_rect[RECT.HEIGHT] - 1 - (1.0 * (y - aux_y_min) / (aux_y_max - aux_y_min)) * aux_rect[RECT.HEIGHT])
-			return [px,py]
-		}
-
-		function aux_rect_inverse_map(px, py) {
-			let x = ((px - aux_rect[RECT.LEFT]) / aux_rect[RECT.WIDTH]) * (1.0*(aux_x_max - aux_x_min)) + aux_x_min
-			let y = -((((py - aux_rect[RECT.TOP] - aux_rect[RECT.HEIGHT] + 1) * (1.0 * (aux_y_max - aux_y_min))) / aux_rect[RECT.HEIGHT]) - aux_y_min)
-			return [x,y]
-		}
+		// function aux_rect_map(x, y) {
+		// 	let px = aux_rect[RECT.LEFT] + (1.0 * (x - aux_x_min) / (aux_x_max - aux_x_min)) * aux_rect[RECT.WIDTH]
+		// 	let py = (aux_rect[RECT.TOP]+VIEWS_MARGINS) + (aux_rect[RECT.HEIGHT] - 1 - (1.0 * (y - aux_y_min) / (aux_y_max - aux_y_min)) * aux_rect[RECT.HEIGHT])
+		// 	return [px,py]
+		// }
+		//
+		// function aux_rect_inverse_map(px, py) {
+		// 	let x = ((px - aux_rect[RECT.LEFT]) / aux_rect[RECT.WIDTH]) * (1.0*(aux_x_max - aux_x_min)) + aux_x_min
+		// 	let y = -((((py - (aux_rect[RECT.TOP]+VIEWS_MARGINS) - aux_rect[RECT.HEIGHT] + 1) * (1.0 * (aux_y_max - aux_y_min))) / aux_rect[RECT.HEIGHT]) - aux_y_min)
+		// 	return [x,y]
+		// }
 
 		let min_distance_threshold = 5 * 5
 		let closest_distance = 100000
@@ -3239,7 +3283,7 @@ function update_ts()
 			}
 		}
 
-		let n_ranks = global.chart_symbols.length
+		let n_ranks = aux_x_max//global.chart_symbols.length
 
 		function rotate(arr, a, b) {
 			let x = arr[b-1]
@@ -3381,13 +3425,13 @@ function update_ts()
 
 				function panel_rect_map(x, y) {
 					let px = (panel_rect[RECT.LEFT] + (1.0 * (x - panel_x_min) / (panel_x_max - panel_x_min)) * panel_rect[RECT.WIDTH])
-					let py = panel_rect[RECT.TOP] + (panel_rect[RECT.HEIGHT] - 1 - (1.0 * (y - panel_y_min) / (panel_y_max - panel_y_min)) * panel_rect[RECT.HEIGHT])
+					let py = (panel_rect[RECT.TOP]+VIEWS_MARGINS) + ((panel_rect[RECT.HEIGHT]-VIEWS_MARGINS) - 1 - (1.0 * (y - panel_y_min) / (panel_y_max - panel_y_min)) * (panel_rect[RECT.HEIGHT]-VIEWS_MARGINS))
 					return [px,py]
 				}
 
 				function panel_rect_inverse_map(px, py) {
 					let x = ((px - panel_rect[RECT.LEFT]) / panel_rect[RECT.WIDTH]) * (1.0*(panel_x_max - panel_x_min)) + panel_x_min
-					let y = -((((py - panel_rect[RECT.TOP] - panel_rect[RECT.HEIGHT] + 1) * (1.0 * (panel_y_max - panel_y_min))) / panel_rect[RECT.HEIGHT]) - panel_y_min)
+					let y = -((((py - (panel_rect[RECT.TOP]+VIEWS_MARGINS) - (panel_rect[RECT.HEIGHT]-VIEWS_MARGINS) + 1) * (1.0 * (panel_y_max - panel_y_min))) / (panel_rect[RECT.HEIGHT]-VIEWS_MARGINS)) - panel_y_min)
 					return [x,y]
 				}
 
@@ -3651,10 +3695,28 @@ function update_ts()
 
 				}
 
-				let panel_x_ticks = []
+				let panel_x_max_ticks = 5;
+				let panel_x_ticks = [];
+				// if ((panel_x_max - panel_x_min) < 4) {
+				//
+				// 	for (let l=offset_start; l<offset_end; l++) {
+				// 		panel_x_ticks.push(l);
+				// 	}
+				//
+				// } else {
+				//
+				// 	for(let l=0; l<panel_x_max_ticks; l++) {
+				// 		// if (l==panel_x_max_ticks-1) { continue; }
+				// 		let x_tick = panel_x_min+((1.0*l*(panel_x_max-panel_x_min))/(panel_x_max_ticks-1))
+				// 		panel_x_ticks.push(x_tick)
+				// 	}
+				//
+				// }
+
 				for (let l=offset_start; l<offset_end; l++) {
-					panel_x_ticks.push(l)
+					panel_x_ticks.push(l);
 				}
+
 				for(let l=0; l<panel_x_ticks.length; l++) {
 					ctx.strokeStyle = "#555555";
 					ctx.lineWidth   = 1;
@@ -3715,6 +3777,11 @@ function update_ts()
 
 				}
 
+				for (let i=0; i<global.selected_symbols.length; i++) {
+					let symbol = global.selected_symbols[i]
+					draw_symbol_on_panel(symbol, true)
+				}
+
 			}
 		}
 	} // ed-cdf drawings
@@ -3748,8 +3815,8 @@ function update_ts()
 		}
 
 		function proj_rect_map(x, y) {
-			let px = (proj_rect[RECT.LEFT]+4) + (1.0 * (x - proj_x_min) / (proj_x_max - proj_x_min)) * (proj_rect[RECT.WIDTH]-8)
-			let py = (proj_rect[RECT.TOP]+4) + ((proj_rect[RECT.HEIGHT]-8) - 1 - (1.0 * (y - proj_y_min) / (proj_y_max - proj_y_min)) * (proj_rect[RECT.HEIGHT]-8))
+			let px = (proj_rect[RECT.LEFT]+VIEWS_MARGINS) + (1.0 * (x - proj_x_min) / (proj_x_max - proj_x_min)) * (proj_rect[RECT.WIDTH]-(2*VIEWS_MARGINS))
+			let py = (proj_rect[RECT.TOP]+VIEWS_MARGINS) + ((proj_rect[RECT.HEIGHT]-(2*VIEWS_MARGINS)) - 1 - (1.0 * (y - proj_y_min) / (proj_y_max - proj_y_min)) * (proj_rect[RECT.HEIGHT]-(2*VIEWS_MARGINS)))
 			return [px,py]
 		}
 
@@ -3833,6 +3900,11 @@ function update_ts()
 
 		}
 
+		for (let i=0; i<global.selected_symbols.length; i++) {
+			let symbol = global.selected_symbols[i]
+			draw_symbol_projection(symbol, true)
+		}
+
 	} // projection drawings
 
 	if (ts_closest_symbol != null) {
@@ -3873,7 +3945,7 @@ async function main()
 		for (let i=0;i<symbol_names.length;i++) {
 			symbols.push({ name:symbol_names[i], position:null, ui_row:null, ui_col:null,
 						   on_table:true, on_chart:false, data: null,
-						   ts_current_values: null, ed_rank:null, mbd_rank:null, filter:0 })
+						   ts_current_values: null, ed_rank:null, mbd_rank:null, filter:0, selected:false })
 		}
 		global.symbols = symbols
 		global.toggle_state = 0
