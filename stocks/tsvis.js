@@ -38,6 +38,12 @@ const PANEL_RESIZE_SIDE = {
 
 const FILTER_COLORS = ["#8888FF", "#FF8888"]
 
+const POSITION_COLORS = {
+	"C":'#1b9e77',
+	"F":'#d95f02',
+	"G":'#7570b3'
+}
+
 const EVENT= {
 	FILTER: "event_filter",
 	TOGGLE_SYMBOL: "event_toggle_symbol",
@@ -61,7 +67,8 @@ const EVENT= {
 	CHANGE_AUX_VIEW: "event_change_aux_view",
 	GET_STATS_RANKS: "event_GET_STATS_RANKS",
 	CLICKED_STAT: "event_clicked_stat",
-	CLICK_POS: "event_clicked_pos"
+	CLICK_POS: "event_clicked_pos",
+	CHANGE_COLORBY: "event_change_colorby"
 }
 
 var global = {
@@ -76,6 +83,7 @@ var global = {
 	events: [],
 	chosen_stats:[],
 	chosen_pos:[],
+	colorby:'default',
 	date_start: "2018-10-01",
 	date_end: "2019-06-13",
 	date_norm: "2020-07-15",
@@ -1154,9 +1162,7 @@ function prepare_ui()
 	hidden_option.hidden = 'hidden'
 
 	let dcdf_option = create_option('dcdf', 'pw depth distribution')
-
 	let rcdf_option = create_option('rcdf','rank distribution')
-
 	let none_option = create_option('none', 'none')
 
 	rank_depth_select.appendChild(hidden_option)
@@ -1191,7 +1197,7 @@ function prepare_ui()
 	let draw_aux_view_type_grid = document.createElement('div')
 	global.ui.draw_aux_view_type_grid = draw_aux_view_type_grid
 	draw_aux_view_type_grid.id = draw_aux_view_type_grid
-	draw_aux_view_type_grid.style = 'position:absolute; left:33.5%; top:49.3%; display:grid; background-color:#6b6f71;\
+	draw_aux_view_type_grid.style = 'position:absolute; left:33.5%; top:48.7%; display:grid; background-color:#6b6f71;\
 									 align-items:baseline; justify-items:baseline;\
 									 grid-template-rows: 10px; grid-template-columns:repeat(4, 110px); z-index:2'
 
@@ -1200,10 +1206,30 @@ function prepare_ui()
  	draw_aux_view_type_grid.appendChild(draw_aux_view_sep_lbl)
 	draw_aux_view_type_grid.appendChild(draw_aux_view_sep)
 
+	let proj_colorby_select = document.createElement('select')
+	global.ui.proj_colorby_select = proj_colorby_select
+	proj_colorby_select.style = 'position:absolute; left:58.1%; top:48.7%; background-color:#2f3233; \
+							   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
+	install_event_listener(proj_colorby_select, 'change', proj_colorby_select, EVENT.CHANGE_COLORBY)
+
+
+	let proj_colorby_info_option = create_option('default', 'color by');
+	proj_colorby_info_option.selected = 'selected';
+	proj_colorby_info_option.hidden = 'hidden';
+
+	let proj_colorby_default_option = create_option('default', 'default')
+
+	let proj_colorby_position_option = create_option('position','position')
+
+	proj_colorby_select.appendChild(proj_colorby_info_option)
+	proj_colorby_select.appendChild(proj_colorby_default_option)
+	proj_colorby_select.appendChild(proj_colorby_position_option)
+
 	ts_div.appendChild(chosen_stats_select)
 	ts_div.appendChild(clear_chart_btn)
 	ts_div.appendChild(rank_depth_select)
 	ts_div.appendChild(draw_aux_view_type_grid)
+	ts_div.appendChild(proj_colorby_select)
 
 	let ts_canvas = ts_div.appendChild(document.createElement('canvas'))
 	global.ui.ts_canvas = ts_canvas
@@ -2101,6 +2127,9 @@ function process_event_queue()
 			}
 
 			// console.log(global.chosen_pos)
+		} else if (e.event_type == EVENT.CHANGE_COLORBY) {
+			global.colorby = global.ui.proj_colorby_select.value
+			console.log(global.colorby)
 		}
 	}
 	global.events.length = 0
@@ -2651,6 +2680,12 @@ function update_ts()
 					symbol_color 		= global.chart_colors[i]
 				}
 
+			}
+
+			if (global.colorby == 'position') {
+				curve_color 		= "#FFFFFF44"
+				curve_focused_color = POSITION_COLORS[symbol.position[0]]
+				symbol_color 		= POSITION_COLORS[symbol.position[0]]
 			}
 
 			ctx.strokeStyle = curve_color
@@ -3620,14 +3655,18 @@ function update_ts()
 
 					ctx.save()
 					if (focused) {
-						ctx.lineWidth = 4
-						curve_color = global.chart_colors[idx]
+						ctx.lineWidth = 4;
+						if (global.colorby == 'default') {
+							curve_color = global.chart_colors[idx];
+						} else {
+							curve_color = color;
+						}
 					} else {
-						ctx.lineWidth = 2
+						ctx.lineWidth = 2;
 					}
 
-					ctx.strokeStyle = curve_color
-					ctx.fillStyle = curve_color
+					ctx.strokeStyle = curve_color;
+					ctx.fillStyle = curve_color;
 
 
 					let first_point_drawn = false
@@ -3691,6 +3730,10 @@ function update_ts()
 					check_filters(symbol)
 					if (symbol.filter == 0) {
 						draw_symbol_on_panel(symbol, false)
+						// if (global.colorby == 'default') {
+						// } else if (global.colorby == 'position') {
+						// 	draw_symbol_on_panel(symbol, false, POSITION_COLORS[symbol.position[0]])
+						// }
 					}
 
 				}
@@ -3765,21 +3808,23 @@ function update_ts()
 
 				if (global.focused_symbol != null) {
 
-					draw_symbol_on_panel(global.focused_symbol, true)
-
-					// let text = `symbol: ${global.focused_symbol.name}`
-					// ctx.save()
-					// ctx.font = '14px Monospace';
-					// ctx.fillStyle = "#FFFFFF"
-					// ctx.textAlign = 'center';
-					// ctx.fillText(text, (aux_rect[0]+aux_rect[2])-(aux_rect[2]/2), 40);
-					// ctx.restore()
+					if (global.colorby == 'default') {
+						draw_symbol_on_panel(global.focused_symbol, true)
+					} else if (global.colorby == 'position') {
+						draw_symbol_on_panel(global.focused_symbol, true, POSITION_COLORS[global.focused_symbol.position[0]])
+					}
 
 				}
 
 				for (let i=0; i<global.selected_symbols.length; i++) {
+
 					let symbol = global.selected_symbols[i]
-					draw_symbol_on_panel(symbol, true)
+					if (global.colorby == 'default') {
+						draw_symbol_on_panel(symbol, true)
+					} else if (global.colorby == 'position') {
+						draw_symbol_on_panel(symbol, true, POSITION_COLORS[symbol.position[0]])
+					}
+
 				}
 
 			}
@@ -3845,7 +3890,7 @@ function update_ts()
 				return
 			}
 
-			let point_color = "#FFFFFF99"
+			let point_color = "#FFFFFF99";
 
 			if (typeof color !== "undefined") {
 				point_color = color
@@ -3853,7 +3898,11 @@ function update_ts()
 
 			ctx.save()
 			if (focused) {
-				point_color = global.chart_colors[idx]
+				if (global.colorby == 'default') {
+					point_color = global.chart_colors[idx]
+				} else {
+					point_color = color
+				}
 			}
 
 			ctx.fillStyle = point_color
@@ -3882,13 +3931,21 @@ function update_ts()
 
 			let symbol = global.chart_symbols[m]
 			// check_filters(symbol)
-			draw_symbol_projection(symbol, false)
+			if (global.colorby == 'default') {
+				draw_symbol_projection(symbol, false);
+			} else if (global.colorby == 'position') {
+				draw_symbol_projection(symbol, false, POSITION_COLORS[symbol.position[0]])
+			}
 
 		}
 
 		if (global.focused_symbol != null) {
 
-			draw_symbol_projection(global.focused_symbol, true)
+			if (global.colorby == 'default') {
+				draw_symbol_projection(global.focused_symbol, true)
+			} else if (global.colorby == 'position') {
+				draw_symbol_projection(global.focused_symbol, true, POSITION_COLORS[global.focused_symbol.position[0]])
+			}
 
 			// let text = `symbol: ${global.focused_symbol.name}`
 			// ctx.save()
@@ -3902,7 +3959,11 @@ function update_ts()
 
 		for (let i=0; i<global.selected_symbols.length; i++) {
 			let symbol = global.selected_symbols[i]
-			draw_symbol_projection(symbol, true)
+			if (global.colorby == 'default') {
+				draw_symbol_projection(symbol, true)
+			} else if (global.colorby == 'position') {
+				draw_symbol_projection(symbol, true, POSITION_COLORS[symbol.position[0]])
+			}
 		}
 
 	} // projection drawings
