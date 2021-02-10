@@ -1,4 +1,5 @@
 "use strict";
+const MAX_GP = 82
 
 const VIEWS_MARGINS = 15
 
@@ -43,6 +44,8 @@ const POSITION_COLORS = {
 	"F":'#d95f02',
 	"G":'#7570b3'
 }
+
+const SEQUENTIAL_COLORS = ['#ffffb2','#fed976','#feb24c','#fd8d3c','#f03b20','#bd0026']
 
 const EVENT= {
 	FILTER: "event_filter",
@@ -240,6 +243,7 @@ async function download_symbol_data(symbol)
 
 		symbol.position = data.data[0].position
 		symbol.data = dict
+
 		global.recompute_viewbox = true
 	} catch (e) {
 		console.log("Fatal Error: couldn't download symbol data " + symbol.name)
@@ -1218,12 +1222,14 @@ function prepare_ui()
 	proj_colorby_info_option.hidden = 'hidden';
 
 	let proj_colorby_default_option = create_option('default', 'default')
-
 	let proj_colorby_position_option = create_option('position','position')
+	let proj_colorby_gamesplayed_option = create_option('games_played', 'games played')
+
 
 	proj_colorby_select.appendChild(proj_colorby_info_option)
 	proj_colorby_select.appendChild(proj_colorby_default_option)
 	proj_colorby_select.appendChild(proj_colorby_position_option)
+	proj_colorby_select.appendChild(proj_colorby_gamesplayed_option)
 
 	ts_div.appendChild(chosen_stats_select)
 	ts_div.appendChild(clear_chart_btn)
@@ -2686,6 +2692,12 @@ function update_ts()
 				curve_color 		= "#FFFFFF44"
 				curve_focused_color = POSITION_COLORS[symbol.position[0]]
 				symbol_color 		= POSITION_COLORS[symbol.position[0]]
+			} else if (global.colorby == 'games_played') {
+				let seq_scale_idx = Math.floor((Object.keys(symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1));
+
+				curve_color 		= "#FFFFFF44"
+				curve_focused_color = SEQUENTIAL_COLORS[seq_scale_idx]
+				symbol_color 		= SEQUENTIAL_COLORS[seq_scale_idx]
 			}
 
 			ctx.strokeStyle = curve_color
@@ -3168,7 +3180,7 @@ function update_ts()
 		}
 	} // time series drawings
 
-	let ed_cdf_closest_symbol = null
+	let aux_view_closest_symbol = null
 
 	{
 
@@ -3242,35 +3254,28 @@ function update_ts()
 			aux_x_max = global.chart_symbols[0].cdf_matrix_row.length - 1
 		} else if (global.aux_view == 'rcdf') {
 
-			let last_rank = 0
+			if (global.ui.draw_aux_view_agg.checked) {
+				let last_rank = 0
 
-			for (let i=0; i<global.chart_symbols.length; i++) {
+				for (let i=0; i<global.chart_symbols.length; i++) {
 
-				let symbol = global.chart_symbols[i]
-				if (symbol.ranks_current_values == null) { continue }
-				for (let j=0; j<symbol.ranks_current_values.length; j++) {
-					if (symbol.ranks_current_values[j] == 1.0) {
-						last_rank = Math.max(last_rank, j)
-						break
+					let symbol = global.chart_symbols[i]
+					if (symbol.ranks_current_values == null) { continue }
+					for (let j=0; j<symbol.ranks_current_values.length; j++) {
+						if (symbol.ranks_current_values[j] == 1.0) {
+							last_rank = Math.max(last_rank, j)
+							break
+						}
 					}
+
 				}
 
+				aux_x_max = last_rank + 1
+
+			} else if (global.ui.draw_aux_view_sep.checked) {
+				aux_x_max = global.chart_symbols.length -1
 			}
-
-			aux_x_max = last_rank + 1
 		}
-
-		// function aux_rect_map(x, y) {
-		// 	let px = aux_rect[RECT.LEFT] + (1.0 * (x - aux_x_min) / (aux_x_max - aux_x_min)) * aux_rect[RECT.WIDTH]
-		// 	let py = (aux_rect[RECT.TOP]+VIEWS_MARGINS) + (aux_rect[RECT.HEIGHT] - 1 - (1.0 * (y - aux_y_min) / (aux_y_max - aux_y_min)) * aux_rect[RECT.HEIGHT])
-		// 	return [px,py]
-		// }
-		//
-		// function aux_rect_inverse_map(px, py) {
-		// 	let x = ((px - aux_rect[RECT.LEFT]) / aux_rect[RECT.WIDTH]) * (1.0*(aux_x_max - aux_x_min)) + aux_x_min
-		// 	let y = -((((py - (aux_rect[RECT.TOP]+VIEWS_MARGINS) - aux_rect[RECT.HEIGHT] + 1) * (1.0 * (aux_y_max - aux_y_min))) / aux_rect[RECT.HEIGHT]) - aux_y_min)
-		// 	return [x,y]
-		// }
 
 		let min_distance_threshold = 5 * 5
 		let closest_distance = 100000
@@ -3304,7 +3309,7 @@ function update_ts()
 
 			let dist = h_sq
 			if (dist <= min_distance_threshold && dist < closest_distance) {
-				ed_cdf_closest_symbol = symbol
+				aux_view_closest_symbol = symbol
 			}
 		}
 
@@ -3313,12 +3318,12 @@ function update_ts()
 			let dy = local_mouse_pos[1] - py
 			let dist = dx * dx + dy * dy
 			if (dist <= min_distance_threshold && dist < closest_distance) {
-				ed_cdf_closest_symbol = symbol
+				aux_view_closest_symbol = symbol
 				closest_rank = rank
 			}
 		}
 
-		let n_ranks = aux_x_max//global.chart_symbols.length
+		let n_ranks = aux_x_max
 
 		function rotate(arr, a, b) {
 			let x = arr[b-1]
@@ -3365,8 +3370,6 @@ function update_ts()
 					breaks.push(split_rank)
 					rotate(breaks, split_rank_idx, breaks.length)
 
-					// console.log(global.split_cdf.breaks, global.split_cdf.ww)
-
 					global.split_cdf.filters.push([])
 					global.split_cdf.realign.push(true)
 				}
@@ -3376,7 +3379,7 @@ function update_ts()
 		}
 
 		if (global.split_cdf.panel_state == PANEL_STATE.RESIZING) {
-			let dx = local_mouse_pos[0] - global.split_cdf.panel_resize_last_x //global.mouse.position[0] - global.mouse.last_position[0]
+			let dx = local_mouse_pos[0] - global.split_cdf.panel_resize_last_x
 			global.split_cdf.panel_resize_last_x = local_mouse_pos[0]
 
 			let panel_idx 		   = global.split_cdf.panel_resize_index
@@ -3730,10 +3733,6 @@ function update_ts()
 					check_filters(symbol)
 					if (symbol.filter == 0) {
 						draw_symbol_on_panel(symbol, false)
-						// if (global.colorby == 'default') {
-						// } else if (global.colorby == 'position') {
-						// 	draw_symbol_on_panel(symbol, false, POSITION_COLORS[symbol.position[0]])
-						// }
 					}
 
 				}
@@ -3812,6 +3811,9 @@ function update_ts()
 						draw_symbol_on_panel(global.focused_symbol, true)
 					} else if (global.colorby == 'position') {
 						draw_symbol_on_panel(global.focused_symbol, true, POSITION_COLORS[global.focused_symbol.position[0]])
+					} else if (global.colorby == 'games_played') {
+						let seq_scale_idx = Math.floor((Object.keys(global.focused_symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1));
+						draw_symbol_on_panel(global.focused_symbol, true, SEQUENTIAL_COLORS[seq_scale_idx]);
 					}
 
 				}
@@ -3823,6 +3825,9 @@ function update_ts()
 						draw_symbol_on_panel(symbol, true)
 					} else if (global.colorby == 'position') {
 						draw_symbol_on_panel(symbol, true, POSITION_COLORS[symbol.position[0]])
+					} else if (global.colorby == 'games_played') {
+						let seq_scale_idx = Math.floor((Object.keys(symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1));
+						draw_symbol_on_panel(symbol, true, SEQUENTIAL_COLORS[seq_scale_idx]);
 					}
 
 				}
@@ -3934,7 +3939,10 @@ function update_ts()
 			if (global.colorby == 'default') {
 				draw_symbol_projection(symbol, false);
 			} else if (global.colorby == 'position') {
-				draw_symbol_projection(symbol, false, POSITION_COLORS[symbol.position[0]])
+				draw_symbol_projection(symbol, false, POSITION_COLORS[symbol.position[0]]);
+			} else if (global.colorby == 'games_played') {
+				let seq_scale_idx = Math.floor((Object.keys(symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1));
+				draw_symbol_projection(symbol, false, SEQUENTIAL_COLORS[seq_scale_idx]);
 			}
 
 		}
@@ -3945,6 +3953,9 @@ function update_ts()
 				draw_symbol_projection(global.focused_symbol, true)
 			} else if (global.colorby == 'position') {
 				draw_symbol_projection(global.focused_symbol, true, POSITION_COLORS[global.focused_symbol.position[0]])
+			} else if (global.colorby == 'games_played') {
+				let seq_scale_idx = Math.floor((Object.keys(global.focused_symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1));
+				draw_symbol_projection(global.focused_symbol, true, SEQUENTIAL_COLORS[seq_scale_idx]);
 			}
 
 			// let text = `symbol: ${global.focused_symbol.name}`
@@ -3963,6 +3974,9 @@ function update_ts()
 				draw_symbol_projection(symbol, true)
 			} else if (global.colorby == 'position') {
 				draw_symbol_projection(symbol, true, POSITION_COLORS[symbol.position[0]])
+			} else if (global.colorby == 'games_played') {
+				let seq_scale_idx = Math.floor((Object.keys(symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1));
+				draw_symbol_projection(symbol, true, SEQUENTIAL_COLORS[seq_scale_idx]);
 			}
 		}
 
@@ -3970,8 +3984,8 @@ function update_ts()
 
 	if (ts_closest_symbol != null) {
 		global.focused_symbol = ts_closest_symbol
-	} else if (ed_cdf_closest_symbol != null) {
-		global.focused_symbol = ed_cdf_closest_symbol
+	} else if (aux_view_closest_symbol != null) {
+		global.focused_symbol = aux_view_closest_symbol
 	} else {
 		global.focused_symbol = proj_closest_symbol
 	}
