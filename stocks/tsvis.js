@@ -84,6 +84,7 @@ var global = {
 	group_count: 0,
 	chart_groups: [],
 	events: [],
+	stats_ranges: {},
 	chosen_stats:[],
 	chosen_pos:[],
 	colorby:'default',
@@ -93,7 +94,6 @@ var global = {
 	mouse: { position:[0,0], last_position:[0,0] },
 	color: { colors:['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628'], counter:0 },
 	focused_symbol: null,
-	focused_date: null,
 	key_update_norm: false,
 	key_update_start: false,
 	key_update_end: false,
@@ -193,6 +193,19 @@ function drawTextBG(ctx, txt, x, y) {
     ctx.restore();
 }
 
+function update_stats_ranges(player_summary) {
+	let stats = Object.keys(player_summary);
+
+	for (let i=0; i<stats.length; i++) {
+		if (global.stats_ranges[stats[i]] == undefined) {
+			global.stats_ranges[stats[i]] = [player_summary[stats[i]], player_summary[stats[i]]]
+		} else {
+			global.stats_ranges[stats[i]][0] = Math.min(global.stats_ranges[stats[i]][0], player_summary[stats[i]])
+			global.stats_ranges[stats[i]][1] = Math.max(global.stats_ranges[stats[i]][1], player_summary[stats[i]])
+		}
+	}
+}
+
 function byteCount(s) {
     return encodeURI(s).split(/%..|./).length - 1;
 }
@@ -228,6 +241,7 @@ async function download_symbol_data(symbol)
 	try {
 		let result = await fetch(encodeURI('http://localhost:8888/get?p='+symbol.name))
 		let data   = await result.json()
+
 		let dict = {}
 		for (let i=0;i<data.data[0].game_ids.length;i++) {
 			let game_data = {}
@@ -248,6 +262,19 @@ async function download_symbol_data(symbol)
 
 		symbol.position = data.data[0].position
 		symbol.data = dict
+
+		let summ = {}
+		summ.points = data.data[0].points.reduce((a, b) => a + b, 0)
+		summ.assists = data.data[0].assists.reduce((a, b) => a + b, 0)
+		summ.rebounds = data.data[0].rebounds.reduce((a, b) => a + b, 0)
+		summ.steals = data.data[0].steals.reduce((a, b) => a + b, 0)
+		summ.blocks = data.data[0].blocks.reduce((a, b) => a + b, 0)
+		summ.turnovers = data.data[0].turnovers.reduce((a, b) => a + b, 0)
+		summ.fouls = data.data[0].fouls.reduce((a, b) => a + b, 0)
+
+		update_stats_ranges(summ);
+
+		symbol.summary = summ
 
 		global.recompute_viewbox = true
 	} catch (e) {
@@ -1229,12 +1256,14 @@ function prepare_ui()
 	let proj_colorby_default_option = create_option('default', 'default')
 	let proj_colorby_position_option = create_option('position','position')
 	let proj_colorby_gamesplayed_option = create_option('games_played', 'games played')
+	// let proj_colorby_rebounds_option = create_option('rebounds', 'rebounds')
 
 
 	proj_colorby_select.appendChild(proj_colorby_info_option)
 	proj_colorby_select.appendChild(proj_colorby_default_option)
 	proj_colorby_select.appendChild(proj_colorby_position_option)
 	proj_colorby_select.appendChild(proj_colorby_gamesplayed_option)
+	// proj_colorby_select.appendChild(proj_colorby_rebounds_option)
 
 	ts_div.appendChild(chosen_stats_select)
 	ts_div.appendChild(clear_chart_btn)
@@ -1959,12 +1988,7 @@ function process_event_queue()
 				}
 			} else {
 				if (e.raw.getModifierState("Shift")) {
-					// symbol.selected = !symbol.selected
-					if (!global.selected_symbols.includes(symbol)) {
-						global.selected_symbols.push(symbol);
-					} else {
-						remove_symbol_from_list(symbol, global.selected_symbols);
-					}
+					symbol.selected = !symbol.selected
 				} else {
 					remove_symbol_from_chart(symbol)
 				}
@@ -2117,11 +2141,20 @@ function process_event_queue()
 		    	option.value = e.context.value;
 		    	option.innerHTML = e.context.value;
 		    	global.ui.chosen_stats_select.appendChild(option);
+				let proj_colorby_option = document.createElement("option");
+		    	proj_colorby_option.value = e.context.value;
+		    	proj_colorby_option.innerHTML = e.context.value;
+				global.ui.proj_colorby_select.appendChild(proj_colorby_option);
 
 			} else {
 				for(let i=0; i<global.ui.chosen_stats_select.length; i++) {
 					if (global.ui.chosen_stats_select.options[i].value == e.context.value) {
 						global.ui.chosen_stats_select.remove(i);
+					}
+				}
+				for(let i=0; i<global.ui.proj_colorby_select.length; i++) {
+					if (global.ui.proj_colorby_select.options[i].value == e.context.value) {
+						global.ui.proj_colorby_select.remove(i);
 					}
 				}
 				let to_remove = global.chosen_stats.indexOf(e.context.value)
@@ -2139,10 +2172,8 @@ function process_event_queue()
 				}
 			}
 
-			// console.log(global.chosen_pos)
 		} else if (e.event_type == EVENT.CHANGE_COLORBY) {
 			global.colorby = global.ui.proj_colorby_select.value
-			console.log(global.colorby)
 		}
 	}
 	global.events.length = 0
@@ -2479,10 +2510,9 @@ function update_ts()
 		}
 
 		if (global.drag.active) {
-			console.log("drag active ts rect")
 			let local_dragstart_pos = get_local_position(global.drag.startpos, canvas)
 			if (point_inside_rect(local_dragstart_pos, ts_rect)) {
-				console.log("dragging inside ts rect")
+
 				local_dragstart_pos = inverse_map(local_dragstart_pos[0], local_dragstart_pos[1])
 
 				let local_currmouse_pos = inverse_map(local_mouse_pos[0], local_mouse_pos[1])
@@ -2496,7 +2526,6 @@ function update_ts()
 				y_min = global.viewbox.y
 				y_max = global.viewbox.y + global.viewbox.height
 			} else {
-				console.log("switching to proj drag...")
 				global.proj_drag.active = true
 				global.proj_drag.startpos = global.drag.startpos
 			}
@@ -2625,7 +2654,7 @@ function update_ts()
 			}
 		}
 
-		function update_closest_segment(symbol, date, p0x, p0y, p1x, p1y) {
+		function update_closest_segment(symbol, p0x, p0y, p1x, p1y) {
 			// a --> p0 to mouse
 			// b --> p0 to p1
 			// a.b = |a|*|b|*cos(Theta)
@@ -2653,12 +2682,14 @@ function update_ts()
 
 			let dist = h_sq
 			if (dist <= min_distance_threshold && dist < closest_distance) {
-				ts_closest_symbol = symbol
-				closest_date = date
+				// ts_closest_symbol = symbol
+				symbol.focused = true;
+			} else {
+				symbol.focused = false;
 			}
 		}
 
-		function draw_timeseries(symbol, focused, color) {
+		function draw_timeseries(symbol, focused) {
 
 			let ts_current_values = symbol.ts_current_values
 			if (ts_current_values == null) {
@@ -2678,40 +2709,52 @@ function update_ts()
 
 			if (global.aux_view != 'none') {
 
-				curve_color 		= "#FFFFFF44"
-				curve_focused_color = global.chart_colors[i]
-				symbol_color 		= global.chart_colors[i]
+				curve_color = "#FFFFFF44";
+				let seq_scale_idx;
+
+				switch (global.colorby) {
+					case 'default':
+						curve_focused_color = global.chart_colors[i];
+						symbol_color 		= global.chart_colors[i];
+						break;
+					case 'position':
+						curve_focused_color = POSITION_COLORS[symbol.position[0]];
+						symbol_color 		= POSITION_COLORS[symbol.position[0]];
+						break;
+					case 'games_played':
+						seq_scale_idx = Math.floor((Object.keys(symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1));
+						curve_focused_color = SEQUENTIAL_COLORS[seq_scale_idx];
+						symbol_color 		= SEQUENTIAL_COLORS[seq_scale_idx];
+						break;
+					case 'rebounds':
+						let rr = global.stats_ranges.rebounds;
+						let r  = symbol.summary.rebounds;
+						seq_scale_idx = Math.floor((r - rr[0]) / (rr[1] - rr[0]) * (SEQUENTIAL_COLORS.length-1));
+						curve_focused_color = SEQUENTIAL_COLORS[seq_scale_idx];
+						symbol_color 		= SEQUENTIAL_COLORS[seq_scale_idx];
+						break;
+					default:
+						let sr = global.stats_ranges[global.colorby];
+						let s  = symbol.summary[global.colorby];
+						seq_scale_idx = Math.floor((s - sr[0]) / (sr[1] - sr[0]) * (SEQUENTIAL_COLORS.length-1));
+						curve_focused_color = SEQUENTIAL_COLORS[seq_scale_idx];
+						symbol_color 		= SEQUENTIAL_COLORS[seq_scale_idx];
+						break;
+
+				}
 
 			} else {
 
-				if (typeof color !== 'undefined') {
-					curve_color 		= color
-					curve_focused_color = color
-					symbol_color 		= color
-				} else {
-					curve_color 		= global.chart_colors[i]
-					curve_focused_color = global.chart_colors[i]
-					symbol_color 		= global.chart_colors[i]
-				}
+				curve_color 		= global.chart_colors[i]
+				curve_focused_color = global.chart_colors[i]
+				symbol_color 		= global.chart_colors[i]
 
-			}
-
-			if (global.colorby == 'position') {
-				curve_color 		= "#FFFFFF44"
-				curve_focused_color = POSITION_COLORS[symbol.position[0]]
-				symbol_color 		= POSITION_COLORS[symbol.position[0]]
-			} else if (global.colorby == 'games_played') {
-				let seq_scale_idx = Math.floor((Object.keys(symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1));
-
-				curve_color 		= "#FFFFFF44"
-				curve_focused_color = SEQUENTIAL_COLORS[seq_scale_idx]
-				symbol_color 		= SEQUENTIAL_COLORS[seq_scale_idx]
 			}
 
 			ctx.strokeStyle = curve_color
 			symbol.ui_col.style.color = symbol_color
 
-			if (focused) {
+			if (focused || symbol.selected) {
 				ctx.lineWidth = 4
 				ctx.strokeStyle = curve_focused_color
 			} else {
@@ -2725,10 +2768,9 @@ function update_ts()
 				let yi = ts_current_values[j-1]
 				let p = map(j,yi)
 				if (p_prev) {
-					update_closest_segment(symbol, j, p_prev[0], p_prev[1], p[0], p[1])
+					update_closest_segment(symbol, p_prev[0], p_prev[1], p[0], p[1])
 				}
 				p_prev = p
-				// update_closest_point(symbol, j, p[0], p[1])
 				if (!first_point_drawn) {
 					ctx.moveTo(p[0],p[1])
 					first_point_drawn = true
@@ -2844,7 +2886,7 @@ function update_ts()
 					ctx.lineTo(p[0],p[1])
 				}
 				for (let j=num_timesteps-1;j>=0;j--) {
-					p = map(j,ymax[j])
+					p = map(jupdate_focused_symbol,ymax[j])
 					ctx.lineTo(p[0],p[1])
 				}
 				ctx.closePath()
@@ -2866,7 +2908,7 @@ function update_ts()
 				p = map(0,ymin_outer[0])
 				ctx.moveTo(p[0],p[1])
 				for (let j=1;j<num_timesteps;j++) {
-					p = map(j,ymin_outer[j])
+					p = map(jupdate_focused_symbol,ymin_outer[j])
 					ctx.lineTo(p[0],p[1])
 				}
 				for (let j=num_timesteps-1;j>=0;j--) {
@@ -2880,7 +2922,7 @@ function update_ts()
 				// drawing median curve
 				//--------------
 				let median_symbol = global.extremal_depth.ranked_symbols[global.extremal_depth.ranked_symbols.length - 1]
-				draw_timeseries(median_symbol, false, "#00FFFF")
+				draw_timeseries(median_symbol, false,)
 
 				if (global.ui.ed_draw_outliers_btn.checked) {
 					//--------------
@@ -2888,7 +2930,7 @@ function update_ts()
 					//--------------
 					for(let i=0; i<global.extremal_depth.fbplot.outliers.length; i++) {
 						let symbol = global.extremal_depth.fbplot.outliers[i]
-						draw_timeseries(symbol, false, "#00FFFF55")
+						draw_timeseries(symbol, false)
 					}
 
 				}
@@ -2953,7 +2995,7 @@ function update_ts()
 				// drawing median curve
 				//--------------
 				let median_symbol = global.modified_band_depth.ranked_symbols[global.modified_band_depth.ranked_symbols.length - 1]
-				draw_timeseries(median_symbol, false, "#FF0000")
+				draw_timeseries(median_symbol, false)
 
 				if (global.ui.mbd_draw_outliers_btn.checked) {
 					//--------------
@@ -2961,7 +3003,7 @@ function update_ts()
 					//--------------
 					for(let i=0; i<global.modified_band_depth.fbplot.outliers.length; i++) {
 						let symbol = global.modified_band_depth.fbplot.outliers[i]
-						draw_timeseries(symbol, false, "#FF000055")
+						draw_timeseries(symbol, false)
 					}
 
 				}
@@ -3091,7 +3133,6 @@ function update_ts()
 			draw_timeseries(global.focused_symbol, true)
 
 			let record = global.focused_symbol
-			let value = global.focused_symbol.data[global.focused_date]
 			let text = `player: ${global.focused_symbol.name} // position: ${global.focused_symbol.position}`
 
 			if (global.aux_view != 'none') {
@@ -3102,12 +3143,6 @@ function update_ts()
 			ctx.textAlign = 'center';
 			ctx.fillText(text, ts_rect[2]/2, 40);
 		}
-
-		for (let i=0; i<global.selected_symbols.length; i++) {
-			let symbol = global.selected_symbols[i]
-			draw_timeseries(symbol, true)
-		}
-
 
 		let clamp = function(a,b,c) {
 			return Math.max(b,Math.min(c,a))
@@ -3141,12 +3176,6 @@ function update_ts()
 
 		// drawTextBG(ctx, date_offset_to_string(date_start+pt[0]), y_p0[0], y_p0[1])
 		drawTextBG(ctx, pt[1].toFixed(2), x_p0[0], x_p0[1])
-
-
-		//--------------
-		// update focused record
-		//--------------
-		global.focused_date = closest_date
 
 		//--------------
 		// update start, end and norm dates on keyboard controls
@@ -3627,7 +3656,6 @@ function update_ts()
 					const mask = (1 << 30)-1
 					const panel_mask = (1 << i)
 					symbol.filter = (symbol.filter & (mask ^ panel_mask)) | (ok ? 0 : panel_mask)
-					// symbol.filter_ok = ok
 					return ok
 
 				}
@@ -3656,12 +3684,33 @@ function update_ts()
 					}
 
 					ctx.save()
-					if (focused) {
+					if (focused || symbol.selected) {
 						ctx.lineWidth = 4;
-						if (global.colorby == 'default') {
-							curve_color = global.chart_colors[idx];
-						} else {
-							curve_color = color;
+						let seq_scale_idx;
+
+						switch (global.colorby) {
+							case 'default':
+								curve_color = global.chart_colors[idx];
+								break;
+							case 'position':
+								curve_color = POSITION_COLORS[symbol.position[0]];
+								break;
+							case 'games_played':
+								seq_scale_idx = Math.floor((Object.keys(symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1));
+								curve_color = SEQUENTIAL_COLORS[seq_scale_idx];
+								break;
+							case 'rebounds':
+								let rr = global.stats_ranges.rebounds;
+								let r  = symbol.summary.rebounds;
+								seq_scale_idx = Math.floor((r - rr[0]) / (rr[1] - rr[0]) * (SEQUENTIAL_COLORS.length-1));
+								curve_color = SEQUENTIAL_COLORS[seq_scale_idx];
+								break;
+							default:
+								let sr = global.stats_ranges[global.colorby];
+								let s  = symbol.summary[global.colorby];
+								seq_scale_idx = Math.floor((s - sr[0]) / (sr[1] - sr[0]) * (SEQUENTIAL_COLORS.length-1));
+								curve_color = SEQUENTIAL_COLORS[seq_scale_idx];
+								break;
 						}
 					} else {
 						ctx.lineWidth = 2;
@@ -3806,31 +3855,9 @@ function update_ts()
 
 				if (global.focused_symbol != null) {
 
-					if (global.colorby == 'default') {
-						draw_symbol_on_panel(global.focused_symbol, true)
-					} else if (global.colorby == 'position') {
-						draw_symbol_on_panel(global.focused_symbol, true, POSITION_COLORS[global.focused_symbol.position[0]])
-					} else if (global.colorby == 'games_played') {
-						let seq_scale_idx = Math.floor((Object.keys(global.focused_symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1));
-						draw_symbol_on_panel(global.focused_symbol, true, SEQUENTIAL_COLORS[seq_scale_idx]);
-					}
+					draw_symbol_on_panel(global.focused_symbol, true)
 
 				}
-
-				for (let i=0; i<global.selected_symbols.length; i++) {
-
-					let symbol = global.selected_symbols[i]
-					if (global.colorby == 'default') {
-						draw_symbol_on_panel(symbol, true)
-					} else if (global.colorby == 'position') {
-						draw_symbol_on_panel(symbol, true, POSITION_COLORS[symbol.position[0]])
-					} else if (global.colorby == 'games_played') {
-						let seq_scale_idx = Math.floor((Object.keys(symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1));
-						draw_symbol_on_panel(symbol, true, SEQUENTIAL_COLORS[seq_scale_idx]);
-					}
-
-				}
-
 			}
 		}
 
@@ -3942,11 +3969,11 @@ function update_ts()
 		}
 
 		if (global.proj_drag.active) {
-			console.log("drag active proj rect")
+
 			let proj_local_dragstart_pos = get_local_position(global.proj_drag.startpos, canvas)
 
 			if (point_inside_rect(proj_local_dragstart_pos, proj_rect)) {
-				console.log("dragging inside proj rect")
+
 				proj_local_dragstart_pos = proj_rect_inverse_map(proj_local_dragstart_pos[0], proj_local_dragstart_pos[1])
 
 				let local_currmouse_pos = proj_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
@@ -3970,34 +3997,50 @@ function update_ts()
 			let dy = local_mouse_pos[1] - py
 			let dist = dx * dx + dy * dy
 			if (dist <= min_distance_threshold && dist < closest_distance) {
+				symbol.focused = true;
 				proj_closest_symbol = symbol
+			} else {
+				symbol.focused = false;
 			}
 		}
 
-		function draw_symbol_projection(symbol, focused, color ) {
+		function draw_symbol_projection(symbol) {
 
 			let idx = global.chart_symbols.indexOf(symbol)
 			if (symbol.projection_coords == null) {
 				return
 			}
 
-			let point_color = "#FFFFFF99";
+			let point_color;
+			let seq_scale_idx;
 
-			if (typeof color !== "undefined") {
-				point_color = color
+			switch (global.colorby) {
+				case 'default':
+					point_color = global.chart_colors[idx];
+					break;
+				case 'position':
+					point_color = POSITION_COLORS[symbol.position[0]];
+					break;
+				case 'games_played':
+					seq_scale_idx = Math.floor((Object.keys(symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1));
+				 	point_color = SEQUENTIAL_COLORS[seq_scale_idx];
+					break;
+				// case 'rebounds':
+				// 	let rr = global.stats_ranges.rebounds;
+				// 	let r  = symbol.summary.rebounds;
+				// 	seq_scale_idx = Math.floor((r - rr[0]) / (rr[1] - rr[0]) * (SEQUENTIAL_COLORS.length-1));
+				// 	point_color = SEQUENTIAL_COLORS[seq_scale_idx];
+				// 	break;
+				default:
+					let sr = global.stats_ranges[global.colorby];
+					let s  = symbol.summary[global.colorby];
+					seq_scale_idx = Math.floor((s - sr[0]) / (sr[1] - sr[0]) * (SEQUENTIAL_COLORS.length-1));
+					point_color = SEQUENTIAL_COLORS[seq_scale_idx];
+					break;
 			}
 
 			ctx.save()
-			if (focused) {
-				if (global.colorby == 'default') {
-					point_color = global.chart_colors[idx]
-				} else {
-					point_color = color
-				}
-			}
-
 			ctx.fillStyle = point_color
-
 
 			let x = symbol.projection_coords[0];
 			let y = symbol.projection_coords[1];
@@ -4006,7 +4049,7 @@ function update_ts()
 			update_closest_point(symbol, p[0], p[1])
 
 			ctx.beginPath()
-			if (focused) {
+			if (symbol.focused || symbol.selected) {
 				ctx.arc(p[0], p[1], 6, 0, 2 * Math.PI)
 			} else {
 				ctx.arc(p[0], p[1], 4, 0, 2 * Math.PI)
@@ -4029,48 +4072,8 @@ function update_ts()
 
 			let symbol = global.chart_symbols[m]
 			// check_filters(symbol)
-			if (global.colorby == 'default') {
-				draw_symbol_projection(symbol, false);
-			} else if (global.colorby == 'position') {
-				draw_symbol_projection(symbol, false, POSITION_COLORS[symbol.position[0]]);
-			} else if (global.colorby == 'games_played') {
-				let seq_scale_idx = Math.floor((Object.keys(symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1));
-				draw_symbol_projection(symbol, false, SEQUENTIAL_COLORS[seq_scale_idx]);
-			}
+			draw_symbol_projection(symbol, false);
 
-		}
-
-		if (global.focused_symbol != null) {
-
-			if (global.colorby == 'default') {
-				draw_symbol_projection(global.focused_symbol, true)
-			} else if (global.colorby == 'position') {
-				draw_symbol_projection(global.focused_symbol, true, POSITION_COLORS[global.focused_symbol.position[0]])
-			} else if (global.colorby == 'games_played') {
-				let seq_scale_idx = Math.floor((Object.keys(global.focused_symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1));
-				draw_symbol_projection(global.focused_symbol, true, SEQUENTIAL_COLORS[seq_scale_idx]);
-			}
-
-			// let text = `symbol: ${global.focused_symbol.name}`
-			// ctx.save()
-			// ctx.font = '14px Monospace';
-			// ctx.fillStyle = "#FFFFFF"
-			// ctx.textAlign = 'center';
-			// ctx.fillText(text, (proj_rect[0]+proj_rect[2])-(proj_rect[2]/2), 40);
-			// ctx.restore()
-
-		}
-
-		for (let i=0; i<global.selected_symbols.length; i++) {
-			let symbol = global.selected_symbols[i]
-			if (global.colorby == 'default') {
-				draw_symbol_projection(symbol, true)
-			} else if (global.colorby == 'position') {
-				draw_symbol_projection(symbol, true, POSITION_COLORS[symbol.position[0]])
-			} else if (global.colorby == 'games_played') {
-				let seq_scale_idx = Math.floor((Object.keys(symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1));
-				draw_symbol_projection(symbol, true, SEQUENTIAL_COLORS[seq_scale_idx]);
-			}
 		}
 
 		ctx.restore() //PROJ RECT CLIP RESTORE
@@ -4115,7 +4118,7 @@ async function main()
 		for (let i=0;i<symbol_names.length;i++) {
 			symbols.push({ name:symbol_names[i], position:null, ui_row:null, ui_col:null,
 						   on_table:true, on_chart:false, data: null,
-						   ts_current_values: null, ed_rank:null, mbd_rank:null, filter:0, selected:false })
+						   ts_current_values: null, ed_rank:null, mbd_rank:null, filter:0, selected:false, focused:false })
 		}
 		global.symbols = symbols
 		global.toggle_state = 0

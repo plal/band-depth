@@ -93,13 +93,13 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
                             try:
                                 teams.append(tokens[c_TEAM])
                                 dates.append(tokens[c_DATE])
-                                pts.append(tokens[c_POINTS])
-                                asts.append(tokens[c_ASSISTS])
-                                rbds.append(tokens[c_REBOUNDS])
-                                stls.append(tokens[c_STEALS])
-                                blcks.append(tokens[c_BLOCKS])
-                                tos.append(tokens[c_TURNOVERS])
-                                fouls.append(tokens[c_FOULS])
+                                pts.append(int(tokens[c_POINTS]))
+                                asts.append(int(tokens[c_ASSISTS]))
+                                rbds.append(int(tokens[c_REBOUNDS]))
+                                stls.append(int(tokens[c_STEALS]))
+                                blcks.append(int(tokens[c_BLOCKS]))
+                                tos.append(int(tokens[c_TURNOVERS]))
+                                fouls.append(int(tokens[c_FOULS]))
                                 gids.append(tokens[c_GAMEID])
                                 position = tokens[c_POSITION]
                             except:
