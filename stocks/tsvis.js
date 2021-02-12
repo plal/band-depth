@@ -101,9 +101,12 @@ var global = {
 	modified_band_depth: {fbplot: {active: false, inner_band: {lower:[], upper:[]}, outer_band: {lower:[], upper:[]}, outliers:[] }, ranked_symbols: [] },
 	denselines: { active: false, hashcode: 0, entries:[] },
 	viewbox: { x:0, y:0, width:1, height:1, rows:4, cols:4 },
+	proj_viewbox: { x:0, y:0, width:1, height:1 },
 	recompute_viewbox: true,
+	recompute_proj_viewbox: true,
 	zoom: 0,
 	drag: { active:false, startpos:[0,0] },
+	proj_drag: { active:false, startpos:[0,0] },
 	filter_list:[],
 	aux_view:'none',
 	split_cdf: { breaks:[0], ww:[1], realign:[], split_rank: null, panel_resize_index: null, panel_resize_side: null, panel_resize_last_x: null, filters: [[]]}
@@ -142,6 +145,7 @@ function reset_zoom() {
 
 	global.zoom = 0
 	global.recompute_viewbox = true
+	global.recompute_proj_viewbox = true
 
 }
 
@@ -215,6 +219,7 @@ async function project_chart_data() {
 			symbol.projection_coords = xhttp.response[symbol.name]
 		}
 	}
+
 }
 
 async function download_symbol_data(symbol)
@@ -2082,6 +2087,7 @@ function process_event_queue()
 
 		} else if (e.event_type == EVENT.MOUSEUP) {
 			global.drag.active = false
+			global.proj_drag.active = false
 			global.filter_state = FILTER_STATE.INACTIVE
 
 			global.split_cdf.panel_state = PANEL_STATE.INACTIVE
@@ -2103,6 +2109,7 @@ function process_event_queue()
 		} else if (e.event_type == EVENT.GET_STATS_RANKS) {
 			get_stats_ranks()
 			project_chart_data()
+			global.recompute_proj_viewbox = true
 		} else if (e.event_type == EVENT.CLICKED_STAT) {
 			if (e.context.checked) {
 				global.chosen_stats.push(e.context.value)
@@ -2212,7 +2219,6 @@ function update_ts()
 	let ts_closest_symbol  = null
 
 	{
-		ctx.save()
 
 		ctx.fillStyle="#2f3233"
 
@@ -2231,11 +2237,6 @@ function update_ts()
 			ctx.rect(proj_rect[RECT.LEFT], proj_rect[RECT.TOP], proj_rect[RECT.WIDTH], proj_rect[RECT.HEIGHT])
 			ctx.fill()
 		}
-		ctx.clip()
-
-
-
-		ctx.restore()
 
 		let date_start = date_offset(global.date_start)
 		let date_end   = date_offset(global.date_end)
@@ -2473,14 +2474,15 @@ function update_ts()
 				global.zoom_x = 0
 			}
 		} else {
-			global.zoom_y = 0
-			global.zoom_x = 0
+			global.proj_zoom_y = global.zoom_y
+			global.proj_zoom_x = global.zoom_x
 		}
 
 		if (global.drag.active) {
-
+			console.log("drag active ts rect")
 			let local_dragstart_pos = get_local_position(global.drag.startpos, canvas)
 			if (point_inside_rect(local_dragstart_pos, ts_rect)) {
+				console.log("dragging inside ts rect")
 				local_dragstart_pos = inverse_map(local_dragstart_pos[0], local_dragstart_pos[1])
 
 				let local_currmouse_pos = inverse_map(local_mouse_pos[0], local_mouse_pos[1])
@@ -2493,7 +2495,12 @@ function update_ts()
 
 				y_min = global.viewbox.y
 				y_max = global.viewbox.y + global.viewbox.height
+			} else {
+				console.log("switching to proj drag...")
+				global.proj_drag.active = true
+				global.proj_drag.startpos = global.drag.startpos
 			}
+
 		}
 
 		//--------------
@@ -2570,6 +2577,7 @@ function update_ts()
 		ctx.save()
 
 		ctx.moveTo(0,0)
+		ctx.beginPath()
 		ctx.rect(ts_rect[RECT.LEFT],ts_rect[RECT.TOP],ts_rect[RECT.WIDTH],ts_rect[RECT.HEIGHT])
 		ctx.clip()
 
@@ -2731,15 +2739,6 @@ function update_ts()
 			ctx.stroke()
 		}
 
-		function draw_point(i, j, r) {
-			let values = global.focused_symbol.data
-			let yi = values[j]
-			let p = map(j,yi)
-			update_closest_point(i, j, p[0], p[1])
-			ctx.beginPath()
-			ctx.arc(p[0],p[1],r,0,Math.PI*2,true)
-			ctx.stroke()
-		}
 
 		if (global.denselines.active) {
 
@@ -3834,7 +3833,8 @@ function update_ts()
 
 			}
 		}
-	} // ed-cdf drawings
+
+	} // aux view drawings
 
 	let proj_closest_symbol = null
 
@@ -3864,17 +3864,103 @@ function update_ts()
 			proj_y_max = Math.max(proj_y_max, proj_coords[1])
 		}
 
+		if (global.recompute_proj_viewbox) {
+			global.proj_viewbox.x 	   	   = proj_x_min
+			global.proj_viewbox.y 	   	   = proj_y_min
+			global.proj_viewbox.width 	   = proj_x_max - proj_x_min
+			global.proj_viewbox.height 	   = proj_y_max - proj_y_min
+			global.recompute_proj_viewbox  = false
+		} else {
+			proj_x_min = global.proj_viewbox.x
+			proj_y_min = global.proj_viewbox.y
+			proj_x_max = global.proj_viewbox.x + global.proj_viewbox.width
+			proj_y_max = global.proj_viewbox.y + global.proj_viewbox.height
+		}
+
 		function proj_rect_map(x, y) {
 			let px = (proj_rect[RECT.LEFT]+VIEWS_MARGINS) + (1.0 * (x - proj_x_min) / (proj_x_max - proj_x_min)) * (proj_rect[RECT.WIDTH]-(2*VIEWS_MARGINS))
 			let py = (proj_rect[RECT.TOP]+VIEWS_MARGINS) + ((proj_rect[RECT.HEIGHT]-(2*VIEWS_MARGINS)) - 1 - (1.0 * (y - proj_y_min) / (proj_y_max - proj_y_min)) * (proj_rect[RECT.HEIGHT]-(2*VIEWS_MARGINS)))
 			return [px,py]
 		}
 
-		// function proj_rect_inverse_map(px, py) {
-		// 	let x = ((px - (proj_rect[RECT.LEFT]-4)) / (proj_rect[RECT.WIDTH]+4)) * (1.0*(proj_x_max - proj_x_min)) + proj_x_min
-		// 	let y = -((((py - (proj_rect[RECT.TOP]-4) - (proj_rect[RECT.HEIGHT]+4) + 1) * (1.0 * (proj_y_max - proj_y_min))) / (proj_rect[RECT.HEIGHT]+4)) - proj_y_min)
-		// 	return [x,y]
-		// }
+		function proj_rect_inverse_map(px, py) {
+			let x = ((px - (proj_rect[RECT.LEFT]+VIEWS_MARGINS)) / (proj_rect[RECT.WIDTH]-(2*VIEWS_MARGINS))) * (1.0*(proj_x_max - proj_x_min)) + proj_x_min
+			let y = -((((py - (proj_rect[RECT.TOP]+VIEWS_MARGINS) - (proj_rect[RECT.HEIGHT]-(2*VIEWS_MARGINS)) + 1) * (1.0 * (proj_y_max - proj_y_min))) / (proj_rect[RECT.HEIGHT]-(2*VIEWS_MARGINS))) - proj_y_min)
+			return [x,y]
+		}
+
+		let factor = 1.1
+		let ref    = proj_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+		let y_ref  = ref[1]
+		let x_ref  = ref[0]
+
+		if (point_inside_rect(local_mouse_pos, proj_rect)) {
+
+			if (global.proj_zoom_y != 0) {
+
+				let h = global.proj_viewbox.height
+				let h_
+
+				if (global.proj_zoom_y > 0) {
+					h_ = h * factor
+				} else {
+					h_ = h / factor
+				}
+
+				global.proj_viewbox.y = -((h_*((y_ref-global.proj_viewbox.y)/h))-y_ref)
+				global.proj_viewbox.height = h_
+
+				proj_y_min = global.proj_viewbox.y
+				proj_y_max = global.proj_viewbox.y + global.proj_viewbox.height
+
+				global.zoom_y = 0
+			}
+
+			if (global.proj_zoom_x != 0) {
+
+				let w = global.proj_viewbox.width
+				let w_
+
+				if (global.proj_zoom_x > 0) {
+					w_ = w * factor
+				} else {
+					w_ = w / factor
+				}
+
+				global.proj_viewbox.x = -((w_*((x_ref-global.proj_viewbox.x)/w))-x_ref)
+				global.proj_viewbox.width  = w_
+
+				proj_x_min = global.proj_viewbox.x
+				proj_x_max = global.proj_viewbox.x + global.proj_viewbox.width
+
+				global.zoom_x = 0
+			}
+
+		} else {
+			global.zoom_y = 0
+			global.zoom_x = 0
+		}
+
+		if (global.proj_drag.active) {
+			console.log("drag active proj rect")
+			let proj_local_dragstart_pos = get_local_position(global.proj_drag.startpos, canvas)
+
+			if (point_inside_rect(proj_local_dragstart_pos, proj_rect)) {
+				console.log("dragging inside proj rect")
+				proj_local_dragstart_pos = proj_rect_inverse_map(proj_local_dragstart_pos[0], proj_local_dragstart_pos[1])
+
+				let local_currmouse_pos = proj_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+
+				global.proj_viewbox.x = global.proj_viewbox.x - (local_currmouse_pos[0] - proj_local_dragstart_pos[0])
+				global.proj_viewbox.y = global.proj_viewbox.y - (local_currmouse_pos[1] - proj_local_dragstart_pos[1])
+
+				proj_x_min = global.proj_viewbox.x
+				proj_x_max = global.proj_viewbox.x + global.proj_viewbox.width
+
+				proj_y_min = global.proj_viewbox.y
+				proj_y_max = global.proj_viewbox.y + global.proj_viewbox.height
+			}
+		}
 
 		let min_distance_threshold = 5 * 5
 		let closest_distance = 100000
@@ -3932,6 +4018,13 @@ function update_ts()
 
 		}
 
+		ctx.save()
+
+		ctx.moveTo(proj_rect[RECT.LEFT],proj_rect[RECT.TOP])
+		ctx.beginPath()
+		ctx.rect(proj_rect[RECT.LEFT],proj_rect[RECT.TOP],proj_rect[RECT.WIDTH],proj_rect[RECT.HEIGHT])
+		ctx.clip()
+
 		for (let m=0;m<global.chart_symbols.length;m++) {
 
 			let symbol = global.chart_symbols[m]
@@ -3979,6 +4072,8 @@ function update_ts()
 				draw_symbol_projection(symbol, true, SEQUENTIAL_COLORS[seq_scale_idx]);
 			}
 		}
+
+		ctx.restore() //PROJ RECT CLIP RESTORE
 
 	} // projection drawings
 
