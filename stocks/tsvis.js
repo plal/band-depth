@@ -391,7 +391,7 @@ function update_groups_table() {
 
 
 function create_group() {
-	let symbols = global.symbols
+	let chart_symbols = global.chart_symbols
 
 	let group 	   = {}
 	let group_name = window.prompt("Enter group name", "Group " + global.group_count)
@@ -402,20 +402,20 @@ function create_group() {
 	group.fbed 	   = { active:false, inner_band: { lower:[], upper:[] }, outer_band: { lower:[], upper:[] }, outliers:[], ranked_symbols: [] }
 	group.fbmbd    = { active:false, inner_band: { lower:[], upper:[] }, outer_band: { lower:[], upper:[] }, outliers:[], ranked_symbols: [] }
 
-	for (let i=0; i<symbols.length; i++) {
-		let symbol = symbols[i]
+	for (let i=0; i<chart_symbols.length; i++) {
+		let symbol = chart_symbols[i]
 
-		if(symbol.on_chart) {
+		if(symbol.selected) {
 			group.members.push(symbol)
-
-			let to_remove = global.chart_symbols.indexOf(symbol)
-			if (to_remove > -1) {
-			  global.chart_symbols.splice(to_remove, 1);
-			  global.chart_colors.splice(to_remove, 1);
-			}
-			symbol.on_chart = false
-			symbol.ui_col.style.color = "#6b6f71"
-			symbol.ui_col.style.fontWeight = 'initial'
+			symbol.group = group
+			// let to_remove = global.chart_symbols.indexOf(symbol)
+			// if (to_remove > -1) {
+			//   global.chart_symbols.splice(to_remove, 1);
+			//   global.chart_colors.splice(to_remove, 1);
+			// }
+			// symbol.on_chart = false
+			// symbol.ui_col.style.color = "#6b6f71"
+			// symbol.ui_col.style.fontWeight = 'initial'
 		}
 
 	}
@@ -424,13 +424,22 @@ function create_group() {
 
 	global.group_count = global.group_count + 1
 
-	if (global.group_count == 1) {
-		create_groups_table_div()
-		update_groups_table()
-	} else if (global.group_count > 1) {
-		update_groups_table()
-	}
+	// if (global.group_count == 1) {
+	// 	create_groups_table_div()
+	// 	update_groups_table()
+	// } else if (global.group_count > 1) {
+	// 	update_groups_table()
+	// }
 
+}
+
+function reset_groups() {
+	let chart_symbols = global.chart_symbols;
+
+	for (let i=0; i<chart_symbols.length; i++) {
+		let symbol = chart_symbols[i]
+		symbol.group = null
+	}
 }
 
 function add_group_to_chart(group) {
@@ -1096,23 +1105,6 @@ function prepare_ui()
 	add_table_symbols_btn.style = "position:relative; width:100%; margin:2px; border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
 	install_event_listener(add_table_symbols_btn, 'click', add_table_symbols_btn, EVENT.ADD_TABLE_SYMBOLS)
 
-	let create_group_btn = document.createElement('button')
-	global.ui.create_group_btn = create_group_btn
-	//create_group_btn.setAttribute("type","button")
-	create_group_btn.id = "create_group_btn"
-	create_group_btn.textContent = 'create group'
-	create_group_btn.style = "position:relative; width:100%; margin:2px; border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
-	install_event_listener(create_group_btn, 'click', create_group_btn, EVENT.CREATE_GROUP)
-
-	let remove_active_groups_btn = document.createElement('button')
-	global.ui.remove_active_groups_btn = remove_active_groups_btn
-	//remove_active_groups_btn.setAttribute("type","button")
-	remove_active_groups_btn.id = "remove_active_groups_btn"
-	remove_active_groups_btn.textContent = 'remove active groups'
-	remove_active_groups_btn.style = "position:relative; width:100%; margin:2px;\
-	 								  border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
-	install_event_listener(remove_active_groups_btn, 'click', remove_active_groups_btn, EVENT.REMOVE_ACTIVE_GROUPS)
-
 	let symbols_table_div = document.createElement('div')
 	global.ui.symbols_table_div = symbols_table_div
 	symbols_table_div.id = 'symbols_table_div'
@@ -1171,8 +1163,8 @@ function prepare_ui()
 	left_panel.appendChild(add_table_symbols_btn)
 	// left_panel.appendChild(clear_chart_btn)
    	left_panel.appendChild(symbols_table_div)
-	left_panel.appendChild(create_group_btn)
-	left_panel.appendChild(remove_active_groups_btn)
+	// left_panel.appendChild(create_group_btn)
+	// left_panel.appendChild(remove_active_groups_btn)
 
 	let symbols_table = symbols_table_div.appendChild(document.createElement('table'))
 	global.ui.symbols_table = symbols_table
@@ -1271,7 +1263,6 @@ function prepare_ui()
 							   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 	install_event_listener(proj_colorby_select, 'change', proj_colorby_select, EVENT.CHANGE_COLORBY)
 
-
 	let proj_colorby_info_option = create_option('default', 'color by');
 	proj_colorby_info_option.selected = 'selected';
 	proj_colorby_info_option.hidden = 'hidden';
@@ -1288,11 +1279,32 @@ function prepare_ui()
 	proj_colorby_select.appendChild(proj_colorby_gamesplayed_option)
 	// proj_colorby_select.appendChild(proj_colorby_rebounds_option)
 
+	let create_group_btn = document.createElement('button')
+	global.ui.create_group_btn = create_group_btn
+	//create_group_btn.setAttribute("type","button")
+	create_group_btn.id = "create_group_btn"
+	create_group_btn.textContent = 'create group'
+	create_group_btn.style = "position:absolute; left:83%; top:48.7%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+							  font-family:Courier; font-size:12pt; z-index:2;"
+	install_event_listener(create_group_btn, 'click', create_group_btn, EVENT.CREATE_GROUP)
+
+	let reset_groups_btn = document.createElement('button')
+	global.ui.reset_groups_btn = reset_groups_btn
+	//remove_active_groups_btn.setAttribute("type","button")
+	reset_groups_btn.id = "reset_groups_btn"
+	reset_groups_btn.textContent = 'reset groups'
+	reset_groups_btn.style = "position:absolute; left:92%; top:48.7%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+							  font-family:Courier; font-size:12pt; z-index:2;"
+	install_event_listener(reset_groups_btn, 'click', reset_groups_btn, EVENT.REMOVE_ACTIVE_GROUPS)
+
+
 	ts_div.appendChild(chosen_stats_select)
 	ts_div.appendChild(clear_chart_btn)
 	ts_div.appendChild(rank_depth_select)
 	ts_div.appendChild(draw_aux_view_type_grid)
 	ts_div.appendChild(proj_colorby_select)
+	ts_div.appendChild(create_group_btn)
+	ts_div.appendChild(reset_groups_btn)
 
 	let ts_canvas = ts_div.appendChild(document.createElement('canvas'))
 	global.ui.ts_canvas = ts_canvas
@@ -2043,7 +2055,7 @@ function process_event_queue()
 				remove_group_from_chart(group)
 			}
 		} else if (e.event_type == EVENT.REMOVE_ACTIVE_GROUPS) {
-			remove_active_groups()
+			reset_groups()
 		} else if (e.event_type == EVENT.CLEAR_CHART) {
 			clear_chart()
 		} else if (e.event_type == EVENT.UPDATE_START_DATE) {
@@ -2777,6 +2789,13 @@ function update_ts()
 				curve_focused_color = global.chart_colors[i]
 				symbol_color 		= global.chart_colors[i]
 
+			}
+
+
+			if (symbol.group) {
+				curve_color 		= symbol.group.color;
+				curve_focused_color = symbol.group.color;
+				symbol_color 		= symbol.group.color;
 			}
 
 			ctx.strokeStyle = curve_color
@@ -3740,6 +3759,10 @@ function update_ts()
 						ctx.lineWidth = 2;
 					}
 
+					if (symbol.group) {
+						curve_color = symbol.group.color;
+					}
+
 					ctx.strokeStyle = curve_color;
 					ctx.fillStyle = curve_color;
 
@@ -4118,18 +4141,26 @@ function update_ts()
 					break;
 			}
 
-			ctx.save()
-			ctx.fillStyle = point_color
+			ctx.save();
+			ctx.fillStyle = point_color;
+
+			if (symbol.group) {
+				ctx.fillStyle = symbol.group.color;
+			}
 
 			let x = symbol.projection_coords[0];
 			let y = symbol.projection_coords[1];
 
-			let p = proj_rect_map(x, y)
-			update_closest_point(symbol, p[0], p[1])
+			let p = proj_rect_map(x, y);
+			update_closest_point(symbol, p[0], p[1]);
 
 			ctx.beginPath()
 			if ((symbol == global.focused_symbol) || symbol.selected) {
-				ctx.fillStyle = point_focused_color
+				if (symbol.group) {
+					ctx.fillStyle = symbol.group.color;
+				} else {
+					ctx.fillStyle = point_focused_color
+				}
 				ctx.strokeStyle = "#FFFFFFAA"
 				ctx.arc(p[0], p[1], 6, 0, 2 * Math.PI)
 			} else {
@@ -4154,8 +4185,8 @@ function update_ts()
 		ctx.rect(proj_rect[RECT.LEFT],proj_rect[RECT.TOP],proj_rect[RECT.WIDTH],proj_rect[RECT.HEIGHT])
 		ctx.clip()
 
-		if (global.brush !== undefined) {
-			if (global.brush.width !== 0 && global.brush.height !== 0) {
+		if ((global.brush !== undefined)) {
+			if (global.brush.width !== 0 && global.brush.height !== 0 && global.brush_state !== BRUSH_STATE.INACTIVE) {
 				// console.log(global.brush)
 				let cv_brush_startpos = proj_rect_map(global.brush.left, global.brush.top);
 				let cv_brush_endpos   = proj_rect_map(global.brush.left + global.brush.width, global.brush.top + global.brush.height);
@@ -4165,6 +4196,7 @@ function update_ts()
 
 				ctx.strokeStyle = "#FFFFFF";
 				ctx.strokeRect(brush_rect[RECT.LEFT], brush_rect[RECT.TOP], brush_rect[RECT.WIDTH], brush_rect[RECT.HEIGHT]);
+
 			}
 		}
 
@@ -4172,11 +4204,33 @@ function update_ts()
 
 			let symbol = global.chart_symbols[m]
 			// check_filters(symbol)
-			draw_symbol_projection(symbol, false);
+			draw_symbol_projection(symbol);
 
 		}
 
 		ctx.restore() //PROJ RECT CLIP RESTORE
+
+		if (global.focused_symbol != null) {
+			draw_symbol_projection(global.focused_symbol)
+
+			let symbol = global.focused_symbol
+			let proj_text = `player: ${global.focused_symbol.name} // TOTALS: `
+
+			for (let i=0; i<global.chosen_stats.length; i++) {
+				let stat = global.chosen_stats[i]
+				if (i == global.chosen_stats.length-1) {
+					proj_text += `${stat}: ${symbol.summary[stat]}`
+				} else {
+					proj_text += `${stat}: ${symbol.summary[stat]} // `
+				}
+			}
+
+			ctx.font = '14px Monospace';
+			ctx.fillStyle = "#FFFFFF"
+
+			ctx.fillText(proj_text, canvas.width-proj_rect[2]/2, proj_rect[1]+proj_rect[3]+15);
+		}
+
 
 	} // projection drawings
 
@@ -4218,7 +4272,8 @@ async function main()
 		for (let i=0;i<symbol_names.length;i++) {
 			symbols.push({ name:symbol_names[i], position:null, ui_row:null, ui_col:null,
 						   on_table:true, on_chart:false, data: null,
-						   ts_current_values: null, ed_rank:null, mbd_rank:null, filter:0, selected:false, focused:false })
+						   ts_current_values: null, ed_rank:null, mbd_rank:null,
+						   filter:0, selected:false, group:null })
 		}
 		global.symbols = symbols
 		global.toggle_state = 0
