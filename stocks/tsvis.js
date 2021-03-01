@@ -21,6 +21,11 @@ const BRUSH_STATE = {
 	MOVE: 3
 }
 
+const SELECT_STATE = {
+	INACTIVE: 0,
+	SELECTING: 0
+}
+
 const FILTER_STATE = {
 	INACTIVE: 0,
 	START: 1,
@@ -116,8 +121,48 @@ var global = {
 	proj_drag: { active:false, startpos:[0,0] },
 	filter_list:[],
 	brush_mode_active: false,
+	select_mode_active:false,
 	aux_view:'none',
 	split_cdf: { breaks:[0], ww:[1], realign:[], split_rank: null, panel_resize_index: null, panel_resize_side: null, panel_resize_last_x: null, filters: [[]]}
+}
+
+function reset_selections() {
+	for (let i=0; i<global.chart_symbols.length; i++) {
+		let symbol = global.chart_symbols[i]
+		symbol.selected = false;
+	}
+}
+
+function hex_to_rgb(hexstr) {
+	let r = parseInt(hexstr.slice(1,3),16) / 255.0
+	let g = parseInt(hexstr.slice(3,5),16) / 255.0
+	let b = parseInt(hexstr.slice(5,7),16) / 255.0
+
+	return [r,g,b]
+}
+
+function rgb_to_hex(rgbarr) {
+
+	let r = Math.trunc(rgbarr[0] * 255).toString(16)
+	let g = Math.trunc(rgbarr[1] * 255).toString(16)
+	let b = Math.trunc(rgbarr[2] * 255).toString(16)
+
+	r = r.length == 2 ? r : ("0"+r)
+	g = g.length == 2 ? g : ("0"+g)
+	b = b.length == 2 ? b : ("0"+b)
+	let color = "#" + r + g + b + 'BB'
+
+	return color
+}
+
+function rgb_lerp(a_rgb, b_rgb, lambda) {
+	return [a_rgb[0] * lambda + b_rgb[0] * (1-lambda),
+			a_rgb[1] * lambda + b_rgb[1] * (1-lambda),
+			a_rgb[2] * lambda + b_rgb[2] * (1-lambda)]
+}
+
+function hex_lerp(a_hex, b_hex, lambda) {
+	return rgb_to_hex(rgb_lerp(hex_to_rgb(a_hex), hex_to_rgb(b_hex), lambda) )
 }
 
 function install_event_listener(component, raw_event_type, context, event_type)
@@ -533,11 +578,13 @@ function clear_chart() {
 	//--------------
 	for (let i=0; i<symbols.length; i++) {
 
-		let symbol = symbols[i]
+		let symbol = symbols[i];
 
 		if (symbol.on_chart) {
-			remove_symbol_from_chart(symbol)
+			remove_symbol_from_chart(symbol);
 		}
+
+		symbol.selected = false;
 	}
 
 	//--------------
@@ -545,16 +592,19 @@ function clear_chart() {
 	//--------------
 	for (let i=0; i<groups.length; i++) {
 
-		let group = groups[i]
+		let group = groups[i];
 
 		if (group.on_chart) {
-			remove_group_from_chart(group)
+			remove_group_from_chart(group);
 		}
 	}
 
-	global.chart_symbols = []
-	global.chart_colors  = []
-	global.chart_groups	 = []
+	global.chart_symbols = [];
+	global.chart_colors  = [];
+	global.chart_groups	 = [];
+	global.split_cdf     = { breaks:[0], ww:[1], realign:[], split_rank: null,
+							 panel_resize_index: null, panel_resize_side: null, panel_resize_last_x: null,
+							 filters: [[]]};
 }
 
 function hashcode(str) {
@@ -2075,7 +2125,8 @@ function process_event_queue()
 				if (e.raw.keyCode == KEY_N) {
 					global.key_update_norm = true
 				} else if (e.raw.keyCode == KEY_S) {
-					global.key_update_start = true
+					// console.log("activated select mode")
+					global.select_mode_active = true
 				} else if (e.raw.keyCode == KEY_E) {
 					global.key_update_end = true
 				} else if (e.raw.keyCode == KEY_B){
@@ -2148,23 +2199,33 @@ function process_event_queue()
 
 			if (global.brush_mode_active) {
 				// console.log("start brushing...")
-				global.drag.active = false
+				global.drag.active = false;
 				global.brush_state = BRUSH_STATE.START;
 			}
 
-			global.split_cdf.panel_state = PANEL_STATE.START_RESIZE
+			if (global.select_mode_active) {
+				global.select_mode_selected = true;
+			}
+
+			global.split_cdf.panel_state = PANEL_STATE.START_RESIZE;
 
 		} else if (e.event_type == EVENT.MOUSEUP) {
-			global.drag.active = false
-			global.proj_drag.active = false
-			global.filter_state = FILTER_STATE.INACTIVE
+			global.drag.active = false;
+			global.proj_drag.active = false;
+			global.filter_state = FILTER_STATE.INACTIVE;
 
-			global.split_cdf.panel_state = PANEL_STATE.INACTIVE
+			global.split_cdf.panel_state = PANEL_STATE.INACTIVE;
 
 			if (global.brush_mode_active) {
 				global.brush_state = BRUSH_STATE.INACTIVE;
-				global.brush_mode_active = false
+				global.brush_mode_active = false;
+				global.brush = undefined;
 				// console.log("end brush. brush mode inactive")
+			}
+
+			if (global.select_mode_active) {
+				global.select_mode_selected = false;
+				global.select_mode_active = false;
 			}
 
 		} else if (e.event_type == EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM) {
@@ -2845,38 +2906,6 @@ function update_ts()
 
 			let matrix = global.denselines.entries
 
-			function hex_to_rgb(hexstr) {
-				let r = parseInt(hexstr.slice(1,3),16) / 255.0
-				let g = parseInt(hexstr.slice(3,5),16) / 255.0
-				let b = parseInt(hexstr.slice(5,7),16) / 255.0
-
-				return [r,g,b]
-			}
-
-			function rgb_to_hex(rgbarr) {
-
-				let r = Math.trunc(rgbarr[0] * 255).toString(16)
-				let g = Math.trunc(rgbarr[1] * 255).toString(16)
-				let b = Math.trunc(rgbarr[2] * 255).toString(16)
-
-				r = r.length == 2 ? r : ("0"+r)
-				g = g.length == 2 ? g : ("0"+g)
-				b = b.length == 2 ? b : ("0"+b)
-				let color = "#" + r + g + b + 'BB'
-
-				return color
-			}
-
-			function rgb_lerp(a_rgb, b_rgb, lambda) {
-				return [a_rgb[0] * lambda + b_rgb[0] * (1-lambda),
-						a_rgb[1] * lambda + b_rgb[1] * (1-lambda),
-						a_rgb[2] * lambda + b_rgb[2] * (1-lambda)]
-			}
-
-			function hex_lerp(a_hex, b_hex, lambda) {
-				return rgb_to_hex(rgb_lerp(hex_to_rgb(a_hex), hex_to_rgb(b_hex), lambda) )
-			}
-
 			ctx.save()
 			for (let i=0; i<rows; i++) {
 				for (let j=0; j<cols; j++) {
@@ -3516,6 +3545,7 @@ function update_ts()
 				for (let j=0; j<n_ranks; j++) {
 
 					let symbol = global.chart_symbols[j]
+					if (symbol === undefined) { continue; }
 					if (symbol.filter != 0) {
 						continue
 					}
@@ -3834,7 +3864,7 @@ function update_ts()
 
 				let panel_x_max_ticks = 5;
 				let panel_x_ticks = [];
-				// if ((panel_x_max - panel_x_min) < 4) {
+				// if ((panel_x_max - panel_x_min) <= panel_x_max_ticks) {
 				//
 				// 	for (let l=offset_start; l<offset_end; l++) {
 				// 		panel_x_ticks.push(l);
@@ -3844,9 +3874,10 @@ function update_ts()
 				//
 				// 	for(let l=0; l<panel_x_max_ticks; l++) {
 				// 		// if (l==panel_x_max_ticks-1) { continue; }
-				// 		let x_tick = panel_x_min+((1.0*l*(panel_x_max-panel_x_min))/(panel_x_max_ticks-1))
+				// 		let x_tick = panel_x_min+(l*((panel_x_max-panel_x_min)/(panel_x_max_ticks-1)))
 				// 		panel_x_ticks.push(x_tick)
 				// 	}
+				// 	// Math.floor(x_min+(i*((x_max-x_min)/(x_num_ticks-1))))
 				//
 				// }
 
@@ -3890,11 +3921,19 @@ function update_ts()
 
 					ctx.save()
 					ctx.font = "bold 10pt Courier"
-					ctx.fillStyle = "#FFFFFF88"
-					if(l==(panel_y_ticks.length-1)) {
-						ctx.fillText((panel_y_ticks[l]*82).toFixed(2), p0[0]+20, p0[1]+8);
+					ctx.fillStyle = "#FFFFFF"
+					if (i==0) {
+						if(l==(panel_y_ticks.length-1)) {
+							ctx.fillText(parseInt(panel_y_ticks[l]*82), p0[0]-10, p0[1]+8);
+						} else {
+							ctx.fillText(parseInt(panel_y_ticks[l]*82), p0[0]-10, p0[1]);
+						}
 					} else {
-						ctx.fillText((panel_y_ticks[l]*82).toFixed(2), p0[0]+20, p0[1]);
+						if(l==(panel_y_ticks.length-1)) {
+							ctx.fillText(parseInt(panel_y_ticks[l]*82), p0[0]+10, p0[1]+8);
+						} else {
+							ctx.fillText(parseInt(panel_y_ticks[l]*82), p0[0]+10, p0[1]);
+						}
 					}
 					ctx.restore()
 
@@ -4043,6 +4082,7 @@ function update_ts()
 		// brush states
 		//--------------
 		if (global.brush_state == BRUSH_STATE.START) {
+			reset_selections();
 			if (!point_inside_rect(local_mouse_pos, proj_rect)) {
 				global.brush_state = BRUSH_STATE.INACTIVE
 			} else {
@@ -4086,12 +4126,12 @@ function update_ts()
 			if (global.brush.width > 0) {
 				inside_x_range = ((global.brush.left <= proj_x) && (proj_x <= global.brush.left+global.brush.width))
 			} else {
-				inside_x_range = ((global.brush.left-global.brush.width <= proj_x) && (proj_x <= global.brush.left))
+				inside_x_range = ((global.brush.left+global.brush.width <= proj_x) && (proj_x <= global.brush.left))
 			}
 
 			let inside_y_range;
 			if (global.brush.height < 0) {
-				inside_y_range = ((global.brush.top <= proj_y) && (proj_y <= global.brush.top+global.brush.height));
+				inside_y_range = ((global.brush.top <= proj_y) && (proj_y <= global.brush.top-global.brush.height));
 			} else {
 				inside_y_range = ((global.brush.top-global.brush.height <= proj_y) && (proj_y <= global.brush.top));
 			}
@@ -4107,38 +4147,52 @@ function update_ts()
 			}
 
 			if (global.brush !== undefined) {
-				if (check_symbol_on_brush(symbol)) {
-					symbol.selected = true;
-				} else {
-					symbol.selected = false;
+				if (symbol.selected == false) {
+					if (check_symbol_on_brush(symbol)) {
+						symbol.selected = true;
+					}
 				}
+				// if (check_symbol_on_brush(symbol)) {
+				// 	symbol.selected = true;
+				// } else {
+				// 	symbol.selected = false;
+				// }
 			}
 
 			let point_color;
 			let point_focused_color;
-			let seq_scale_idx;
 
 			switch (global.colorby) {
-				case 'default':
+				case 'default': {
 					point_color = "#FFFFFF44";
 					point_focused_color = global.chart_colors[idx];
-					break;
-				case 'position':
+					} break;
+				case 'position': {
 					point_color = POSITION_COLORS[symbol.position[0]];
 					point_focused_color = POSITION_COLORS[symbol.position[0]];
-					break;
-				case 'games_played':
-					seq_scale_idx = Math.floor((Object.keys(symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1));
-					point_color = SEQUENTIAL_COLORS[seq_scale_idx];
-					point_focused_color = SEQUENTIAL_COLORS[seq_scale_idx];
-					break;
-				default:
+					} break;
+				case 'games_played': {
+					let seq_scale_idx = (Object.keys(symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1);
+					let seq_scale_idx_fl = Math.floor(seq_scale_idx);
+					let a = seq_scale_idx_fl;
+					let b = Math.min(a+1, SEQUENTIAL_COLORS.length-1);
+					let lambda = 1-(seq_scale_idx-seq_scale_idx_fl)
+					let color = hex_lerp(SEQUENTIAL_COLORS[a], SEQUENTIAL_COLORS[b], lambda);
+					point_color = color //SEQUENTIAL_COLORS[seq_scale_idx];
+					point_focused_color = color //SEQUENTIAL_COLORS[seq_scale_idx];
+					} break;
+				default: {
 					let sr = global.stats_ranges[global.colorby];
 					let s  = symbol.summary[global.colorby];
-					seq_scale_idx = Math.floor((s - sr[0]) / (sr[1] - sr[0]) * (SEQUENTIAL_COLORS.length-1));
-					point_color = SEQUENTIAL_COLORS[seq_scale_idx];
-					point_focused_color = SEQUENTIAL_COLORS[seq_scale_idx];
-					break;
+					let seq_scale_idx = (s - sr[0]) / (sr[1] - sr[0]) * (SEQUENTIAL_COLORS.length-1);
+					let seq_scale_idx_fl = Math.floor(seq_scale_idx);
+					let a = seq_scale_idx_fl;
+					let b = Math.min(a+1, SEQUENTIAL_COLORS.length-1);
+					let lambda = 1-(seq_scale_idx-seq_scale_idx_fl)
+					let color = hex_lerp(SEQUENTIAL_COLORS[a], SEQUENTIAL_COLORS[b], lambda);
+					point_color = color //SEQUENTIAL_COLORS[seq_scale_idx];
+					point_focused_color = color //SEQUENTIAL_COLORS[seq_scale_idx];
+					} break;
 			}
 
 			ctx.save();
@@ -4213,8 +4267,12 @@ function update_ts()
 		if (global.focused_symbol != null) {
 			draw_symbol_projection(global.focused_symbol)
 
+			if (global.select_mode_selected) {
+				global.focused_symbol.selected = !global.focused_symbol.selected;
+			}
+
 			let symbol = global.focused_symbol
-			let proj_text = `player: ${global.focused_symbol.name} // TOTALS: `
+			let proj_text = `${global.focused_symbol.name} // GP: ${Object.keys(global.focused_symbol.data).length} //  TOTALS: `
 
 			for (let i=0; i<global.chosen_stats.length; i++) {
 				let stat = global.chosen_stats[i]
