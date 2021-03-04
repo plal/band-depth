@@ -142,7 +142,9 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
             #tsne-emd stuff
             players = list(data.keys())
             dmatrix = build_dissimilarity_matrix(players, data)
-            projTSNEEMD5 = TSNE(n_components=2,perplexity=5,metric='precomputed').fit_transform(dmatrix)
+            tsne = TSNE(n_components=2,perplexity=5,metric='precomputed',n_iter=5000)
+            projTSNEEMD5 = tsne.fit_transform(dmatrix)
+            print("Iterations: " + str(tsne.n_iter_) + " // Divergence: " + str(tsne.kl_divergence_))
 
             proj_data = {}
             for i in range(len(players)):

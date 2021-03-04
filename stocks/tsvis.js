@@ -246,7 +246,7 @@ function drawTextBG(ctx, txt, x, y) {
     ctx.restore();
 }
 
-function update_stats_ranges(player_summary) {
+function start_stats_ranges(player_summary) {
 	let stats = Object.keys(player_summary);
 
 	for (let i=0; i<stats.length; i++) {
@@ -257,21 +257,22 @@ function update_stats_ranges(player_summary) {
 			global.stats_ranges[stats[i]][1] = Math.max(global.stats_ranges[stats[i]][1], player_summary[stats[i]])
 		}
 	}
+}
 
-	// for (let j=0; j<global.chart_symbols.length; j++) {
-	// 	let player_summary = global.chart_symbols[j].summary;
-	// 	let stats = Object.keys(player_summary);
-	//
-	// 	for (let i=0; i<stats.length; i++) {
-	// 		if (global.stats_ranges[stats[i]] == undefined) {
-	// 			global.stats_ranges[stats[i]] = [player_summary[stats[i]], player_summary[stats[i]]]
-	// 		} else {
-	// 			global.stats_ranges[stats[i]][0] = Math.min(global.stats_ranges[stats[i]][0], player_summary[stats[i]])
-	// 			global.stats_ranges[stats[i]][1] = Math.max(global.stats_ranges[stats[i]][1], player_summary[stats[i]])
-	// 		}
-	// 	}
-	// }
+function update_stats_ranges() {
+	for (let j=0; j<global.chart_symbols.length; j++) {
+		let player_summary = global.chart_symbols[j].summary;
+		let stats = Object.keys(player_summary);
 
+		for (let i=0; i<stats.length; i++) {
+			if (global.stats_ranges[stats[i]] == undefined) {
+				global.stats_ranges[stats[i]] = [player_summary[stats[i]], player_summary[stats[i]]]
+			} else {
+				global.stats_ranges[stats[i]][0] = Math.min(global.stats_ranges[stats[i]][0], player_summary[stats[i]])
+				global.stats_ranges[stats[i]][1] = Math.max(global.stats_ranges[stats[i]][1], player_summary[stats[i]])
+			}
+		}
+	}
 }
 
 function byteCount(s) {
@@ -340,7 +341,7 @@ async function download_symbol_data(symbol)
 		summ.turnovers = data.data[0].turnovers.reduce((a, b) => a + b, 0)
 		summ.fouls = data.data[0].fouls.reduce((a, b) => a + b, 0)
 
-		update_stats_ranges(summ);
+		// start_stats_ranges(summ);
 
 		symbol.summary = summ
 
@@ -827,6 +828,20 @@ function create_option(value, text) {
 	return opt
 }
 
+function set_bubble(range, bubble) {
+	const val = range.value;
+	const min = range.min ? range.min : 1;
+	const max = range.max ? range.max : 82;
+	// const newVal = Number(((val - min) * 82) / (max - min));
+	bubble.innerHTML = val;
+	bubble.style.fontFamily = 'Courier';
+	bubble.style.fontSize = '15pt;';
+	bubble.style.color = '#FFFFFF';
+
+	// Sorta magic numbers based on size of the native UI thumb
+	// bubble.style.left = `calc(${newVal}% + (${8 - newVal * 0.15}px))`;
+}
+
 function prepare_ui()
 {
 
@@ -950,6 +965,24 @@ function prepare_ui()
 	pos_grid.appendChild(f_lbl);
 	pos_grid.appendChild(c_btn);
 	pos_grid.appendChild(c_lbl);
+
+	let min_gp_lbl = create_section_label('Min. Games Played');
+
+	let min_gp_sld = document.createElement('input');
+	global.min_gp_sld = min_gp_sld;
+	min_gp_sld.type = 'range';
+	min_gp_sld.min = 1;
+	min_gp_sld.max = 82;
+	min_gp_sld.value = 1;
+	min_gp_sld.className = "slider"
+
+	let min_gp_val = document.createElement('output');
+	global.min_gp_val = min_gp_val;
+	min_gp_val.style.left = '50px';
+
+	min_gp_sld.addEventListener("input", () => {
+    	set_bubble(min_gp_sld, min_gp_val);
+  	});
 
 	// let start_date_input = document.createElement('input')
 	// global.ui.start_date_input = start_date_input
@@ -1195,6 +1228,9 @@ function prepare_ui()
 	left_panel.appendChild(get_stats_ranks_btn)
 	left_panel.appendChild(pos_section_lbl)
 	left_panel.appendChild(pos_grid)
+	left_panel.appendChild(min_gp_lbl)
+	left_panel.appendChild(min_gp_sld)
+	left_panel.appendChild(min_gp_val)
 	// left_panel.appendChild(start_date_grid)
 	// left_panel.appendChild(end_date_grid)
 	// left_panel.appendChild(norm_date_grid)
@@ -2023,6 +2059,21 @@ function check_position_filters(symbol) {
 	return false
 }
 
+function check_gp_filter(symbol) {
+	if (symbol.data == null) {
+		return true;
+	} else {
+		let gp = Object.keys(symbol.data).length;
+		let thres = parseInt(global.min_gp_sld.value);
+		// console.log(gp, thres)
+		if (gp >= thres) {
+			return true
+		} else {
+			return false
+		}
+	}
+}
+
 const KEY_S      = 83
 const KEY_E      = 69
 const KEY_N      = 78
@@ -2244,6 +2295,7 @@ function process_event_queue()
 			global.aux_view = global.ui.rank_depth_select.value
 		} else if (e.event_type == EVENT.GET_STATS_RANKS) {
 			get_stats_ranks()
+			update_stats_ranges()
 			project_chart_data()
 			global.recompute_proj_viewbox = true
 		} else if (e.event_type == EVENT.CLICKED_STAT) {
@@ -3099,7 +3151,7 @@ function update_ts()
 
 				if(global.focused_symbol == null || global.chart_symbols[i] != global.focused_symbol) {
 					if (symbol.filter == 0) {
-						if (check_position_filters(symbol)) {
+						if (check_position_filters(symbol) && check_gp_filter(symbol)) {
 							draw_timeseries(symbol, false)
 						} else {
 							remove_symbol_from_chart(symbol)
@@ -3861,9 +3913,20 @@ function update_ts()
 					}
 
 				}
-
+				console.log(i, panel_x_min, panel_x_max)
 				let panel_x_max_ticks = 5;
 				let panel_x_ticks = [];
+				if ((panel_x_max - panel_x_min) > panel_x_max_ticks) {
+					for(let l=0; l<panel_x_max_ticks; l++) {
+						// if (l==panel_x_max_ticks-1) { continue; }
+						let x_tick = panel_x_min+(l*((panel_x_max-panel_x_min)/(panel_x_max_ticks-1)))
+						panel_x_ticks.push(x_tick)
+					}
+				} else {
+					for (let l=panel_x_min; l<=panel_x_max; l++) {
+						panel_x_ticks.push(l);
+					}
+				}
 				// if ((panel_x_max - panel_x_min) <= panel_x_max_ticks) {
 				//
 				// 	for (let l=offset_start; l<offset_end; l++) {
@@ -3881,9 +3944,9 @@ function update_ts()
 				//
 				// }
 
-				for (let l=offset_start; l<offset_end; l++) {
-					panel_x_ticks.push(l);
-				}
+				// for (let l=offset_start; l<offset_end; l++) {
+				// 	panel_x_ticks.push(l);
+				// }
 
 				for(let l=0; l<panel_x_ticks.length; l++) {
 					ctx.strokeStyle = "#555555";
