@@ -3947,73 +3947,29 @@ function update_ts()
 					return envelope;
 				}
 
-
-				// function prepare_group_envelope(group, panel_x_min, panel_x_max) {
-				// 	let members = group.members;
-				//
-				// 	let upper_bound = [];
-				// 	let lower_bound = [];
-				//
-				// 	let n_members = members.length;
-				//
-				// 	for (let i=panel_x_min; i<panel_x_max; i++) {
-				// 		let max_on_rank_i = -0.1;
-				// 		let min_on_rank_i = 1.1;
-				//
-				// 		for (let j=0; j<n_members; j++) {
-				// 			let member = members[j]
-				//
-				// 			max_on_rank_i = Math.max(max_on_rank_i, member.ranks_current_values[i])
-				// 			min_on_rank_i = Math.min(min_on_rank_i, member.ranks_current_values[i])
-				// 		}
-				//
-				// 		upper_bound.push(max_on_rank_i);
-				// 		lower_bound.push(min_on_rank_i);
-				// 	}
-				//
-				// 	group.envelope = {};
-				// 	group.envelope.upper = upper_bound;
-				// 	group.envelope.lower = lower_bound;
-				// }
-
 				function draw_group_envelope(group, panel_x_min, panel_x_max, panel_rank) {
-					console.log(panel_rank, panel_x_min, panel_x_max);
 					let envelope = prepare_group_envelope(group, panel_x_min, panel_x_max, panel_rank);
-					console.log(envelope);
 
 					let upper_bound = envelope.upper;
 					let lower_bound = envelope.lower;
-					// console.log(group)
 
 					ctx.save()
 					ctx.beginPath()
 					let p = panel_rect_map(panel_x_min,lower_bound[panel_x_min])
 					p[0] = p[0] + x_axis_offset;
 					ctx.moveTo(p[0],p[1])
-					// console.log("lower")
+
 					for (let j=panel_x_min+1;j<panel_x_max;j++) {
 						let x = j;
 						let y = lower_bound[j-panel_x_min];
-						// if (panel_rank==0) {
-						// 	y = lower_bound[j];
-						// } else {
-						// 	y = lower_bound[j] - lower_bound[panel_x_min-1];
-						// }
-						// console.log(x,y);
 						p = panel_rect_map(x,y);
 						p[0] = p[0] + x_axis_offset;
 						ctx.lineTo(p[0],p[1]);
 					}
-					// console.log("upper")
+
 					for (let j=panel_x_max-1; j>=panel_x_min; j--) {
 						let x = j;
 						let y = upper_bound[j-panel_x_min];
-						// if (panel_rank==0) {
-						// 	y = upper_bound[j];
-						// } else {
-						// 	y = upper_bound[j] - upper_bound[panel_x_min-1];
-						// }
-						console.log(x,y)
 						p = panel_rect_map(x,y);
 						p[0] = p[0] + x_axis_offset;
 						ctx.lineTo(p[0],p[1]);
