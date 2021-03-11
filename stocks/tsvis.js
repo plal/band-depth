@@ -260,6 +260,8 @@ function start_stats_ranges(player_summary) {
 }
 
 function update_stats_ranges() {
+	global.stats_ranges = {};
+
 	for (let j=0; j<global.chart_symbols.length; j++) {
 		let player_summary = global.chart_symbols[j].summary;
 		let stats = Object.keys(player_summary);
@@ -486,6 +488,8 @@ function reset_groups() {
 		let symbol = chart_symbols[i]
 		symbol.group = null
 	}
+
+	global.groups = []
 }
 
 function add_group_to_chart(group) {
@@ -3807,6 +3811,9 @@ function update_ts()
 					if (symbol.data == null) {
 						return
 					}
+					if (symbol.group !== null) {
+						return
+					}
 
 					let curve_color = "#FFFFFF44"
 
@@ -3904,6 +3911,122 @@ function update_ts()
 					ctx.restore()
 				}
 
+				function prepare_group_envelope(group, panel_x_min, panel_x_max, panel_rank) {
+					let members = group.members;
+
+					let upper_bound = [];
+					let lower_bound = [];
+
+					let n_members = members.length;
+
+					for (let l=panel_x_min; l<panel_x_max; l++) {
+						let max_on_rank_l = 0.0;
+						let min_on_rank_l = 1.0;
+
+						for (let j=0; j<n_members; j++) {
+							let member = members[j];
+							let member_values = member.ranks_current_values;
+
+							if (panel_rank == 0) {
+								max_on_rank_l = Math.max(max_on_rank_l, member_values[l]);
+								min_on_rank_l = Math.min(min_on_rank_l, member_values[l]);
+							} else {
+								max_on_rank_l = Math.max(max_on_rank_l, (member_values[l] - member_values[panel_x_min-1]));
+								min_on_rank_l = Math.min(min_on_rank_l, (member_values[l] - member_values[panel_x_min-1]));
+							}
+						}
+
+						upper_bound.push(max_on_rank_l);
+						lower_bound.push(min_on_rank_l);
+					}
+
+					let envelope = [];
+					envelope.upper = upper_bound;
+					envelope.lower = lower_bound;
+
+					return envelope;
+				}
+
+
+				// function prepare_group_envelope(group, panel_x_min, panel_x_max) {
+				// 	let members = group.members;
+				//
+				// 	let upper_bound = [];
+				// 	let lower_bound = [];
+				//
+				// 	let n_members = members.length;
+				//
+				// 	for (let i=panel_x_min; i<panel_x_max; i++) {
+				// 		let max_on_rank_i = -0.1;
+				// 		let min_on_rank_i = 1.1;
+				//
+				// 		for (let j=0; j<n_members; j++) {
+				// 			let member = members[j]
+				//
+				// 			max_on_rank_i = Math.max(max_on_rank_i, member.ranks_current_values[i])
+				// 			min_on_rank_i = Math.min(min_on_rank_i, member.ranks_current_values[i])
+				// 		}
+				//
+				// 		upper_bound.push(max_on_rank_i);
+				// 		lower_bound.push(min_on_rank_i);
+				// 	}
+				//
+				// 	group.envelope = {};
+				// 	group.envelope.upper = upper_bound;
+				// 	group.envelope.lower = lower_bound;
+				// }
+
+				function draw_group_envelope(group, panel_x_min, panel_x_max, panel_rank) {
+					console.log(panel_rank, panel_x_min, panel_x_max);
+					let envelope = prepare_group_envelope(group, panel_x_min, panel_x_max, panel_rank);
+					console.log(envelope);
+
+					let upper_bound = envelope.upper;
+					let lower_bound = envelope.lower;
+					// console.log(group)
+
+					ctx.save()
+					ctx.beginPath()
+					let p = panel_rect_map(panel_x_min,lower_bound[panel_x_min])
+					p[0] = p[0] + x_axis_offset;
+					ctx.moveTo(p[0],p[1])
+					// console.log("lower")
+					for (let j=panel_x_min+1;j<panel_x_max;j++) {
+						let x = j;
+						let y = lower_bound[j-panel_x_min];
+						// if (panel_rank==0) {
+						// 	y = lower_bound[j];
+						// } else {
+						// 	y = lower_bound[j] - lower_bound[panel_x_min-1];
+						// }
+						// console.log(x,y);
+						p = panel_rect_map(x,y);
+						p[0] = p[0] + x_axis_offset;
+						ctx.lineTo(p[0],p[1]);
+					}
+					// console.log("upper")
+					for (let j=panel_x_max-1; j>=panel_x_min; j--) {
+						let x = j;
+						let y = upper_bound[j-panel_x_min];
+						// if (panel_rank==0) {
+						// 	y = upper_bound[j];
+						// } else {
+						// 	y = upper_bound[j] - upper_bound[panel_x_min-1];
+						// }
+						console.log(x,y)
+						p = panel_rect_map(x,y);
+						p[0] = p[0] + x_axis_offset;
+						ctx.lineTo(p[0],p[1]);
+					}
+					ctx.closePath();
+					ctx.fillStyle = group.color + "88";
+					ctx.fill();
+					ctx.restore();
+
+				}
+
+				// drawing aux view things
+
 				for (let m=0;m<global.chart_symbols.length;m++) {
 
 					let symbol = global.chart_symbols[m]
@@ -3913,7 +4036,12 @@ function update_ts()
 					}
 
 				}
-				console.log(i, panel_x_min, panel_x_max)
+
+				for (let m=0; m<global.groups.length; m++) {
+					let group = global.groups[m];
+					draw_group_envelope(group, offset_start, offset_end, i);
+				}
+
 				let panel_x_max_ticks = 5;
 				let panel_x_ticks = [];
 				if ((panel_x_max - panel_x_min) > panel_x_max_ticks) {
@@ -3927,26 +4055,6 @@ function update_ts()
 						panel_x_ticks.push(l);
 					}
 				}
-				// if ((panel_x_max - panel_x_min) <= panel_x_max_ticks) {
-				//
-				// 	for (let l=offset_start; l<offset_end; l++) {
-				// 		panel_x_ticks.push(l);
-				// 	}
-				//
-				// } else {
-				//
-				// 	for(let l=0; l<panel_x_max_ticks; l++) {
-				// 		// if (l==panel_x_max_ticks-1) { continue; }
-				// 		let x_tick = panel_x_min+(l*((panel_x_max-panel_x_min)/(panel_x_max_ticks-1)))
-				// 		panel_x_ticks.push(x_tick)
-				// 	}
-				// 	// Math.floor(x_min+(i*((x_max-x_min)/(x_num_ticks-1))))
-				//
-				// }
-
-				// for (let l=offset_start; l<offset_end; l++) {
-				// 	panel_x_ticks.push(l);
-				// }
 
 				for(let l=0; l<panel_x_ticks.length; l++) {
 					ctx.strokeStyle = "#555555";
