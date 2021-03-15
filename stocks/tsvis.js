@@ -83,7 +83,7 @@ const EVENT= {
 	GET_STATS_RANKS: "event_GET_STATS_RANKS",
 	CLICKED_STAT: "event_clicked_stat",
 	CLICK_POS: "event_clicked_pos",
-	CHANGE_COLORBY: "event_change_colorby"
+	CHANGE_COLORBY: "event_change_colorby",
 }
 
 var global = {
@@ -1347,6 +1347,20 @@ function prepare_ui()
  	draw_aux_view_type_grid.appendChild(draw_aux_view_sep_lbl)
 	draw_aux_view_type_grid.appendChild(draw_aux_view_sep)
 
+	let draw_groups_envelope_btn = create_checkbox();
+	global.ui.draw_groups_envelope_btn = draw_groups_envelope_btn;
+
+	let draw_groups_envelope_lbl = create_checkbox_label(draw_groups_envelope_btn, 'Draw groups envelopes');
+	global.ui.draw_groups_envelope_lbl = draw_groups_envelope_lbl
+
+	let draw_groups_envelope_grid = document.createElement('div')
+	global.ui.draw_groups_envelope_grid = draw_groups_envelope_grid
+	draw_groups_envelope_grid.id = draw_groups_envelope_grid
+	draw_groups_envelope_grid.style = 'position:absolute; left:17.1%; top:95.7%; background-color:#6b6f71; \
+							   		   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
+	draw_groups_envelope_grid.appendChild(draw_groups_envelope_lbl)
+	draw_groups_envelope_grid.appendChild(draw_groups_envelope_btn)
+
 	let proj_colorby_select = document.createElement('select')
 	global.ui.proj_colorby_select = proj_colorby_select
 	proj_colorby_select.style = 'position:absolute; left:58.1%; top:48.7%; background-color:#2f3233; \
@@ -1360,18 +1374,14 @@ function prepare_ui()
 	let proj_colorby_default_option = create_option('default', 'default')
 	let proj_colorby_position_option = create_option('position','position')
 	let proj_colorby_gamesplayed_option = create_option('games_played', 'games played')
-	// let proj_colorby_rebounds_option = create_option('rebounds', 'rebounds')
-
 
 	proj_colorby_select.appendChild(proj_colorby_info_option)
 	proj_colorby_select.appendChild(proj_colorby_default_option)
 	proj_colorby_select.appendChild(proj_colorby_position_option)
 	proj_colorby_select.appendChild(proj_colorby_gamesplayed_option)
-	// proj_colorby_select.appendChild(proj_colorby_rebounds_option)
 
 	let create_group_btn = document.createElement('button')
 	global.ui.create_group_btn = create_group_btn
-	//create_group_btn.setAttribute("type","button")
 	create_group_btn.id = "create_group_btn"
 	create_group_btn.textContent = 'create group'
 	create_group_btn.style = "position:absolute; left:83%; top:48.7%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
@@ -1392,6 +1402,7 @@ function prepare_ui()
 	ts_div.appendChild(clear_chart_btn)
 	ts_div.appendChild(rank_depth_select)
 	ts_div.appendChild(draw_aux_view_type_grid)
+	ts_div.appendChild(draw_groups_envelope_grid)
 	ts_div.appendChild(proj_colorby_select)
 	ts_div.appendChild(create_group_btn)
 	ts_div.appendChild(reset_groups_btn)
@@ -3811,8 +3822,11 @@ function update_ts()
 					if (symbol.data == null) {
 						return
 					}
-					if (symbol.group !== null) {
-						return
+
+					if (global.ui.draw_groups_envelope_btn.checked) {
+						if (symbol.group !== null) {
+							return
+						}						
 					}
 
 					let curve_color = "#FFFFFF44"
@@ -3993,9 +4007,11 @@ function update_ts()
 
 				}
 
-				for (let m=0; m<global.groups.length; m++) {
-					let group = global.groups[m];
-					draw_group_envelope(group, offset_start, offset_end, i);
+				if (global.ui.draw_groups_envelope_btn.checked) {
+					for (let m=0; m<global.groups.length; m++) {
+						let group = global.groups[m];
+						draw_group_envelope(group, offset_start, offset_end, i);
+					}
 				}
 
 				let panel_x_max_ticks = 5;
