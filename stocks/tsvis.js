@@ -84,6 +84,7 @@ const EVENT= {
 	CLICKED_STAT: "event_clicked_stat",
 	CLICK_POS: "event_clicked_pos",
 	CHANGE_COLORBY: "event_change_colorby",
+	CLUSTER: "event_cluster"
 }
 
 var global = {
@@ -279,6 +280,33 @@ function update_stats_ranges() {
 
 function byteCount(s) {
     return encodeURI(s).split(/%..|./).length - 1;
+}
+
+
+async function cluster_chart_data() {
+	let data_to_send = {};
+	data_to_send['n'] = global.ui.n_clusters_select.value;
+	data_to_send['data'] = [];
+
+	for (let i=0; i<global.chart_symbols.length; i++) {
+		let symbol = global.chart_symbols[i];
+		let symbol_data = {'name':symbol.name, 'x':symbol.projection_coords[0], 'y':symbol.projection_coords[1]};
+		data_to_send['data'].push(symbol_data);
+	}
+
+	let str_to_send = btoa(encodeURI(JSON.stringify(data_to_send)));
+	// console.log(data_to_send)
+
+	var xhttp = new XMLHttpRequest();
+	xhttp.open("POST", "http://localhost:8888/cluster", true);
+	xhttp.setRequestHeader('Content-Type','text/plain');
+	xhttp.responseType = 'json';
+	xhttp.send(str_to_send);
+
+	xhttp.onload = function() {
+		console.log(xhttp.response);
+	}
+
 }
 
 async function project_chart_data() {
@@ -1380,6 +1408,32 @@ function prepare_ui()
 	proj_colorby_select.appendChild(proj_colorby_position_option)
 	proj_colorby_select.appendChild(proj_colorby_gamesplayed_option)
 
+	let n_clusters_select = document.createElement('select')
+	global.ui.n_clusters_select = n_clusters_select
+	n_clusters_select.style = 'position:absolute; left:67.7%; top:48.7%; width:130px; background-color:#2f3233; \
+							   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
+
+	let df_option = create_option(0, 'n_clusters');
+	df_option.selected = 'selected';
+	df_option.hidden = 'hidden';
+
+	let five_option = create_option(5, '5');
+	let seven_option = create_option(7,'7');
+	let ten_option = create_option(10, '10');
+
+	n_clusters_select.appendChild(df_option)
+	n_clusters_select.appendChild(five_option)
+	n_clusters_select.appendChild(seven_option)
+	n_clusters_select.appendChild(ten_option)
+
+	let cluster_btn = document.createElement('button')
+	global.ui.cluster_btn = cluster_btn
+	cluster_btn.id = "cluster_btn"
+	cluster_btn.textContent = 'cluster'
+	cluster_btn.style = "position:absolute; left:75%; top:48.7%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+							  font-family:Courier; font-size:12pt; z-index:2;"
+	install_event_listener(cluster_btn, 'click', cluster_btn, EVENT.CLUSTER)
+
 	let create_group_btn = document.createElement('button')
 	global.ui.create_group_btn = create_group_btn
 	create_group_btn.id = "create_group_btn"
@@ -1404,6 +1458,8 @@ function prepare_ui()
 	ts_div.appendChild(draw_aux_view_type_grid)
 	ts_div.appendChild(draw_groups_envelope_grid)
 	ts_div.appendChild(proj_colorby_select)
+	ts_div.appendChild(n_clusters_select)
+	ts_div.appendChild(cluster_btn)
 	ts_div.appendChild(create_group_btn)
 	ts_div.appendChild(reset_groups_btn)
 
@@ -2353,6 +2409,11 @@ function process_event_queue()
 
 		} else if (e.event_type == EVENT.CHANGE_COLORBY) {
 			global.colorby = global.ui.proj_colorby_select.value
+		} else if (e.event_type == EVENT.CLUSTER) {
+			if (global.ui.n_clusters_select.value !== 0) {
+				// console.log(global.ui.n_clusters_select.value);
+				cluster_chart_data();
+			}
 		}
 	}
 	global.events.length = 0
@@ -3826,7 +3887,7 @@ function update_ts()
 					if (global.ui.draw_groups_envelope_btn.checked) {
 						if (symbol.group !== null) {
 							return
-						}						
+						}
 					}
 
 					let curve_color = "#FFFFFF44"

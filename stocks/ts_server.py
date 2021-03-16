@@ -11,6 +11,7 @@
 #
 
 from sklearn.manifold import TSNE
+from sklearn.cluster import KMeans
 from urllib.parse import unquote
 import http.server
 
@@ -19,6 +20,7 @@ import http.server
 import base64
 import argparse
 import numpy as np
+import pandas as pd
 import json
 import os
 
@@ -41,8 +43,6 @@ def build_dissimilarity_matrix(players, data):
     return dissimilarityMatrix
 
 ts_server = None
-
-# c_SYMBOL,c_DATE,c_OPEN,c_HIGH,c_LOW,c_CLOSE,c_VOLUME,c_ADJ=range(8)
 
 # Expecting data on format id | date | value1 [| value 2 | ...]*
 ap = argparse.ArgumentParser()
@@ -152,6 +152,43 @@ class CustomHTTPHandler(http.server.BaseHTTPRequestHandler):
 
             #send response
             result = json.dumps(proj_data).encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type','application/json')
+            self.send_header('Content-Length',len(result))
+            self.send_header('Access-Control-Allow-Origin','*')
+            self.end_headers()
+            self.wfile.write(result)
+            self.wfile.flush()
+
+        elif path == '/cluster':
+            #handling request and reading data
+            content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
+            post_data      = self.rfile.read(content_length) # <--- Gets the data itself
+            data_bytes     = base64.b64decode(post_data)
+            data_string    = unquote(data_bytes.decode("utf-8"))
+            data = json.loads(data_string)
+
+            #processing data
+            n            = int(data['n'])
+            players_data = pd.DataFrame(data['data'])
+            players_data['x'] = pd.to_numeric(players_data['x'])
+            players_data['y'] = pd.to_numeric(players_data['y'])
+            players_data_noname = players_data.drop(['name'],axis=1)
+
+            #kmeans stuff
+            KM = KMeans(n_clusters=n, random_state=42)
+            KM.fit(players_data_noname)
+            clusters = KM.labels_
+            players_data['group'] = clusters
+            players_data.drop(['x','y'],axis=1)
+
+            #building response
+            groups = {}
+            for group, df_group in players_data.groupby('group', as_index=False):
+                groups[group] = list(df_group['name'])
+
+            #send response
+            result = json.dumps(groups).encode('utf-8')
             self.send_response(200)
             self.send_header('Content-Type','application/json')
             self.send_header('Content-Length',len(result))
