@@ -57,6 +57,8 @@ const POSITION_COLORS = {
 	"G":'#7570b3'
 }
 
+const GROUP_COLORS = ['#ff0000','#00ff00','#0000ff','#ffff00','#00ffff','#ff00ff','#ff8900','#aa00ff','#71bb40','#948055','#b12178','#434bab']
+
 const SEQUENTIAL_COLORS = ['#ffffb2','#fed976','#feb24c','#fd8d3c','#f03b20','#bd0026']
 
 const EVENT= {
@@ -247,6 +249,62 @@ function drawTextBG(ctx, txt, x, y) {
     ctx.restore();
 }
 
+function create_groups_from_response(groups_obj) {
+	global.groups = [];
+
+	let keys = Object.keys(groups_obj);
+
+	for (let i=0; i<keys.length; i++) {
+		let group = {};
+		group.name 	   = keys[i]
+		group.color    = GROUP_COLORS[i]
+		group.on_chart = false
+		group.members  = []
+		group.fbed 	   = { active:false, inner_band: { lower:[], upper:[] }, outer_band: { lower:[], upper:[] }, outliers:[], ranked_symbols: [] }
+		group.fbmbd    = { active:false, inner_band: { lower:[], upper:[] }, outer_band: { lower:[], upper:[] }, outliers:[], ranked_symbols: [] }
+
+		let chart_symbols = global.chart_symbols;
+		for (let j=0; j<chart_symbols.length; j++) {
+			let symbol = chart_symbols[j];
+
+			if (groups_obj[keys[i]].indexOf(symbol.name) > -1) {
+				group.members.push(symbol);
+
+				symbol.group = group
+			}
+		}
+
+		global.groups.push(group)
+		global.group_count = global.group_count + 1
+	}
+}
+
+async function cluster_chart_data() {
+	let data_to_send = {};
+	data_to_send['n'] = global.ui.n_clusters_select.value;
+	data_to_send['data'] = [];
+
+	for (let i=0; i<global.chart_symbols.length; i++) {
+		let symbol = global.chart_symbols[i];
+		let symbol_data = {'name':symbol.name, 'x':symbol.projection_coords[0], 'y':symbol.projection_coords[1]};
+		data_to_send['data'].push(symbol_data);
+	}
+
+	let str_to_send = btoa(encodeURI(JSON.stringify(data_to_send)));
+	// console.log(data_to_send)
+
+	var xhttp = new XMLHttpRequest();
+	xhttp.open("POST", "http://localhost:8888/cluster", true);
+	xhttp.setRequestHeader('Content-Type','text/plain');
+	xhttp.responseType = 'json';
+	xhttp.send(str_to_send);
+
+	xhttp.onload = function() {
+		create_groups_from_response(xhttp.response);
+	}
+
+}
+
 function start_stats_ranges(player_summary) {
 	let stats = Object.keys(player_summary);
 
@@ -280,33 +338,6 @@ function update_stats_ranges() {
 
 function byteCount(s) {
     return encodeURI(s).split(/%..|./).length - 1;
-}
-
-
-async function cluster_chart_data() {
-	let data_to_send = {};
-	data_to_send['n'] = global.ui.n_clusters_select.value;
-	data_to_send['data'] = [];
-
-	for (let i=0; i<global.chart_symbols.length; i++) {
-		let symbol = global.chart_symbols[i];
-		let symbol_data = {'name':symbol.name, 'x':symbol.projection_coords[0], 'y':symbol.projection_coords[1]};
-		data_to_send['data'].push(symbol_data);
-	}
-
-	let str_to_send = btoa(encodeURI(JSON.stringify(data_to_send)));
-	// console.log(data_to_send)
-
-	var xhttp = new XMLHttpRequest();
-	xhttp.open("POST", "http://localhost:8888/cluster", true);
-	xhttp.setRequestHeader('Content-Type','text/plain');
-	xhttp.responseType = 'json';
-	xhttp.send(str_to_send);
-
-	xhttp.onload = function() {
-		console.log(xhttp.response);
-	}
-
 }
 
 async function project_chart_data() {
@@ -1384,7 +1415,7 @@ function prepare_ui()
 	let draw_groups_envelope_grid = document.createElement('div')
 	global.ui.draw_groups_envelope_grid = draw_groups_envelope_grid
 	draw_groups_envelope_grid.id = draw_groups_envelope_grid
-	draw_groups_envelope_grid.style = 'position:absolute; left:17.1%; top:95.7%; background-color:#6b6f71; \
+	draw_groups_envelope_grid.style = 'position:absolute; left:17.1%; top:97%; background-color:#6b6f71; \
 							   		   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 	draw_groups_envelope_grid.appendChild(draw_groups_envelope_lbl)
 	draw_groups_envelope_grid.appendChild(draw_groups_envelope_btn)
@@ -1417,14 +1448,16 @@ function prepare_ui()
 	df_option.selected = 'selected';
 	df_option.hidden = 'hidden';
 
-	let five_option = create_option(5, '5');
-	let seven_option = create_option(7,'7');
-	let ten_option = create_option(10, '10');
+	let five_option   = create_option(5, '5');
+	let seven_option  = create_option(7,'7');
+	let ten_option    = create_option(10, '10');
+	let twelve_option = create_option(12, '12');
 
-	n_clusters_select.appendChild(df_option)
-	n_clusters_select.appendChild(five_option)
-	n_clusters_select.appendChild(seven_option)
-	n_clusters_select.appendChild(ten_option)
+	n_clusters_select.appendChild(df_option);
+	n_clusters_select.appendChild(five_option);
+	n_clusters_select.appendChild(seven_option);
+	n_clusters_select.appendChild(ten_option);
+	n_clusters_select.appendChild(twelve_option);
 
 	let cluster_btn = document.createElement('button')
 	global.ui.cluster_btn = cluster_btn
