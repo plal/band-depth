@@ -293,7 +293,6 @@ function update_groups_table() {
 	install_event_listener(group.ui_col, 'click', group, EVENT.TOGGLE_GROUP)
 }
 
-
 function create_groups_from_response(groups_obj) {
 	global.groups = [];
 
@@ -322,12 +321,39 @@ function create_groups_from_response(groups_obj) {
 		global.groups.push(group)
 		global.group_count = global.group_count + 1
 
-		if (global.group_count == 1) {
-			create_groups_table_div()
-			update_groups_table()
-		} else if (global.group_count > 1) {
-			update_groups_table()
-		}
+	}
+
+	// create table with groups to toggle
+	if (global.ui.groups_table !== undefined) {
+		document.getElementById('groups_table').remove()
+		document.getElementById('groups_table_div').remove()
+	}
+
+	let groups_table_div = document.createElement('div');
+	global.ui.groups_table_div = groups_table_div;
+	groups_table_div.id = 'groups_table_div';
+	groups_table_div.style = 'position:relative; width:100%; height:100%; margin:2px; overflow:auto; border-radius:2px; background-color:#FFFFFF';
+
+	let groups_table = groups_table_div.appendChild(document.createElement('table'));
+	global.ui.groups_table = groups_table;
+	groups_table.id = 'groups_table';
+	groups_table.style = 'position:block; width:100%; heigth: 100% !important;';
+
+	global.ui.left_panel.appendChild(groups_table_div);
+
+	for (let i=0; i<global.groups.length; i++) {
+		let group = global.groups[i]
+		let row   = global.ui.groups_table.appendChild(document.createElement('tr'))
+		let col   = row.appendChild(document.createElement('td'))
+		col.innerText = group.name
+		col.style = "cursor: pointer"
+		col.style.fontFamily = 'Courier'
+		col.style.fontSize = '14pt'
+		col.style.fontWeight = 'bold'
+		col.style.color = group.color
+		group.ui_row = row
+		group.ui_col = col
+		install_event_listener(group.ui_col, 'click', group, EVENT.TOGGLE_GROUP)
 	}
 }
 
@@ -655,15 +681,16 @@ function reset_groups() {
 	let chart_symbols = global.chart_symbols;
 
 	for (let i=0; i<chart_symbols.length; i++) {
-		let symbol = chart_symbols[i]
-		symbol.group = null
+		let symbol = chart_symbols[i];
+		symbol.group = null;
 	}
 
-	global.groups = []
-	global.group_count = 0
-	
-	document.getElementById('groups_table').remove()
-	document.getElementById('groups_table_div').remove()
+	global.groups 		   = [];
+	global.group_count 	   = 0;
+	global.ui.groups_table = undefined;
+
+	document.getElementById('groups_table').remove();
+	document.getElementById('groups_table_div').remove();
 
 }
 
@@ -700,6 +727,9 @@ function clear_chart() {
 	global.chart_symbols = [];
 	global.chart_colors  = [];
 	global.chart_groups	 = [];
+
+	reset_groups();
+
 	global.split_cdf     = { breaks:[0], ww:[1], realign:[], split_rank: null,
 							 panel_resize_index: null, panel_resize_side: null, panel_resize_last_x: null,
 							 filters: [[]]};
@@ -2478,8 +2508,8 @@ function process_event_queue()
 			global.colorby = global.ui.proj_colorby_select.value
 		} else if (e.event_type == EVENT.CLUSTER) {
 			if (global.ui.n_clusters_select.value !== 0) {
-				// console.log(global.ui.n_clusters_select.value);
 				cluster_chart_data();
+				// create_and_update_groups_table();
 			}
 		}
 	}
