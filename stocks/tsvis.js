@@ -57,7 +57,9 @@ const POSITION_COLORS = {
 	"G":'#7570b3'
 }
 
-const GROUP_COLORS = ['#ff0000','#00ff00','#0000ff','#ffff00','#00ffff','#ff00ff','#ff8900','#aa00ff','#71bb40','#948055','#b12178','#434bab']
+const GROUP_COLORS = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928']
+// ['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd','#ccebc5','#ffed6f']
+// ['#ff0000','#00ff00','#0000ff','#ffff00','#00ffff','#ff00ff','#ff8900','#aa00ff','#71bb40','#948055','#b12178','#434bab']
 
 const SEQUENTIAL_COLORS = ['#ffffb2','#fed976','#feb24c','#fd8d3c','#f03b20','#bd0026']
 
@@ -168,6 +170,18 @@ function hex_lerp(a_hex, b_hex, lambda) {
 	return rgb_to_hex(rgb_lerp(hex_to_rgb(a_hex), hex_to_rgb(b_hex), lambda) )
 }
 
+function interpolate_envelope_bounds(envelope, alpha) {
+	let upper = envelope.upper;
+	let lower = envelope.lower;
+	let res   = [];
+
+	for (let i=0; i<upper.length; i++) {
+		res[i] = upper[i]*alpha + lower[i]*(1-alpha)
+	}
+
+	return res
+}
+
 function install_event_listener(component, raw_event_type, context, event_type)
 {
 	component.addEventListener(raw_event_type, function(e) {
@@ -249,6 +263,37 @@ function drawTextBG(ctx, txt, x, y) {
     ctx.restore();
 }
 
+function create_groups_table_div() {
+	let groups_table_div = document.createElement('div')
+	global.ui.groups_table_div = groups_table_div
+	groups_table_div.id = 'groups_table_div'
+	groups_table_div.style = 'position:relative; width:100%; height:100%; margin:2px; overflow:auto; border-radius:2px; background-color:#FFFFFF'
+
+	let groups_table = groups_table_div.appendChild(document.createElement('table'))
+	global.ui.groups_table = groups_table
+	groups_table.id = 'groups_table'
+	groups_table.style = 'position:block; width:100%; heigth: 100% !important;'
+
+	global.ui.left_panel.appendChild(groups_table_div)
+
+}
+
+function update_groups_table() {
+
+	let group = global.groups[global.group_count-1]
+	let row   = global.ui.groups_table.appendChild(document.createElement('tr'))
+	let col   = row.appendChild(document.createElement('td'))
+	col.innerText = group.name
+	col.style = "cursor: pointer"
+	col.style.fontFamily = 'Courier'
+	col.style.fontSize = '14pt'
+	col.style.color ="#6b6f71"
+	group.ui_row = row
+	group.ui_col = col
+	install_event_listener(group.ui_col, 'click', group, EVENT.TOGGLE_GROUP)
+}
+
+
 function create_groups_from_response(groups_obj) {
 	global.groups = [];
 
@@ -258,7 +303,7 @@ function create_groups_from_response(groups_obj) {
 		let group = {};
 		group.name 	   = keys[i]
 		group.color    = GROUP_COLORS[i]
-		group.on_chart = false
+		group.on_chart = true
 		group.members  = []
 		group.fbed 	   = { active:false, inner_band: { lower:[], upper:[] }, outer_band: { lower:[], upper:[] }, outliers:[], ranked_symbols: [] }
 		group.fbmbd    = { active:false, inner_band: { lower:[], upper:[] }, outer_band: { lower:[], upper:[] }, outliers:[], ranked_symbols: [] }
@@ -276,6 +321,13 @@ function create_groups_from_response(groups_obj) {
 
 		global.groups.push(group)
 		global.group_count = global.group_count + 1
+
+		if (global.group_count == 1) {
+			create_groups_table_div()
+			update_groups_table()
+		} else if (global.group_count > 1) {
+			update_groups_table()
+		}
 	}
 }
 
@@ -466,36 +518,6 @@ function add_table_symbols() {
 	}
 }
 
-function create_groups_table_div() {
-	let groups_table_div = document.createElement('div')
-	global.ui.groups_table_div = groups_table_div
-	groups_table_div.id = 'groups_table_div'
-	groups_table_div.style = 'position:relative; width:100%; height:100%; margin:2px; overflow:auto; border-radius:2px; background-color:#FFFFFF'
-
-	let groups_table = groups_table_div.appendChild(document.createElement('table'))
-	global.ui.groups_table = groups_table
-	groups_table.id = 'groups_table'
-	groups_table.style = 'position:block; width:100%; heigth: 100% !important;'
-
-	global.ui.left_panel.appendChild(groups_table_div)
-
-}
-
-function update_groups_table() {
-
-	let group = global.groups[global.group_count-1]
-	let row   = global.ui.groups_table.appendChild(document.createElement('tr'))
-	let col   = row.appendChild(document.createElement('td'))
-	col.innerText = group.name
-	col.style = "cursor: pointer"
-	col.style.fontFamily = 'Courier'
-	col.style.fontSize = '14pt'
-	col.style.color ="#6b6f71"
-	group.ui_row = row
-	group.ui_col = col
-	install_event_listener(group.ui_col, 'click', group, EVENT.TOGGLE_GROUP)
-}
-
 
 function create_group() {
 	let chart_symbols = global.chart_symbols
@@ -538,17 +560,6 @@ function create_group() {
 	// 	update_groups_table()
 	// }
 
-}
-
-function reset_groups() {
-	let chart_symbols = global.chart_symbols;
-
-	for (let i=0; i<chart_symbols.length; i++) {
-		let symbol = chart_symbols[i]
-		symbol.group = null
-	}
-
-	global.groups = []
 }
 
 function add_group_to_chart(group) {
@@ -599,6 +610,12 @@ function remove_group(group) {
 	if (to_remove > -1) {
 		global.groups.splice(to_remove, 1)
 	}
+
+	global.group_count = global.group_count - 1;
+	if (global.group_count == 0) {
+		document.getElementById('groups_table').remove()
+		document.getElementById('groups_table_div').remove()
+	}
 }
 
 function remove_active_groups() {
@@ -633,6 +650,23 @@ function remove_active_groups() {
 	}
 
 }
+
+function reset_groups() {
+	let chart_symbols = global.chart_symbols;
+
+	for (let i=0; i<chart_symbols.length; i++) {
+		let symbol = chart_symbols[i]
+		symbol.group = null
+	}
+
+	global.groups = []
+	global.group_count = 0
+	
+	document.getElementById('groups_table').remove()
+	document.getElementById('groups_table_div').remove()
+
+}
+
 
 function clear_chart() {
 	let symbols = global.symbols
@@ -3918,7 +3952,7 @@ function update_ts()
 					}
 
 					if (global.ui.draw_groups_envelope_btn.checked) {
-						if (symbol.group !== null) {
+						if (symbol.group !== null && symbol !== global.focused_symbol) {
 							return
 						}
 					}
@@ -4052,6 +4086,8 @@ function update_ts()
 					envelope.upper = upper_bound;
 					envelope.lower = lower_bound;
 
+					group.envelope = envelope;
+
 					return envelope;
 				}
 
@@ -4104,7 +4140,9 @@ function update_ts()
 				if (global.ui.draw_groups_envelope_btn.checked) {
 					for (let m=0; m<global.groups.length; m++) {
 						let group = global.groups[m];
-						draw_group_envelope(group, offset_start, offset_end, i);
+						if(group.on_chart) {
+							draw_group_envelope(group, offset_start, offset_end, i);
+						}
 					}
 				}
 
