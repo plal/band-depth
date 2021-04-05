@@ -88,7 +88,8 @@ const EVENT= {
 	CLICKED_STAT: "event_clicked_stat",
 	CLICK_POS: "event_clicked_pos",
 	CHANGE_COLORBY: "event_change_colorby",
-	CLUSTER: "event_cluster"
+	CLUSTER: "event_cluster",
+	DRAW_GROUPS_ENVELOPES: "event_draw_groups_envelopes"
 }
 
 var global = {
@@ -176,10 +177,66 @@ function interpolate_envelope_bounds(envelope, alpha) {
 	let res   = [];
 
 	for (let i=0; i<upper.length; i++) {
-		res[i] = upper[i]*alpha + lower[i]*(1-alpha)
+		res[i] = upper[i]*alpha + lower[i]*(1-alpha);
 	}
 
-	return res
+	return res;
+}
+
+function earth_movers_distance(ref, sym) {
+	let cdf_sym = sym.ranks_current_values;
+	let sz		= ref.length;
+
+	let dist = 0.0;
+	for (let i=0; i<sz; i++) {
+		dist += Math.abs(cdf_sym[i]-ref[i]);
+	}
+
+	return dist;
+}
+
+function find_group_proto(group, n_protos) {
+	if (group.envelope == undefined) {
+		return
+	}
+
+	let members 		= group.members;
+
+	// find envelope center protos
+	let reference_curve = interpolate_envelope_bounds(group.envelope, 0.5);
+	for (let i=0; i<members.length; i++) {
+		let member = members[i];
+		let member_dist_to_ref = earth_movers_distance(reference_curve, member);
+		member.dist_to_ref = member_dist_to_ref;
+	}
+
+	members.sort((a, b) => parseFloat(a.dist_to_ref) - parseFloat(b.dist_to_ref));
+	for (let i=0; i<n_protos; i++) {
+		members[i].proto = true;
+	}
+
+	// find envelope upper proto
+	let reference_curve_upper = group.envelope.upper;
+	for (let i=0; i<members.length; i++) {
+		let member = members[i];
+		let member_dist_to_upper = earth_movers_distance(reference_curve_upper, member);
+		member.dist_to_upper = member_dist_to_upper;
+	}
+
+	members.sort((a, b) => parseFloat(a.dist_to_upper) - parseFloat(b.dist_to_upper));
+	members[0].proto = true;
+
+	// find envelope lower proto
+	let reference_curve_lower = group.envelope.lower;
+	for (let i=0; i<members.length; i++) {
+		let member = members[i];
+		let member_dist_to_lower = earth_movers_distance(reference_curve_lower, member);
+		member.dist_to_lower = member_dist_to_lower;
+	}
+
+	members.sort((a, b) => parseFloat(a.dist_to_lower) - parseFloat(b.dist_to_lower));
+	members[0].proto = true;
+
 }
 
 function install_event_listener(component, raw_event_type, context, event_type)
@@ -679,16 +736,30 @@ function remove_active_groups() {
 
 function reset_groups() {
 	let chart_symbols = global.chart_symbols;
+	let groups        = global.groups;
 
 	for (let i=0; i<chart_symbols.length; i++) {
 		let symbol = chart_symbols[i];
 		symbol.group = null;
+		symbol.proto = false;
+	}
+
+	for (let i=0; i<groups.length; i++) {
+		let group = groups[i];
+		let members = group.members;
+		for (let j=0; j<members.length; j++) {
+			let member = members[j];
+			member.proto = false;
+		}
 	}
 
 	global.groups 		   = [];
 	global.group_count 	   = 0;
 	global.ui.groups_table = undefined;
 
+	// if (document.getElementById('groups_table') !== undefined && document.getElementById('groups_table_div') !== undefined) {
+	//
+	// }
 	document.getElementById('groups_table').remove();
 	document.getElementById('groups_table_div').remove();
 
@@ -728,11 +799,15 @@ function clear_chart() {
 	global.chart_colors  = [];
 	global.chart_groups	 = [];
 
-	reset_groups();
+	if (groups.length > 0) {
+		reset_groups();
+	}
 
 	global.split_cdf     = { breaks:[0], ww:[1], realign:[], split_rank: null,
 							 panel_resize_index: null, panel_resize_side: null, panel_resize_last_x: null,
 							 filters: [[]]};
+
+	global.ui.draw_groups_envelope_btn.checked = false;
 }
 
 function hashcode(str) {
@@ -1472,6 +1547,7 @@ function prepare_ui()
 
 	let draw_groups_envelope_btn = create_checkbox();
 	global.ui.draw_groups_envelope_btn = draw_groups_envelope_btn;
+	// install_event_listener(draw_groups_envelope_btn, 'click', draw_groups_envelope_btn, EVENT.DRAW_GROUPS_ENVELOPES)
 
 	let draw_groups_envelope_lbl = create_checkbox_label(draw_groups_envelope_btn, 'Draw groups envelopes');
 	global.ui.draw_groups_envelope_lbl = draw_groups_envelope_lbl
@@ -2512,6 +2588,14 @@ function process_event_queue()
 				// create_and_update_groups_table();
 			}
 		}
+		// else if (e.event_type == EVENT.DRAW_GROUPS_ENVELOPES) {
+		// 	let groups = global.groups
+		// 	if (groups.length > 0) {
+		// 		for (let i=0; i<groups.length; i++) {
+		// 			find_group_proto(groups[i], 1);
+		// 		}
+		// 	}
+		// }
 	}
 	global.events.length = 0
 }
@@ -3982,7 +4066,7 @@ function update_ts()
 					}
 
 					if (global.ui.draw_groups_envelope_btn.checked) {
-						if (symbol.group !== null && symbol !== global.focused_symbol) {
+						if (symbol.group !== null && symbol !== global.focused_symbol && symbol.proto == false) {
 							return
 						}
 					}
@@ -4123,6 +4207,7 @@ function update_ts()
 
 				function draw_group_envelope(group, panel_x_min, panel_x_max, panel_rank) {
 					let envelope = prepare_group_envelope(group, panel_x_min, panel_x_max, panel_rank);
+					find_group_proto(group, 1);
 
 					let upper_bound = envelope.upper;
 					let lower_bound = envelope.lower;
@@ -4636,7 +4721,7 @@ async function main()
 			symbols.push({ name:symbol_names[i], position:null, ui_row:null, ui_col:null,
 						   on_table:true, on_chart:false, data: null,
 						   ts_current_values: null, ed_rank:null, mbd_rank:null,
-						   filter:0, selected:false, group:null })
+						   filter:0, selected:false, group:null, proto:false })
 		}
 		global.symbols = symbols
 		global.toggle_state = 0
