@@ -195,18 +195,30 @@ function earth_movers_distance(ref, sym) {
 	return dist;
 }
 
+function reset_group_protos(group) {
+	let members = group.members;
+	for (let j=0; j<members.length; j++) {
+		let member = members[j];
+		member.proto = false;
+	}
+}
+
 function find_group_proto(group, n_protos) {
+
+	reset_group_protos(group);
+
 	if (group.envelope == undefined) {
 		return
 	}
 
-	let members 		= group.members;
+	let members = group.members;
 
 	// find envelope center protos
 	let reference_curve = interpolate_envelope_bounds(group.envelope, 0.5);
 	for (let i=0; i<members.length; i++) {
-		let member = members[i];
+		let member 			   = members[i];
 		let member_dist_to_ref = earth_movers_distance(reference_curve, member);
+
 		member.dist_to_ref = member_dist_to_ref;
 	}
 
@@ -218,8 +230,9 @@ function find_group_proto(group, n_protos) {
 	// find envelope upper proto
 	let reference_curve_upper = group.envelope.upper;
 	for (let i=0; i<members.length; i++) {
-		let member = members[i];
+		let member 				 = members[i];
 		let member_dist_to_upper = earth_movers_distance(reference_curve_upper, member);
+
 		member.dist_to_upper = member_dist_to_upper;
 	}
 
@@ -229,8 +242,9 @@ function find_group_proto(group, n_protos) {
 	// find envelope lower proto
 	let reference_curve_lower = group.envelope.lower;
 	for (let i=0; i<members.length; i++) {
-		let member = members[i];
+		let member 				 = members[i];
 		let member_dist_to_lower = earth_movers_distance(reference_curve_lower, member);
+
 		member.dist_to_lower = member_dist_to_lower;
 	}
 
@@ -746,11 +760,7 @@ function reset_groups() {
 
 	for (let i=0; i<groups.length; i++) {
 		let group = groups[i];
-		let members = group.members;
-		for (let j=0; j<members.length; j++) {
-			let member = members[j];
-			member.proto = false;
-		}
+		reset_group_protos(group);
 	}
 
 	global.groups 		   = [];
@@ -1103,8 +1113,7 @@ function prepare_ui()
 	global.ui.fls_lbl = fls_lbl;
 
 	let stats_grid = document.createElement('div');
-	global.ui.stats_grid = stats_grid;
-	stats_grid.id = stats_grid;
+	stats_grid.id    = stats_grid;
 	stats_grid.style = 'display:grid; background-color:#2f3233; align-content:space-around; grid-template-columns:repeat(2, 50px)';
 	stats_grid.appendChild(pts_btn);
 	stats_grid.appendChild(pts_lbl);
@@ -1120,14 +1129,14 @@ function prepare_ui()
 	stats_grid.appendChild(tos_lbl);
 	stats_grid.appendChild(fls_btn);
 	stats_grid.appendChild(fls_lbl);
+	global.ui.stats_grid = stats_grid;
 
 	let get_stats_ranks_btn = document.createElement('button')
-	global.ui.get_stats_ranks_btn = get_stats_ranks_btn
-	//get_stats_ranks_btn.setAttribute("type","button")
-	get_stats_ranks_btn.id = "get_stats_ranks_btn"
+	get_stats_ranks_btn.id 			= "get_stats_ranks_btn"
 	get_stats_ranks_btn.textContent = 'get stats ranks'
-	get_stats_ranks_btn.style = "position:relative; width:100%; margin:2px;\
-	 								  border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
+	get_stats_ranks_btn.style 		= "position:relative; width:100%; margin:2px;\
+	 								   border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
+	global.ui.get_stats_ranks_btn = get_stats_ranks_btn
 	install_event_listener(get_stats_ranks_btn, 'click', get_stats_ranks_btn, EVENT.GET_STATS_RANKS)
 
 	let pos_section_lbl = create_section_label('Positions');
@@ -1158,8 +1167,7 @@ function prepare_ui()
 	global.ui.c_lbl = c_lbl
 
 	let pos_grid = document.createElement('div');
-	global.ui.pos_grid = pos_grid;
-	pos_grid.id = pos_grid;
+	pos_grid.id    = pos_grid;
 	pos_grid.style = 'display:grid; background-color:#2f3233; align-content:space-around; grid-template-columns:repeat(2, 50px)';
 	pos_grid.appendChild(g_btn);
 	pos_grid.appendChild(g_lbl);
@@ -1167,16 +1175,21 @@ function prepare_ui()
 	pos_grid.appendChild(f_lbl);
 	pos_grid.appendChild(c_btn);
 	pos_grid.appendChild(c_lbl);
+	global.ui.pos_grid = pos_grid;
+
+	//----------
+	// min games played filter
+	//----------
 
 	let min_gp_lbl = create_section_label('Min. Games Played');
 
 	let min_gp_sld = document.createElement('input');
-	global.min_gp_sld = min_gp_sld;
-	min_gp_sld.type = 'range';
-	min_gp_sld.min = 1;
-	min_gp_sld.max = 82;
-	min_gp_sld.value = 1;
+	min_gp_sld.type 	 = 'range';
+	min_gp_sld.min 		 = 1;
+	min_gp_sld.max 		 = 82;
+	min_gp_sld.value 	 = 1;
 	min_gp_sld.className = "slider"
+	global.min_gp_sld 	 = min_gp_sld;
 
 	let min_gp_val = document.createElement('output');
 	global.min_gp_val = min_gp_val;
@@ -1250,181 +1263,186 @@ function prepare_ui()
 	// norm_date_grid.appendChild(norm_date_label)
 	// norm_date_grid.appendChild(norm_date_input)
 
+	//----------
+	// main view general controls
+	//----------
+
 	let normalize_btn = document.createElement('input')
+	normalize_btn.type 		= "checkbox"
 	global.ui.normalize_btn = normalize_btn
-	normalize_btn.type = "checkbox"
-	//normalize_btn.classList.add('checkbox_input')
 
 	let normalize_lbl = document.createElement('label')
-	global.ui.normalize_lbl = normalize_lbl
 	normalize_lbl.setAttribute("for", normalize_btn)
-	normalize_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
+	normalize_lbl.style 	= 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
 	normalize_lbl.innerHTML = 'Normalize values'
+	global.ui.normalize_lbl = normalize_lbl
 
 	let normalize_grid = document.createElement('div')
-	global.ui.normalize_grid = normalize_grid
-	normalize_grid.id = normalize_grid
+	normalize_grid.id 	 = normalize_grid
 	normalize_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
 	normalize_grid.appendChild(normalize_lbl)
 	normalize_grid.appendChild(normalize_btn)
+	global.ui.normalize_grid = normalize_grid
 
 	let use_diffs_btn = document.createElement('input')
+	use_diffs_btn.type 		= "checkbox"
 	global.ui.use_diffs_btn = use_diffs_btn
-	use_diffs_btn.type = "checkbox"
 
 	let use_diffs_lbl = document.createElement('label')
-	global.ui.use_diffs_lbl = use_diffs_lbl
 	use_diffs_lbl.setAttribute("for", use_diffs_btn)
-	use_diffs_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:120px'
+	use_diffs_lbl.style 	= 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:120px'
 	use_diffs_lbl.innerHTML = 'Use diffs on aux view'
+	global.ui.use_diffs_lbl = use_diffs_lbl
 
 	let use_diffs_grid = document.createElement('div')
-	global.ui.use_diffs_grid = use_diffs_grid
-	use_diffs_grid.id = use_diffs_grid
+	use_diffs_grid.id    = use_diffs_grid
 	use_diffs_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
 	use_diffs_grid.appendChild(use_diffs_lbl)
 	use_diffs_grid.appendChild(use_diffs_btn)
+	global.ui.use_diffs_grid = use_diffs_grid
 
 	let modified_band_depth_btn = document.createElement('input')
+	modified_band_depth_btn.type 	  = "checkbox"
 	global.ui.modified_band_depth_btn = modified_band_depth_btn
-	modified_band_depth_btn.type = "checkbox"
 	install_event_listener(modified_band_depth_btn, 'click', modified_band_depth_btn, EVENT.RUN_MODIFIED_BAND_DEPTH_ALGORITHM)
 
 	let modified_band_depth_lbl = document.createElement('label')
-	global.ui.modified_band_depth_lbl = modified_band_depth_lbl
 	modified_band_depth_lbl.setAttribute("for", modified_band_depth_btn)
-	modified_band_depth_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
+	modified_band_depth_lbl.style 	  = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
 	modified_band_depth_lbl.innerHTML = 'Functional Boxplot MBD'
+	global.ui.modified_band_depth_lbl = modified_band_depth_lbl
 
 	let modified_band_depth_grid = document.createElement('div')
-	global.ui.modified_band_depth_grid = modified_band_depth_grid
-	modified_band_depth_grid.id = modified_band_depth_grid
+	modified_band_depth_grid.id    = modified_band_depth_grid
 	modified_band_depth_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
 	modified_band_depth_grid.appendChild(modified_band_depth_lbl)
 	modified_band_depth_grid.appendChild(modified_band_depth_btn)
+	global.ui.modified_band_depth_grid = modified_band_depth_grid
 
 	let mbd_draw_outliers_btn = document.createElement('input')
+	mbd_draw_outliers_btn.type 		= "checkbox"
 	global.ui.mbd_draw_outliers_btn = mbd_draw_outliers_btn
-	mbd_draw_outliers_btn.type = "checkbox"
 
 	let mbd_draw_outliers_lbl = document.createElement('label')
-	global.ui.mbd_draw_outliers_lbl = mbd_draw_outliers_lbl
 	mbd_draw_outliers_lbl.setAttribute("for", mbd_draw_outliers_btn)
-	mbd_draw_outliers_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
+	mbd_draw_outliers_lbl.style 	= 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
 	mbd_draw_outliers_lbl.innerHTML = '- Draw outliers'
+	global.ui.mbd_draw_outliers_lbl = mbd_draw_outliers_lbl
 
 	let mbd_draw_outliers_grid = document.createElement('div')
-	global.ui.mbd_draw_outliers_grid = mbd_draw_outliers_grid
-	mbd_draw_outliers_grid.id = mbd_draw_outliers_grid
+	mbd_draw_outliers_grid.id    = mbd_draw_outliers_grid
 	mbd_draw_outliers_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around;' //justify-content:flex-end'
 	mbd_draw_outliers_grid.appendChild(mbd_draw_outliers_lbl)
 	mbd_draw_outliers_grid.appendChild(mbd_draw_outliers_btn)
+	global.ui.mbd_draw_outliers_grid = mbd_draw_outliers_grid
 
 	let extremal_depth_btn = document.createElement('input')
+	extremal_depth_btn.type 	 = "checkbox"
 	global.ui.extremal_depth_btn = extremal_depth_btn
-	extremal_depth_btn.type = "checkbox"
 	install_event_listener(extremal_depth_btn, 'click', extremal_depth_btn, EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM)
 
 	let extremal_depth_lbl = document.createElement('label')
-	global.ui.extremal_depth_lbl = extremal_depth_lbl
 	extremal_depth_lbl.setAttribute("for", extremal_depth_btn)
-	extremal_depth_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
+	extremal_depth_lbl.style 	 = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
 	extremal_depth_lbl.innerHTML = 'Functional Boxplot ED'
+	global.ui.extremal_depth_lbl = extremal_depth_lbl
 
 	let extremal_depth_grid = document.createElement('div')
-	global.ui.extremal_depth_grid = extremal_depth_grid
-	extremal_depth_grid.id = extremal_depth_grid
+	extremal_depth_grid.id    = extremal_depth_grid
 	extremal_depth_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
 	extremal_depth_grid.appendChild(extremal_depth_lbl)
 	extremal_depth_grid.appendChild(extremal_depth_btn)
+	global.ui.extremal_depth_grid = extremal_depth_grid
 
 	let draw_curves_btn = document.createElement('input')
+	draw_curves_btn.checked   = 'true'
+	draw_curves_btn.type 	  = "checkbox"
 	global.ui.draw_curves_btn = draw_curves_btn
-	draw_curves_btn.checked = 'true'
-	draw_curves_btn.type = "checkbox"
 
 	let draw_curves_lbl = document.createElement('label')
-	global.ui.draw_curves_lbl = draw_curves_lbl
 	draw_curves_lbl.setAttribute("for", draw_curves_btn)
-	draw_curves_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:120px'
+	draw_curves_lbl.style 	  = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:120px'
 	draw_curves_lbl.innerHTML = 'Draw curves'
+	global.ui.draw_curves_lbl = draw_curves_lbl
 
 	let draw_curves_grid = document.createElement('div')
-	global.ui.draw_curves_grid = draw_curves_grid
-	draw_curves_grid.id = draw_curves_grid
+	draw_curves_grid.id    = draw_curves_grid
 	draw_curves_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
 	draw_curves_grid.appendChild(draw_curves_lbl)
 	draw_curves_grid.appendChild(draw_curves_btn)
+	global.ui.draw_curves_grid = draw_curves_grid
 
 	let ed_draw_outliers_btn = document.createElement('input')
+	ed_draw_outliers_btn.type 	   = "checkbox"
 	global.ui.ed_draw_outliers_btn = ed_draw_outliers_btn
-	//ed_draw_outliers_btn.checked = 'true'
-	ed_draw_outliers_btn.type = "checkbox"
 
 	let ed_draw_outliers_lbl = document.createElement('label')
-	global.ui.ed_draw_outliers_lbl = ed_draw_outliers_lbl
 	ed_draw_outliers_lbl.setAttribute("for", ed_draw_outliers_btn)
-	ed_draw_outliers_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
-	//extremal_depth_lbl.classList.add('checkbox_input_label')
+	ed_draw_outliers_lbl.style 	   = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
 	ed_draw_outliers_lbl.innerHTML = '- Draw outliers'
+	global.ui.ed_draw_outliers_lbl = ed_draw_outliers_lbl
 
 	let ed_draw_outliers_grid = document.createElement('div')
-	global.ui.ed_draw_outliers_grid = ed_draw_outliers_grid
-	ed_draw_outliers_grid.id = ed_draw_outliers_grid
+	ed_draw_outliers_grid.id    = ed_draw_outliers_grid
 	ed_draw_outliers_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around;' //justify-content:flex-end'
 	ed_draw_outliers_grid.appendChild(ed_draw_outliers_lbl)
 	ed_draw_outliers_grid.appendChild(ed_draw_outliers_btn)
+	global.ui.ed_draw_outliers_grid = ed_draw_outliers_grid
 
+	//----------
+	// input for searching players on table and table itself
+	//----------
 	let filter_input = document.createElement('input')
-	global.ui.filter_input = filter_input
 	filter_input.setAttribute("type","text")
-	filter_input.id = 'filter_input'
-	filter_input.style = 'position:relative; width:100%; margin:2px; border-radius:2px; background-color:#FFFFFF; font-family:Courier; font-size:14pt;'
+	filter_input.id    	   = 'filter_input'
+	filter_input.style 	   = 'position:relative; width:100%; margin:2px; border-radius:2px; background-color:#FFFFFF; font-family:Courier; font-size:14pt;'
+	global.ui.filter_input = filter_input
 	install_event_listener(filter_input, 'change', filter_input, EVENT.FILTER)
 
 	let add_table_symbols_btn = document.createElement('button')
-	global.ui.add_table_symbols_btn = add_table_symbols_btn
-	//add_table_symbols_btn.setAttribute("type","button")
-	add_table_symbols_btn.id = "add_table_symbols_btn"
+	global.ui.add_table_symbols_btn   = add_table_symbols_btn
+	add_table_symbols_btn.id 		  = "add_table_symbols_btn"
 	add_table_symbols_btn.textContent = 'add curves on table'
-	add_table_symbols_btn.style = "position:relative; width:100%; margin:2px; border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
+	add_table_symbols_btn.style 	  = "position:relative; width:100%; margin:2px; border-radius:13px;\
+										 background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
 	install_event_listener(add_table_symbols_btn, 'click', add_table_symbols_btn, EVENT.ADD_TABLE_SYMBOLS)
 
 	let symbols_table_div = document.createElement('div')
 	global.ui.symbols_table_div = symbols_table_div
-	symbols_table_div.id = 'symbols_table_div'
-	symbols_table_div.style = 'position:relative; width:100%; height:100%; margin:2px; overflow:auto; border-radius:2px; background-color:#FFFFFF'
+	symbols_table_div.id 		= 'symbols_table_div'
+	symbols_table_div.style 	= 'position:relative; width:100%; height:100%; margin:2px; overflow:auto; border-radius:2px; background-color:#FFFFFF'
 
+	//----------
+	// density matrix controls
+	//----------
 	let create_curve_density_matrix_btn = document.createElement('input')
 	global.ui.create_curve_density_matrix_btn = create_curve_density_matrix_btn
-	//create_curve_density_matrix_btn.checked = 'true'
-	create_curve_density_matrix_btn.type = "checkbox"
+	create_curve_density_matrix_btn.type 	  = "checkbox"
 	install_event_listener(create_curve_density_matrix_btn, 'click', create_curve_density_matrix_btn, EVENT.BUILD_CURVES_DENSITY_MATRIX)
 
 	let create_curve_density_matrix_lbl = document.createElement('label')
-	global.ui.create_curve_density_matrix_lbl = create_curve_density_matrix_lbl
 	create_curve_density_matrix_lbl.setAttribute("for", create_curve_density_matrix_btn)
-	create_curve_density_matrix_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:120px'
-	//extremal_depth_lbl.classList.add('checkbox_input_label')
+	global.ui.create_curve_density_matrix_lbl = create_curve_density_matrix_lbl
+	create_curve_density_matrix_lbl.style 	  = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:120px'
 	create_curve_density_matrix_lbl.innerHTML = 'DenseLines'
 
 	let create_curve_density_matrix_resolution = document.createElement('input')
 	global.ui.create_curve_density_matrix_resolution = create_curve_density_matrix_resolution
-	create_curve_density_matrix_resolution.value = "32"
-	create_curve_density_matrix_resolution.style = "position:relative; width:35; margin:2px"
+	create_curve_density_matrix_resolution.value 	 = "32"
+	create_curve_density_matrix_resolution.style 	 = "position:relative; width:35; margin:2px"
 
 	let create_curve_density_matrix_grid = document.createElement('div')
 	global.ui.create_curve_density_matrix_grid = create_curve_density_matrix_grid
-	create_curve_density_matrix_grid.id = create_curve_density_matrix_grid
-	create_curve_density_matrix_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around;' //justify-content:flex-end'
+	create_curve_density_matrix_grid.id 	   = create_curve_density_matrix_grid
+	create_curve_density_matrix_grid.style 	   = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around;' //justify-content:flex-end'
 	create_curve_density_matrix_grid.appendChild(create_curve_density_matrix_lbl)
 	create_curve_density_matrix_grid.appendChild(create_curve_density_matrix_btn)
 	create_curve_density_matrix_grid.appendChild(create_curve_density_matrix_resolution)
 
 	let left_panel = document.createElement('div')
    	global.ui.left_panel = left_panel
-   	left_panel.id = 'left_panel'
-   	left_panel.style = 'display:flex; flex-direction:column; background-color:#2f3233; align-content:space-around;'
+   	left_panel.id 	 	 = 'left_panel'
+   	left_panel.style 	 = 'display:flex; flex-direction:column; background-color:#2f3233; align-content:space-around;'
 	left_panel.appendChild(stats_section_lbl)
 	left_panel.appendChild(stats_grid)
 	left_panel.appendChild(get_stats_ranks_btn)
@@ -1441,64 +1459,77 @@ function prepare_ui()
 	left_panel.appendChild(mbd_draw_outliers_grid)
 	left_panel.appendChild(extremal_depth_grid)
 	left_panel.appendChild(ed_draw_outliers_grid)
-	// left_panel.appendChild(use_diffs_grid)
-	// left_panel.appendChild(rank_depth_select)
-	// left_panel.appendChild(draw_ed_dcdf_agg_grid)
-	// left_panel.appendChild(draw_ed_dcdf_sep_grid)
 	left_panel.appendChild(draw_curves_grid)
 	left_panel.appendChild(create_curve_density_matrix_grid)
 	left_panel.appendChild(filter_input)
 	left_panel.appendChild(add_table_symbols_btn)
-	// left_panel.appendChild(clear_chart_btn)
    	left_panel.appendChild(symbols_table_div)
-	// left_panel.appendChild(create_group_btn)
-	// left_panel.appendChild(remove_active_groups_btn)
 
+	//----------
+	// creating table for players (symbols)
+	//----------
 	let symbols_table = symbols_table_div.appendChild(document.createElement('table'))
 	global.ui.symbols_table = symbols_table
-	symbols_table.style = 'position:block; width:100%; heigth: 100% !important;'
+	symbols_table.style 	= 'position:block; width:100%; heigth: 100% !important;'
 	for (let i=0;i<global.symbols.length;i++) {
 		let symbol = global.symbols[i]
-		let row = symbols_table.appendChild(document.createElement('tr'))
-		let col = row.appendChild(document.createElement('td'))
-		col.innerText = symbol.name
-		col.style = "cursor: pointer"
+		let row    = symbols_table.appendChild(document.createElement('tr'))
+		let col    = row.appendChild(document.createElement('td'))
+
+		col.innerText 		 = symbol.name
+		col.style 			 = "cursor: pointer"
 		col.style.fontFamily = 'Courier'
-		col.style.fontSize = '14pt'
-		col.style.color ="#6b6f71"
+		col.style.fontSize 	 = '14pt'
+		col.style.color 	 ="#6b6f71"
+
 		symbol.ui_row = row
 		symbol.ui_col = col
 		install_event_listener(symbol.ui_col, 'click', symbol, EVENT.TOGGLE_SYMBOL)
 	}
 
+	//----------
+	// main div with visualizations
+	//----------
 	let ts_div = document.createElement('div')
 	global.ui.ts_div = ts_div
-	ts_div.id = 'ts_div'
-	ts_div.style = 'background-color:#6b6f71'
+	ts_div.id 		 = 'ts_div'
+	ts_div.style 	 = 'background-color:#6b6f71'
 
+	// ****** main view components ******
+
+	//----------
+	// select to control which stat appears on main view
+	//----------
 	let chosen_stats_select = document.createElement('select')
 	global.ui.chosen_stats_select = chosen_stats_select
-	chosen_stats_select.style = 'background-color:#2f3233; position:absolute; left:17.1%; top:0.5%; width:125px;\
-	 							 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
+	chosen_stats_select.style 	  = 'background-color:#2f3233; position:absolute; left:17.1%; top:0.5%; width:125px;\
+	 							 	 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 
+    //----------
+	// button to reset all views
+	//----------
 	let clear_chart_btn = document.createElement('button')
-	global.ui.clear_chart_btn = clear_chart_btn
-	//clear_chart_btn.setAttribute("type","button")
-	clear_chart_btn.id = "clear_chart_btn"
+	global.ui.clear_chart_btn 	= clear_chart_btn
+	clear_chart_btn.id 			= "clear_chart_btn"
 	clear_chart_btn.textContent = 'clear chart'
-	clear_chart_btn.style = "position:absolute; left:92%; top:0.5%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
-							 font-family:Courier; font-size:12pt; z-index:2;"
+	clear_chart_btn.style 		= "position:absolute; left:92%; top:0.5%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+							 	   font-family:Courier; font-size:12pt; z-index:2;"
 	install_event_listener(clear_chart_btn, 'click', clear_chart_btn, EVENT.CLEAR_CHART)
 
+	// ****** aux view components ******
+
+	//----------
+	// select between rank cdf and extremal depth cdf
+	//----------
 	let rank_depth_select = document.createElement('select')
 	global.ui.rank_depth_select = rank_depth_select
-	rank_depth_select.style = 'position:absolute; left:17.1%; top:48.7%; background-color:#2f3233; \
-							   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
+	rank_depth_select.style 	= 'position:absolute; left:17.1%; top:48.7%; background-color:#2f3233; \
+							   	   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 	install_event_listener(rank_depth_select, 'change', rank_depth_select, EVENT.CHANGE_AUX_VIEW)
 
 	let hidden_option = create_option('none','aux view')
 	hidden_option.selected = 'selected'
-	hidden_option.hidden = 'hidden'
+	hidden_option.hidden   = 'hidden'
 
 	let dcdf_option = create_option('dcdf', 'pw depth distribution')
 	let rcdf_option = create_option('rcdf','rank distribution')
@@ -1509,69 +1540,100 @@ function prepare_ui()
 	rank_depth_select.appendChild(rcdf_option)
 	rank_depth_select.appendChild(none_option)
 
+	//----------
+	// option to choose aggregated or separated distributions
+	//----------
 	let draw_aux_view_agg = document.createElement('input')
 	global.ui.draw_aux_view_agg = draw_aux_view_agg
-	draw_aux_view_agg.type = 'radio'
-	draw_aux_view_agg.checked = true
-	draw_aux_view_agg.name = 'dcdf-vis-choice'
+	draw_aux_view_agg.type 		= 'radio'
+	draw_aux_view_agg.checked 	= true
+	draw_aux_view_agg.name 		= 'dcdf-vis-choice'
 
 	let draw_aux_view_agg_lbl = document.createElement('label')
-	global.ui.draw_aux_view_lbl = draw_aux_view_agg_lbl
 	draw_aux_view_agg_lbl.setAttribute("for", draw_aux_view_agg)
-	draw_aux_view_agg_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
+	global.ui.draw_aux_view_lbl 	= draw_aux_view_agg_lbl
+	draw_aux_view_agg_lbl.style 	= 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
 	draw_aux_view_agg_lbl.innerHTML = 'Aggregated'
 
 	let draw_aux_view_sep = document.createElement('input')
 	global.ui.draw_aux_view_sep = draw_aux_view_sep
-	draw_aux_view_sep.type = 'radio'
-	draw_aux_view_sep.name = 'dcdf-vis-choice'
-	draw_aux_view_sep.style = 'margin-top:4px'
+	draw_aux_view_sep.type 		= 'radio'
+	draw_aux_view_sep.name 		= 'dcdf-vis-choice'
+	draw_aux_view_sep.style 	= 'margin-top:4px'
 
 	let draw_aux_view_sep_lbl = document.createElement('label')
-	global.ui.draw_aux_view_lbl = draw_aux_view_sep_lbl
 	draw_aux_view_sep_lbl.setAttribute("for", draw_aux_view_sep)
-	draw_aux_view_sep_lbl.style = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
+	global.ui.draw_aux_view_lbl 	= draw_aux_view_sep_lbl
+	draw_aux_view_sep_lbl.style 	= 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
 	draw_aux_view_sep_lbl.innerHTML = 'Separated'
 
 	let draw_aux_view_type_grid = document.createElement('div')
 	global.ui.draw_aux_view_type_grid = draw_aux_view_type_grid
-	draw_aux_view_type_grid.id = draw_aux_view_type_grid
-	draw_aux_view_type_grid.style = 'position:absolute; left:33.5%; top:48.7%; display:grid; background-color:#6b6f71;\
-									 align-items:baseline; justify-items:baseline;\
-									 grid-template-rows: 10px; grid-template-columns:repeat(4, 110px); z-index:2'
+	draw_aux_view_type_grid.id 		  = draw_aux_view_type_grid
+	draw_aux_view_type_grid.style 	  = 'position:absolute; left:33.5%; top:48.7%; display:grid; background-color:#6b6f71;\
+									 	 align-items:baseline; justify-items:baseline;\
+									 	 grid-template-rows: 10px; grid-template-columns:repeat(4, 110px); z-index:2'
 
 	draw_aux_view_type_grid.appendChild(draw_aux_view_agg_lbl)
 	draw_aux_view_type_grid.appendChild(draw_aux_view_agg)
  	draw_aux_view_type_grid.appendChild(draw_aux_view_sep_lbl)
 	draw_aux_view_type_grid.appendChild(draw_aux_view_sep)
 
+	//----------
+	// checkbox to draw group envelopes
+	//----------
 	let draw_groups_envelope_btn = create_checkbox();
 	global.ui.draw_groups_envelope_btn = draw_groups_envelope_btn;
-	// install_event_listener(draw_groups_envelope_btn, 'click', draw_groups_envelope_btn, EVENT.DRAW_GROUPS_ENVELOPES)
 
 	let draw_groups_envelope_lbl = create_checkbox_label(draw_groups_envelope_btn, 'Draw groups envelopes');
 	global.ui.draw_groups_envelope_lbl = draw_groups_envelope_lbl
 
 	let draw_groups_envelope_grid = document.createElement('div')
 	global.ui.draw_groups_envelope_grid = draw_groups_envelope_grid
-	draw_groups_envelope_grid.id = draw_groups_envelope_grid
-	draw_groups_envelope_grid.style = 'position:absolute; left:17.1%; top:97%; background-color:#6b6f71; \
-							   		   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
+	draw_groups_envelope_grid.id 		= draw_groups_envelope_grid
+	draw_groups_envelope_grid.style 	= 'position:absolute; left:17.1%; top:97%; background-color:#6b6f71; \
+							   		   	   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 	draw_groups_envelope_grid.appendChild(draw_groups_envelope_lbl)
 	draw_groups_envelope_grid.appendChild(draw_groups_envelope_btn)
 
+	//----------
+	// select number of group prototypes to be shown in envelope (besides top and bottom ones)
+	//----------
+	let n_protos_select = document.createElement('select');
+	global.ui.n_protos_select = n_protos_select;
+	n_protos_select.style 	  = 'position:absolute; left:30.5%; top:97%; width:110px; background-color:#2f3233; \
+								 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
+
+	let n_protos_info_option = create_option(1, 'n_protos');
+	n_protos_info_option.selected = 'selected';
+	n_protos_info_option.hidden   = 'hidden';
+
+	let n_protos_1_option = create_option(1,'1');
+	let n_protos_2_option = create_option(2,'2');
+	let n_protos_3_option = create_option(3,'3');
+
+	n_protos_select.appendChild(n_protos_info_option);
+	n_protos_select.appendChild(n_protos_1_option);
+	n_protos_select.appendChild(n_protos_2_option);
+	n_protos_select.appendChild(n_protos_3_option);
+
+	// ***** projection view components *****
+
+	//----------
+	// select colorby
+	//----------
 	let proj_colorby_select = document.createElement('select')
 	global.ui.proj_colorby_select = proj_colorby_select
-	proj_colorby_select.style = 'position:absolute; left:58.1%; top:48.7%; background-color:#2f3233; \
-							   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
+	proj_colorby_select.style 	  = 'position:absolute; left:58.1%; top:48.7%; background-color:#2f3233; \
+							   		 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 	install_event_listener(proj_colorby_select, 'change', proj_colorby_select, EVENT.CHANGE_COLORBY)
 
 	let proj_colorby_info_option = create_option('default', 'color by');
 	proj_colorby_info_option.selected = 'selected';
-	proj_colorby_info_option.hidden = 'hidden';
+	proj_colorby_info_option.hidden   = 'hidden';
 
-	let proj_colorby_default_option = create_option('default', 'default')
-	let proj_colorby_position_option = create_option('position','position')
+	let proj_colorby_default_option 	= create_option('default', 'default')
+	let proj_colorby_position_option 	= create_option('position','position')
 	let proj_colorby_gamesplayed_option = create_option('games_played', 'games played')
 
 	proj_colorby_select.appendChild(proj_colorby_info_option)
@@ -1579,17 +1641,21 @@ function prepare_ui()
 	proj_colorby_select.appendChild(proj_colorby_position_option)
 	proj_colorby_select.appendChild(proj_colorby_gamesplayed_option)
 
+	//----------
+	// select number of clusters and cluster button
+	//----------
 	let n_clusters_select = document.createElement('select')
+
 	global.ui.n_clusters_select = n_clusters_select
-	n_clusters_select.style = 'position:absolute; left:67.7%; top:48.7%; width:130px; background-color:#2f3233; \
-							   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
+	n_clusters_select.style 	= 'position:absolute; left:67.7%; top:48.7%; width:130px; background-color:#2f3233; \
+							   	   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 
 	let df_option = create_option(0, 'n_clusters');
 	df_option.selected = 'selected';
-	df_option.hidden = 'hidden';
+	df_option.hidden   = 'hidden';
 
 	let five_option   = create_option(5, '5');
-	let seven_option  = create_option(7,'7');
+	let seven_option  = create_option(7, '7');
 	let ten_option    = create_option(10, '10');
 	let twelve_option = create_option(12, '12');
 
@@ -1600,28 +1666,33 @@ function prepare_ui()
 	n_clusters_select.appendChild(twelve_option);
 
 	let cluster_btn = document.createElement('button')
-	global.ui.cluster_btn = cluster_btn
-	cluster_btn.id = "cluster_btn"
+	global.ui.cluster_btn 	= cluster_btn
+	cluster_btn.id 			= "cluster_btn"
 	cluster_btn.textContent = 'cluster'
-	cluster_btn.style = "position:absolute; left:75%; top:48.7%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
-							  font-family:Courier; font-size:12pt; z-index:2;"
+	cluster_btn.style 		= "position:absolute; left:75%; top:48.7%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+							   font-family:Courier; font-size:12pt; z-index:2;"
 	install_event_listener(cluster_btn, 'click', cluster_btn, EVENT.CLUSTER)
 
+	//----------
+	// button to create group with current selection
+	//----------
 	let create_group_btn = document.createElement('button')
-	global.ui.create_group_btn = create_group_btn
-	create_group_btn.id = "create_group_btn"
+	global.ui.create_group_btn 	 = create_group_btn
+	create_group_btn.id 		 = "create_group_btn"
 	create_group_btn.textContent = 'create group'
-	create_group_btn.style = "position:absolute; left:83%; top:48.7%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
-							  font-family:Courier; font-size:12pt; z-index:2;"
+	create_group_btn.style 		 = "position:absolute; left:83%; top:48.7%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+							  		font-family:Courier; font-size:12pt; z-index:2;"
 	install_event_listener(create_group_btn, 'click', create_group_btn, EVENT.CREATE_GROUP)
 
+	//----------
+	// button to reset all current groups
+	//----------
 	let reset_groups_btn = document.createElement('button')
-	global.ui.reset_groups_btn = reset_groups_btn
-	//remove_active_groups_btn.setAttribute("type","button")
-	reset_groups_btn.id = "reset_groups_btn"
+	global.ui.reset_groups_btn   = reset_groups_btn
+	reset_groups_btn.id 	   	 = "reset_groups_btn"
 	reset_groups_btn.textContent = 'reset groups'
-	reset_groups_btn.style = "position:absolute; left:92%; top:48.7%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
-							  font-family:Courier; font-size:12pt; z-index:2;"
+	reset_groups_btn.style 		 = "position:absolute; left:92%; top:48.7%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+							  		font-family:Courier; font-size:12pt; z-index:2;"
 	install_event_listener(reset_groups_btn, 'click', reset_groups_btn, EVENT.REMOVE_ACTIVE_GROUPS)
 
 
@@ -1630,17 +1701,21 @@ function prepare_ui()
 	ts_div.appendChild(rank_depth_select)
 	ts_div.appendChild(draw_aux_view_type_grid)
 	ts_div.appendChild(draw_groups_envelope_grid)
+	ts_div.appendChild(n_protos_select)
 	ts_div.appendChild(proj_colorby_select)
 	ts_div.appendChild(n_clusters_select)
 	ts_div.appendChild(cluster_btn)
 	ts_div.appendChild(create_group_btn)
 	ts_div.appendChild(reset_groups_btn)
 
-	let ts_canvas = ts_div.appendChild(document.createElement('canvas'))
-	global.ui.ts_canvas = ts_canvas
-	ts_canvas.style='position:relative; left:0px; top:0px; z-index:1;'
-	ts_canvas.id = 'ts_canvas'
-	ts_canvas.tabindex = '1'
+	//----------
+	// canvas to capture events on visualizations
+	//----------
+	let ts_canvas = ts_div.appendChild(document.createElement('canvas'));
+	global.ui.ts_canvas = ts_canvas;
+	ts_canvas.style		= 'position:relative; left:0px; top:0px; z-index:1;';
+	ts_canvas.id 		= 'ts_canvas';
+	ts_canvas.tabindex 	= '1';
 	install_event_listener(ts_canvas, "mousemove", ts_canvas, EVENT.MOUSEMOVE)
 	install_event_listener(ts_canvas, "wheel", ts_canvas, EVENT.MOUSEWHEEL)
 	install_event_listener(ts_canvas, "mousedown", ts_canvas, EVENT.MOUSEDOWN)
@@ -1648,16 +1723,20 @@ function prepare_ui()
 	install_event_listener(ts_canvas, "dblclick", ts_canvas, EVENT.DBCLICK)
 	install_event_listener(ts_canvas, "click", ts_canvas, EVENT.CLICK)
 
+	//----------
+	// general div and body
+	//----------
 	let main_div = document.createElement('div')
 	global.ui.main_div = main_div
-	main_div.id = 'main_div'
-	main_div.style = 'position:absolute; width:100%; height:100%; display:grid; grid-template-columns:250px auto; grid-template-rows:100%; grid-column-gap:10px;'
+	main_div.id 	   = 'main_div'
+	main_div.style 	   = 'position:absolute; width:100%; height:100%; display:grid;\
+						  grid-template-columns:250px auto; grid-template-rows:100%; grid-column-gap:10px;'
 	main_div.appendChild(left_panel)
 	main_div.appendChild(ts_div)
 
 	var body = document.getElementsByTagName('body')[0]
 	global.ui.body = body
-	body.style = 'margin:0px 2px 2px 0px; background-color:#2f3233'
+	body.style 	   = 'margin:0px 2px 2px 0px; background-color:#2f3233'
 	body.appendChild(main_div)
 
 	install_event_listener(window, "keydown", window, EVENT.KEYDOWN)
@@ -3123,34 +3202,43 @@ function update_ts()
 				let seq_scale_idx;
 
 				switch (global.colorby) {
-					case 'default':
+					case 'default': {
 						curve_focused_color = global.chart_colors[i];
 						symbol_color 		= global.chart_colors[i];
-						break;
-					case 'position':
+						} break;
+					case 'position': {
 						curve_focused_color = POSITION_COLORS[symbol.position[0]];
 						symbol_color 		= POSITION_COLORS[symbol.position[0]];
-						break;
-					case 'games_played':
-						seq_scale_idx = Math.floor((Object.keys(symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1));
-						curve_focused_color = SEQUENTIAL_COLORS[seq_scale_idx];
-						symbol_color 		= SEQUENTIAL_COLORS[seq_scale_idx];
-						break;
-					case 'rebounds':
-						let rr = global.stats_ranges.rebounds;
-						let r  = symbol.summary.rebounds;
-						seq_scale_idx = Math.floor((r - rr[0]) / (rr[1] - rr[0]) * (SEQUENTIAL_COLORS.length-1));
-						curve_focused_color = SEQUENTIAL_COLORS[seq_scale_idx];
-						symbol_color 		= SEQUENTIAL_COLORS[seq_scale_idx];
-						break;
-					default:
+						} break;
+					case 'games_played': {
+						let seq_scale_idx 	 = (Object.keys(symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1);
+						let seq_scale_idx_fl = Math.floor(seq_scale_idx);
+
+						let a = seq_scale_idx_fl;
+						let b = Math.min(a+1, SEQUENTIAL_COLORS.length-1);
+
+						let lambda = 1-(seq_scale_idx-seq_scale_idx_fl);
+						let color  = hex_lerp(SEQUENTIAL_COLORS[a], SEQUENTIAL_COLORS[b], lambda);
+
+						symbol_color 		= color;
+						curve_focused_color = color;
+						} break;
+					default: {
 						let sr = global.stats_ranges[global.colorby];
 						let s  = symbol.summary[global.colorby];
-						seq_scale_idx = Math.floor((s - sr[0]) / (sr[1] - sr[0]) * (SEQUENTIAL_COLORS.length-1));
-						curve_focused_color = SEQUENTIAL_COLORS[seq_scale_idx];
-						symbol_color 		= SEQUENTIAL_COLORS[seq_scale_idx];
-						break;
 
+						let seq_scale_idx 	 = (s - sr[0]) / (sr[1] - sr[0]) * (SEQUENTIAL_COLORS.length-1);
+						let seq_scale_idx_fl = Math.floor(seq_scale_idx);
+
+						let a = seq_scale_idx_fl;
+						let b = Math.min(a+1, SEQUENTIAL_COLORS.length-1);
+
+						let lambda = 1-(seq_scale_idx-seq_scale_idx_fl);
+						let color  = hex_lerp(SEQUENTIAL_COLORS[a], SEQUENTIAL_COLORS[b], lambda);
+
+						symbol_color 		= color;
+						curve_focused_color = color;
+						} break;
 				}
 
 			} else {
@@ -4083,22 +4171,39 @@ function update_ts()
 						let seq_scale_idx;
 
 						switch (global.colorby) {
-							case 'default':
+							case 'default': {
 								curve_color = global.chart_colors[idx];
-								break;
-							case 'position':
+								} break;
+							case 'position': {
 								curve_color = POSITION_COLORS[symbol.position[0]];
-								break;
-							case 'games_played':
-								seq_scale_idx = Math.floor((Object.keys(symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1));
-								curve_color = SEQUENTIAL_COLORS[seq_scale_idx];
-								break;
-							default:
+								} break;
+							case 'games_played': {
+								let seq_scale_idx 	 = (Object.keys(symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1);
+								let seq_scale_idx_fl = Math.floor(seq_scale_idx);
+
+								let a = seq_scale_idx_fl;
+								let b = Math.min(a+1, SEQUENTIAL_COLORS.length-1);
+
+								let lambda = 1-(seq_scale_idx-seq_scale_idx_fl);
+								let color  = hex_lerp(SEQUENTIAL_COLORS[a], SEQUENTIAL_COLORS[b], lambda);
+
+								curve_color = color;
+								} break;
+							default: {
 								let sr = global.stats_ranges[global.colorby];
 								let s  = symbol.summary[global.colorby];
-								seq_scale_idx = Math.floor((s - sr[0]) / (sr[1] - sr[0]) * (SEQUENTIAL_COLORS.length-1));
-								curve_color = SEQUENTIAL_COLORS[seq_scale_idx];
-								break;
+
+								let seq_scale_idx 	 = (s - sr[0]) / (sr[1] - sr[0]) * (SEQUENTIAL_COLORS.length-1);
+								let seq_scale_idx_fl = Math.floor(seq_scale_idx);
+
+								let a = seq_scale_idx_fl;
+								let b = Math.min(a+1, SEQUENTIAL_COLORS.length-1);
+
+								let lambda = 1-(seq_scale_idx-seq_scale_idx_fl);
+								let color  = hex_lerp(SEQUENTIAL_COLORS[a], SEQUENTIAL_COLORS[b], lambda);
+
+								curve_color = color;
+								} break;
 						}
 					} else {
 						ctx.lineWidth = 2;
@@ -4207,7 +4312,8 @@ function update_ts()
 
 				function draw_group_envelope(group, panel_x_min, panel_x_max, panel_rank) {
 					let envelope = prepare_group_envelope(group, panel_x_min, panel_x_max, panel_rank);
-					find_group_proto(group, 1);
+					let n_protos = global.ui.n_protos_select.value
+					find_group_proto(group, n_protos);
 
 					let upper_bound = envelope.upper;
 					let lower_bound = envelope.lower;
@@ -4562,26 +4668,33 @@ function update_ts()
 					point_focused_color = POSITION_COLORS[symbol.position[0]];
 					} break;
 				case 'games_played': {
-					let seq_scale_idx = (Object.keys(symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1);
+					let seq_scale_idx 	 = (Object.keys(symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1);
 					let seq_scale_idx_fl = Math.floor(seq_scale_idx);
+
 					let a = seq_scale_idx_fl;
 					let b = Math.min(a+1, SEQUENTIAL_COLORS.length-1);
-					let lambda = 1-(seq_scale_idx-seq_scale_idx_fl)
-					let color = hex_lerp(SEQUENTIAL_COLORS[a], SEQUENTIAL_COLORS[b], lambda);
-					point_color = color //SEQUENTIAL_COLORS[seq_scale_idx];
-					point_focused_color = color //SEQUENTIAL_COLORS[seq_scale_idx];
+
+					let lambda = 1-(seq_scale_idx-seq_scale_idx_fl);
+					let color  = hex_lerp(SEQUENTIAL_COLORS[a], SEQUENTIAL_COLORS[b], lambda);
+
+					point_color	 		= color;
+					point_focused_color = color;
 					} break;
 				default: {
 					let sr = global.stats_ranges[global.colorby];
 					let s  = symbol.summary[global.colorby];
-					let seq_scale_idx = (s - sr[0]) / (sr[1] - sr[0]) * (SEQUENTIAL_COLORS.length-1);
+
+					let seq_scale_idx 	 = (s - sr[0]) / (sr[1] - sr[0]) * (SEQUENTIAL_COLORS.length-1);
 					let seq_scale_idx_fl = Math.floor(seq_scale_idx);
+
 					let a = seq_scale_idx_fl;
 					let b = Math.min(a+1, SEQUENTIAL_COLORS.length-1);
-					let lambda = 1-(seq_scale_idx-seq_scale_idx_fl)
-					let color = hex_lerp(SEQUENTIAL_COLORS[a], SEQUENTIAL_COLORS[b], lambda);
-					point_color = color //SEQUENTIAL_COLORS[seq_scale_idx];
-					point_focused_color = color //SEQUENTIAL_COLORS[seq_scale_idx];
+
+					let lambda = 1-(seq_scale_idx-seq_scale_idx_fl);
+					let color  = hex_lerp(SEQUENTIAL_COLORS[a], SEQUENTIAL_COLORS[b], lambda);
+
+					point_color 		= color;
+					point_focused_color = color;
 					} break;
 			}
 
