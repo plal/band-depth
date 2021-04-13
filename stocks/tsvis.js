@@ -213,6 +213,11 @@ function find_group_proto(group, n_protos) {
 
 	let members = group.members;
 
+	if (members.length == 1) {
+		members[0].proto = true;
+		return;
+	}
+
 	// find envelope center protos
 	let reference_curve = interpolate_envelope_bounds(group.envelope, 0.5);
 	for (let i=0; i<members.length; i++) {
@@ -1617,6 +1622,26 @@ function prepare_ui()
 	n_protos_select.appendChild(n_protos_2_option);
 	n_protos_select.appendChild(n_protos_3_option);
 
+	//----------
+	// select step size
+	//----------
+	let step_select = document.createElement('select');
+	global.ui.step_select = step_select;
+	step_select.style 	  = 'position:absolute; left:37.5%; top:97%; width:140px; background-color:#2f3233; \
+							 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
+
+	let step_default_option = create_option(1,'default(1)');
+	step_default_option.selected = 'selected';
+
+	let step_3_option  = create_option(3,'3');
+	let step_5_option  = create_option(5,'5');
+	let step_10_option = create_option(10,'10');
+
+	step_select.appendChild(step_default_option);
+	step_select.appendChild(step_3_option);
+	step_select.appendChild(step_5_option);
+	step_select.appendChild(step_10_option);
+
 	// ***** projection view components *****
 
 	//----------
@@ -1702,6 +1727,7 @@ function prepare_ui()
 	ts_div.appendChild(draw_aux_view_type_grid)
 	ts_div.appendChild(draw_groups_envelope_grid)
 	ts_div.appendChild(n_protos_select)
+	ts_div.appendChild(step_select)
 	ts_div.appendChild(proj_colorby_select)
 	ts_div.appendChild(n_clusters_select)
 	ts_div.appendChild(cluster_btn)
@@ -3188,7 +3214,13 @@ function update_ts()
 
 			let i = global.chart_symbols.indexOf(symbol)
 			if (symbol.data == null) {
-				return
+				return;
+			}
+
+			if (global.ui.draw_groups_envelope_btn.checked) {
+				if (symbol.proto == false && symbol != global.focused_symbol) {
+					return;
+				}
 			}
 
 			let first_point_drawn   = false
@@ -3931,7 +3963,8 @@ function update_ts()
 						 panel_rect[RECT.WIDTH], panel_rect[RECT.HEIGHT])
 				ctx.fill()
 
-				let offset_start = sorted_breaks[i]
+				let step = parseInt(global.ui.step_select.value);
+				let offset_start = sorted_breaks[i] + step - 1;
 				let offset_end = (i==sorted_wws.length-1) ? n_ranks : sorted_breaks[i+1]
 
 				let panel_x_min = offset_start
@@ -3956,11 +3989,11 @@ function update_ts()
 						return;
 					}
 
-					for (let k=offset_start; k<offset_end; k++) {
+					for (let k=panel_x_min; k<panel_x_max; k++) {
 						if (i==0) {
 							panel_y_max = Math.max(panel_y_max, current_values[k])
 						} else {
-							panel_y_max = Math.max(panel_y_max, current_values[k]-current_values[offset_start-1])
+							panel_y_max = Math.max(panel_y_max, current_values[k]-current_values[panel_x_min-1])
 						}
 					}
 				}
@@ -3977,10 +4010,9 @@ function update_ts()
 					return [x,y]
 				}
 
-				let x_axis_offset = (panel_rect[RECT.WIDTH]/(offset_end-offset_start))/2
+				let x_axis_offset = (panel_rect[RECT.WIDTH]/(panel_x_max-panel_x_min))/2
 
 				// FILTER STUFF
-
 				function detect_click_inside_filter(local_click_pos) {
 					let clicked_filter = null
 					for(let i=0; i<global.filter_list.length; i++) {
@@ -4047,10 +4079,10 @@ function update_ts()
 					let filter = global.filter_list[f]
 
 					if (filter.panel == i) {
-						let cv_filter_startpos = panel_rect_map(offset_start, filter.y)
+						let cv_filter_startpos = panel_rect_map(panel_x_min, filter.y)
 						cv_filter_startpos[0] = cv_filter_startpos[0] + x_axis_offset
 
-						let cv_filter_endpos   = panel_rect_map(offset_end-1, filter.y)
+						let cv_filter_endpos   = panel_rect_map(panel_x_max-1, filter.y)
 						cv_filter_endpos[0] = cv_filter_endpos[0] + x_axis_offset
 
 						let filter_rect = [cv_filter_startpos[0], cv_filter_startpos[1], cv_filter_endpos[0]-cv_filter_startpos[0], 4]
@@ -4088,12 +4120,12 @@ function update_ts()
 						if (filter.panel == i) {
 							panel_filters_count += 1
 							if (filter.type == FILTER_TYPE.RED) {
-								for (let c=offset_start;c<offset_end;c++) {
+								for (let c=panel_x_min;c<panel_x_max;c++) {
 									let yj
 									if (i==0) {
 										yj = current_values[c]
 									} else {
-										yj = current_values[c] - current_values[offset_start-1]
+										yj = current_values[c] - current_values[panel_x_min-1]
 									}
 				//
 									let point_over_y = (yj > filter.y)
@@ -4106,12 +4138,12 @@ function update_ts()
 							}
 							if (filter.type == FILTER_TYPE.BLUE) {
 								let at_least_one_over = false
-								for (let c=offset_start;c<offset_end;c++) {
+								for (let c=panel_x_min;c<panel_x_max;c++) {
 									let yj
 									if (i==0) {
 										yj = current_values[c]
 									} else {
-										yj = current_values[c] - current_values[offset_start-1]
+										yj = current_values[c] - current_values[panel_x_min-1]
 									}
 				//
 									let point_over_y = (yj > filter.y)
@@ -4220,14 +4252,14 @@ function update_ts()
 					let first_point_drawn = false
 
 					let p_prev = null
-					if ((offset_end-offset_start) > 1) {
-						ctx.beginPath()
-						for (let j=offset_start;j<offset_end;j++) {
+					if ((panel_x_max-panel_x_min) > 1) {
+						ctx.beginPath();
+						for (let j=panel_x_min;j<panel_x_max;j=j+step) {
 							let yi
 							if (i==0) {
 								yi = current_values[j]
 							} else {
-								yi = current_values[j] - current_values[offset_start-1]
+								yi = current_values[j] - current_values[panel_x_min-1]
 							}
 
 							let p = panel_rect_map(j,yi)
@@ -4244,14 +4276,30 @@ function update_ts()
 								ctx.lineTo(p[0],p[1])
 							}
 						}
+						if (global.ui.step_select.value != 1) {
+							let final_x = panel_x_max-1;
+							let final_y;
+							if (i==0) {
+								final_y = current_values[final_x];
+							} else {
+								final_y = current_values[final_x] - current_values[panel_x_min-1];
+							}
+							let final_p = panel_rect_map(final_x, final_y);
+							final_p[0]  = final_p[0] + x_axis_offset;
+							if (p_prev) {
+								update_aux_closest_segment(symbol, p_prev[0], p_prev[1], final_p[0], final_p[1])
+							}
+							p_prev = final_p;
+							ctx.lineTo(final_p[0], final_p[1]);
+						}
 						ctx.stroke()
 					} else {
-						let x = offset_start
+						let x = panel_x_min
 						let y
 						if (i==0) {
-							y = current_values[offset_start]
+							y = current_values[panel_x_min]
 						} else {
-							y = current_values[offset_start] - current_values[offset_start-1]
+							y = current_values[panel_x_min] - current_values[panel_x_min-1]
 						}
 
 						let p = panel_rect_map(x, y)
@@ -4280,7 +4328,7 @@ function update_ts()
 
 					let n_members = members.length;
 
-					for (let l=panel_x_min; l<panel_x_max; l++) {
+					for (let l=0; l<n_ranks; l++) {
 						let max_on_rank_l = 0.0;
 						let min_on_rank_l = 1.0;
 
@@ -4324,21 +4372,67 @@ function update_ts()
 					p[0] = p[0] + x_axis_offset;
 					ctx.moveTo(p[0],p[1])
 
-					for (let j=panel_x_min+1;j<panel_x_max;j++) {
+					for (let j=panel_x_min+step;j<panel_x_max;j=j+step) {
 						let x = j;
-						let y = lower_bound[j-panel_x_min];
+						let y;
+						if (i==0) {
+							y = lower_bound[j];
+						} else {
+							y = lower_bound[j] - lower_bound[panel_x_min-1];
+						}
 						p = panel_rect_map(x,y);
 						p[0] = p[0] + x_axis_offset;
 						ctx.lineTo(p[0],p[1]);
+					}
+					if (global.ui.step_select.value != 1) {
+						let final_x = panel_x_max-1;
+
+						let final_lower_y;
+						if (i==0) {
+							final_lower_y = lower_bound[final_x];
+						} else {
+							final_lower_y = lower_bound[final_x] - lower_bound[panel_x_min-1];
+						}
+						let final_lower_p = panel_rect_map(final_x, final_lower_y);
+						final_lower_p[0] = final_lower_p[0] + x_axis_offset;
+						ctx.lineTo(final_lower_p[0],final_lower_p[1]);
+
+						let final_upper_y;
+						if (i==0) {
+							final_upper_y = upper_bound[final_x];
+						} else {
+							final_upper_y = upper_bound[final_x] - upper_bound[panel_x_min-1]
+						}
+						let final_upper_p = panel_rect_map(final_x, final_upper_y);
+						final_upper_p[0] = final_upper_p[0] + x_axis_offset;
+						ctx.lineTo(final_upper_p[0],final_upper_p[1]);
 					}
 
-					for (let j=panel_x_max-1; j>=panel_x_min; j--) {
+					for (let j=(panel_x_max-(panel_x_max % step)-1); j>=panel_x_min; j=j-step) {
 						let x = j;
-						let y = upper_bound[j-panel_x_min];
+						let y;
+						if (i==0) {
+							y = upper_bound[j];
+						} else {
+							y = upper_bound[j] - upper_bound[panel_x_min-1];
+						}
 						p = panel_rect_map(x,y);
 						p[0] = p[0] + x_axis_offset;
 						ctx.lineTo(p[0],p[1]);
 					}
+					if (global.ui.step_select.value != 1) {
+						let first_x = panel_x_min;
+						let first_y;
+						if (i==0) {
+							first_y = upper_bound[panel_x_min];
+						} else {
+							first_y = upper_bound[panel_x_min] - upper_bound[panel_x_min-1]
+						}
+						let first_p = panel_rect_map(first_x, first_y);
+						first_p[0] = first_p[0] + x_axis_offset;
+						ctx.lineTo(first_p[0],first_p[1]);
+					}
+
 					ctx.closePath();
 					ctx.fillStyle = group.color + "88";
 					ctx.fill();
@@ -4376,7 +4470,7 @@ function update_ts()
 						panel_x_ticks.push(x_tick)
 					}
 				} else {
-					for (let l=panel_x_min; l<=panel_x_max; l++) {
+					for (let l=panel_x_min; l<panel_x_max; l=l+step) {
 						panel_x_ticks.push(l);
 					}
 				}
@@ -4393,7 +4487,7 @@ function update_ts()
 					if (global.aux_view == 'dcdf') {
 						tick_text = (panel_x_ticks[l]/panel_x_max).toFixed(2)
 					} else if (global.aux_view == 'rcdf') {
-						tick_text = Math.floor(panel_x_ticks[l])
+						tick_text = Math.floor(panel_x_ticks[l]) + 1;
 					}
 					ctx.save()
 					ctx.font = "bold 10pt Courier"
