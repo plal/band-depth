@@ -1876,6 +1876,10 @@ function run_modified_band_depth_algorithm() {
 	}
 }
 
+function get_gp(symbol) {
+	return Object.keys(symbol.data).length;
+}
+
 function get_stats_ranks()
 {
 
@@ -1975,7 +1979,9 @@ function get_stats_ranks()
 	// console.log(gt_matrix)
 
 	for (let i=0; i<n; i++) {
-		let symbol_i = symbols_ranks[i];
+		let symbol_i  = symbols_ranks[i];
+		let symbol_gp = get_gp(symbol_i);
+		// console.log(symbol_i.name, symbol_gp);
 
 		let lt_ranks = [];
 		let gt_ranks = [];
@@ -1989,22 +1995,28 @@ function get_stats_ranks()
 			gt_ranks.push(gt_rank);
 		}
 
-		let lt_ranks_dist = []
-		let gt_ranks_dist = []
+		let lt_ranks_dist = [];
+		let gt_ranks_dist = [];
 		for (let j=0; j<n; j++) {
-			let count_lt_rankj = 0
-			let count_gt_rankj = 0
+			let count_lt_rankj = 0;
+			let count_gt_rankj = 0;
 			for (let k=0; k<p; k++) {
-				if (lt_ranks[k] <= j) {
-					count_lt_rankj += 1
+				// UPDATE 2021-04-14: check if player played game before adding its rank to the distribution
+				if ((lt_ranks[k] <= j) && (k+1 in symbol_i.data)) {
+					count_lt_rankj += 1;
 				}
 
-				if (gt_ranks[k] <= j) {
-					count_gt_rankj += 1
+				if ((gt_ranks[k] <= j) && (k+1 in symbol_i.data)) {
+					count_gt_rankj += 1;
 				}
 			}
-			lt_ranks_dist.push(count_lt_rankj/range[1])
-			gt_ranks_dist.push(count_gt_rankj/range[1])
+			// UPDATE 2021-04-14: normalize ranks to a 82gp season
+			// lt_ranks_dist.push(count_lt_rankj/range[1])
+			// gt_ranks_dist.push(count_gt_rankj/range[1])
+
+			lt_ranks_dist.push((count_lt_rankj/symbol_gp));
+			gt_ranks_dist.push((count_gt_rankj/symbol_gp));
+
 		}
 
 		// console.log(symbol_i.name, gt_ranks);
@@ -4186,7 +4198,7 @@ function update_ts()
 					}
 
 					if (global.ui.draw_groups_envelope_btn.checked) {
-						if (symbol.group !== null && symbol !== global.focused_symbol && symbol.proto == false) {
+						if (symbol.group !== null && symbol !== global.focused_symbol && symbol.proto == false && !symbol.selected) {
 							return
 						}
 					}
