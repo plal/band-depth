@@ -2014,8 +2014,8 @@ function get_stats_ranks()
 			// lt_ranks_dist.push(count_lt_rankj/range[1])
 			// gt_ranks_dist.push(count_gt_rankj/range[1])
 
-			lt_ranks_dist.push((count_lt_rankj/symbol_gp));
-			gt_ranks_dist.push((count_gt_rankj/symbol_gp));
+			lt_ranks_dist.push((count_lt_rankj*range[1]/symbol_gp)/range[1]);
+			gt_ranks_dist.push((count_lt_rankj*range[1]/symbol_gp)/range[1]);
 
 		}
 
