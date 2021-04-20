@@ -31,8 +31,16 @@ function Node(name, weight, orientation) {
 	if (orientation === undefined) orientation = NODE_ORIENTATION_VERTICAL
 	this.orientation = orientation
 	this.children = []
+	this.depth = 0
+	this.set_depth = function(depth) {
+		this.depth = depth
+		for (let c of this.children) {
+			c.set_depth(this.depth+1)
+		}
+	}
 	this.add_child = function(child_node) {
 		this.children.push(child_node)
+		child_node.set_depth(this.depth+1)
 	}
 	return this
 }
@@ -42,7 +50,7 @@ function Node(name, weight, orientation) {
 function map_align_nodes(node, rect, output)
 {
 	// clone rect
-	output[node.name] = { ...rect }
+	output[node.name] = { node:node, rect:{ ...rect }}
 
 	if (node.children.length > 0) {
 		let sum = 0
@@ -96,8 +104,9 @@ function update()
 
 	for (let it of global.components) {
 		let component = it.component
-		let rect = dimensions[it.position]
-		if (rect) {
+		let entry = dimensions[it.position]
+		if (entry) {
+			let rect = entry.rect
 			component.style.resize='both'
 			component.style.position='fixed'
 			component.style.left=rect.x+"px"
@@ -209,20 +218,25 @@ function main()
 		// try to find cell where the mouse is hovering
 		let x = e.clientX
 		let y = e.clientY
-		let key = undefined
+		let best_candidate = undefined
 		for (let k in global.layout_dimensions) {
-			let rect = global.layout_dimensions[k]
+			let entry = global.layout_dimensions[k]
+			let rect = entry.rect
 			if (rect.contains(x,y)) {
-				key = k
-				break
+				let node = entry.node
+				if (!best_candidate) {
+					best_candidate = node
+				} else if (best_candidate.depth < node.depth) {
+					best_candidate = node
+				}
 			}
 		}
 
 		//
 		// now search node by name on the active cell structure
 		//
-		if (key) {
-			console.log('found: '+key)
+		if (best_candidate) {
+			console.log('found: '+best_candidate.name)
 		} else {
 			console.log('no cell found!')
 		}
