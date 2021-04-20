@@ -21,6 +21,24 @@ function Rect(x,y,w,h) {
 	this.contains = function(x,y) {
 		return (!(x < this.x || x > this.x + this.w || y < this.y || y > this.y + this.h))
 	}
+	this.distances = function(x,y) {
+		return { 'top':(y - this.y), 'left':(x - this.x), 'bottom':(this.y + this.h - y), 'right': this.x + this.w - x }
+	}
+	this.closest_side_to_position = function(x,y) {
+		let dists= this.distances(x,y)
+		let min_dist = 100000;
+		let closest_side;
+
+		for (let side in dists) {
+			let dist = dists[side];
+			if (dist < min_dist) {
+				min_dist = dist;
+				closest_side = side;
+			}
+		}
+
+		return { 'side':closest_side, 'dist':min_dist };
+	}
 	return this
 }
 
@@ -219,15 +237,27 @@ function main()
 		let x = e.clientX
 		let y = e.clientY
 		let best_candidate = undefined
+		let node_to_move   = {'node':undefined, 'side':undefined, 'dist':undefined}
 		for (let k in global.layout_dimensions) {
 			let entry = global.layout_dimensions[k]
 			let rect = entry.rect
 			if (rect.contains(x,y)) {
 				let node = entry.node
+				let closest_side = rect.closest_side_to_position(x,y)
+				// console.log(node.name, closest_side)
 				if (!best_candidate) {
 					best_candidate = node
+					node_to_move.node = node;
+					node_to_move.side = closest_side.side;
+					node_to_move.dist = closest_side.dist;
 				} else if (best_candidate.depth < node.depth) {
 					best_candidate = node
+					if (closest_side.dist < node_to_move.dist) {
+						node_to_move.node = node;
+						node_to_move.side = closest_side.side;
+						node_to_move.dist = closest_side.dist;
+					}
+
 				}
 			}
 		}
@@ -240,6 +270,13 @@ function main()
 		} else {
 			console.log('no cell found!')
 		}
+
+		if (node_to_move) {
+			console.log('node_to_move: '+node_to_move.node.name+' side: '+node_to_move.side)
+		} else {
+			console.log('no cell found!')
+		}
+
 	})
 
 	setTimeout(update, MSEC_PER_FRAME)
