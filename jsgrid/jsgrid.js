@@ -346,7 +346,7 @@ function main()
 
 				let size = entry.rect.w
 
-				let delta = dx / size
+				let delta = dx / size * sum
 				if (resize_target.side == 'left') {
 					parent.children[node_index].weight -= delta
 					parent.children[sibling_index].weight += delta
@@ -370,8 +370,7 @@ function main()
 				
 				let size = entry.rect.h
 
-				let delta = dy / size
-
+				let delta = dy / size * sum
 				if (resize_target.side == 'top') {
 					parent.children[node_index].weight -= delta
 					parent.children[sibling_index].weight += delta
