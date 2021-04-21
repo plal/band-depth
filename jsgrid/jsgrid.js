@@ -27,7 +27,7 @@ function Rect(x,y,w,h) {
 		return (!(x < this.x || x > this.x + this.w || y < this.y || y > this.y + this.h))
 	}
 	this.distances = function(x,y) {
-		return { 'top':(y - this.y), 'left':(x - this.x), 'bottom':(this.y + this.h - y), 'right': this.x + this.w - x }
+		return { 'left':(x - this.x), 'top':(y - this.y), 'right': this.x + this.w - x, 'bottom':(this.y + this.h - y) }
 	}
 	this.closest_side_to_position = function(x,y) {
 		let dists= this.distances(x,y)
@@ -74,11 +74,8 @@ function ResizeTarget(node, side, dist, x0, y0) {
 	this.node = node
 	this.side = side
 	this.dist = dist
-	this.x0 = x
-	this.y0 = y
-
-
-
+	this.mouse_x = x0
+	this.mouse_y = y0
 
 	return this
 }
@@ -219,10 +216,6 @@ function main()
 
 	global.layout_index = 0
 
-
-	// let dimensions = {}
-	// map_align_nodes(c_0, new Rect(0,0,100,100), dimensions)
-
 	let table = document.createElement('div');
 	table.style='background-color:#ff0000;'
 
@@ -242,7 +235,6 @@ function main()
 	document.body.appendChild(scatterplot)
 	document.body.appendChild(cdf)
 
-	// console.log(dimensions)
 	window.addEventListener("keydown", function(e) {
 		if (e.keyCode === KEY_UP) {
 			global.layout_index = (global.layout_index + 1) % global.layout_modes.length
@@ -264,16 +256,15 @@ function main()
 
 	window.addEventListener('mousedown', function(e) {
 		// try to find cell where the mouse is hovering
-		let x = e.clientX
-		let y = e.clientY
-		let best_candidate = undefined
-		let resize_target = undefined // {'node':undefined, 'side':undefined, 'dist':undefined}
+		let x = e.clientX;
+		let y = e.clientY;
+		let best_candidate = undefined;
+		let resize_target = undefined ;
 		for (let k in global.layout_dimensions) {
 			let entry = global.layout_dimensions[k]
 			let rect = entry.rect
 			if (rect.contains(x,y)) {
 				let node = entry.node
-				// console.log(node.name, closest_side)
 				if (!best_candidate) {
 					best_candidate = node
 				} else if (best_candidate.depth < node.depth) {
@@ -281,9 +272,9 @@ function main()
 				}
 
 				let closest_side = rect.closest_side_to_position(x,y)
-				if ( (!resize_target) || 
-					(closest_side.dist <= resize_target.dist) ||
-					(closest_side.dist == resize_target.dist && node.depth < resize_target.node.depth)) {
+				if ( (!resize_target) ||
+					(closest_side.dist < resize_target.dist) ||
+					(closest_side.dist == resize_target.dist && node.depth < resize_target.node.depth )) {
 					resize_target = new ResizeTarget(node, closest_side.side, closest_side.dist, x, y)
 				}
 			}
@@ -310,37 +301,59 @@ function main()
 
 	window.addEventListener('mousemove', function(e) {
 		if (global.resize_target) {
+
+			let x = e.clientX
+			let y = e.clientY
+
 			let resize_target = global.resize_target
 			let node = resize_target.node
 			let parent = node.parent
 			if (!parent) {
 				return
 			}
+
+			// -------
+			// parent component to update weights
+			// -------
 			let entry = global.layout_dimensions[parent.name]
 			if (!entry) {
 				return
 			}
-			let x = e.clientX
-			let y = e.clientY
-			console.log(x + " " + y)
+			// console.log("entry", entry.node.name)
+			// console.log(x + " " + y)
+
 			let node_index = undefined
 			let sum = 0
 			let index = -1
 			for (let child of parent.children) {
 				index += 1
+				// console.log(index + " " + parent.children[index].name)
 				sum += child.weight
 				if (child == node) {
 					node_index = index
 				}
+
 			}
-			let sibling_index = (resize_target.side == 
 
+			let sibling_index = (resize_target.side == 'left' || resize_target.side == 'top') ? node_index-1 : node_index+1;
 
+			// console.log("resize_target", parent.children[node_index])
+			// console.log("neighbour to move", parent.children[sibling_index])
 
 			if (parent.orientation == NODE_ORIENTATION_HORIZONTAL) {
-				let delta = x - resize_target.x
-				let size  = entry.rect.w
+				let dx = x - resize_target.mouse_x
+				resize_target.mouse_x = x
 
+				let size = entry.rect.w
+
+				let delta = dx / size
+				if (resize_target.side == 'left') {
+					parent.children[node_index].weight -= delta
+					parent.children[sibling_index].weight += delta
+				} else if (resize_target.side == 'right') {
+					parent.children[node_index].weight += delta
+					parent.children[sibling_index].weight -= delta
+				}
 				//
 				// left top right bottom
 				//
@@ -352,14 +365,22 @@ function main()
 				//
 
 			} else if (parent.orientation == NODE_ORIENTATION_VERTICAL) {
-				let delta = y - resize_target.y
-				let size  = entry.rect.h
+				let dy = y - resize_target.mouse_y
+				resize_target.mouse_y = y
+				
+				let size = entry.rect.h
+
+				let delta = dy / size
+
+				if (resize_target.side == 'top') {
+					parent.children[node_index].weight -= delta
+					parent.children[sibling_index].weight += delta
+				} else if (resize_target.side == 'bottom') {
+					parent.children[node_index].weight += delta
+					parent.children[sibling_index].weight -= delta
+				}
 
 			}
-
-
-			resize_target.x = x
-			resize_target.y = y
 
 		}
 
@@ -367,19 +388,6 @@ function main()
 
 	window.addEventListener('mouseup', function(e) {
 		global.resize_target = undefined
-
-
-
-
-
-
-
-	}
-
-
-
-
-
 	})
 
 	setTimeout(update, MSEC_PER_FRAME)
