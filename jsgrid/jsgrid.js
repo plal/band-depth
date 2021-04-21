@@ -13,6 +13,11 @@ const MSEC_PER_FRAME = 64;
 const NODE_ORIENTATION_HORIZONTAL=0
 const NODE_ORIENTATION_VERTICAL=1
 
+const SIDE_LEFT   = 0
+const SIDE_TOP    = 1
+const SIDE_RIGHT  = 2
+const SIDE_BOTTOM = 3
+
 function Rect(x,y,w,h) {
 	this.x = x
 	this.y = y
@@ -50,6 +55,7 @@ function Node(name, weight, orientation) {
 	this.orientation = orientation
 	this.children = []
 	this.depth = 0
+	this.parent = undefined
 	this.set_depth = function(depth) {
 		this.depth = depth
 		for (let c of this.children) {
@@ -57,9 +63,23 @@ function Node(name, weight, orientation) {
 		}
 	}
 	this.add_child = function(child_node) {
+		child_node.parent = this
 		this.children.push(child_node)
 		child_node.set_depth(this.depth+1)
 	}
+	return this
+}
+
+function ResizeTarget(node, side, dist, x0, y0) {
+	this.node = node
+	this.side = side
+	this.dist = dist
+	this.x0 = x
+	this.y0 = y
+
+
+
+
 	return this
 }
 
@@ -106,7 +126,8 @@ var global = {
 	layout_root: undefined,
 	layout_dimensions: undefined,
 	components: [],
-	layout_modes: []
+	layout_modes: [],
+	resize_target: undefined
 }
 
 function update()
@@ -232,35 +253,43 @@ function main()
 	})
 
 
+	//
+	// lemma: the node that should update its weight to reflect a resize
+	// should be a node that:
+	//
+	// (1) contains the mouse position
+	// (2) from all nodes satisfying (1) the mouse pos smallest distance to one of its side is minimal
+	// (3) from all nodes satisfying (1) and (2) it should be the one with smallest depth
+	//
+
 	window.addEventListener('mousedown', function(e) {
 		// try to find cell where the mouse is hovering
 		let x = e.clientX
 		let y = e.clientY
 		let best_candidate = undefined
-		let node_to_move   = {'node':undefined, 'side':undefined, 'dist':undefined}
+		let resize_target = undefined // {'node':undefined, 'side':undefined, 'dist':undefined}
 		for (let k in global.layout_dimensions) {
 			let entry = global.layout_dimensions[k]
 			let rect = entry.rect
 			if (rect.contains(x,y)) {
 				let node = entry.node
-				let closest_side = rect.closest_side_to_position(x,y)
 				// console.log(node.name, closest_side)
 				if (!best_candidate) {
 					best_candidate = node
-					node_to_move.node = node;
-					node_to_move.side = closest_side.side;
-					node_to_move.dist = closest_side.dist;
 				} else if (best_candidate.depth < node.depth) {
 					best_candidate = node
-					if (closest_side.dist < node_to_move.dist) {
-						node_to_move.node = node;
-						node_to_move.side = closest_side.side;
-						node_to_move.dist = closest_side.dist;
-					}
+				}
 
+				let closest_side = rect.closest_side_to_position(x,y)
+				if ( (!resize_target) || 
+					(closest_side.dist <= resize_target.dist) ||
+					(closest_side.dist == resize_target.dist && node.depth < resize_target.node.depth)) {
+					resize_target = new ResizeTarget(node, closest_side.side, closest_side.dist, x, y)
 				}
 			}
 		}
+
+		global.resize_target = resize_target
 
 		//
 		// now search node by name on the active cell structure
@@ -271,13 +300,88 @@ function main()
 			console.log('no cell found!')
 		}
 
-		if (node_to_move) {
-			console.log('node_to_move: '+node_to_move.node.name+' side: '+node_to_move.side)
+		if (resize_target) {
+			console.log('node_to_move: '+resize_target.node.name+' side: '+resize_target.side)
 		} else {
 			console.log('no cell found!')
 		}
 
 	})
 
+	window.addEventListener('mousemove', function(e) {
+		if (global.resize_target) {
+			let resize_target = global.resize_target
+			let node = resize_target.node
+			let parent = node.parent
+			if (!parent) {
+				return
+			}
+			let entry = global.layout_dimensions[parent.name]
+			if (!entry) {
+				return
+			}
+			let x = e.clientX
+			let y = e.clientY
+			console.log(x + " " + y)
+			let node_index = undefined
+			let sum = 0
+			let index = -1
+			for (let child of parent.children) {
+				index += 1
+				sum += child.weight
+				if (child == node) {
+					node_index = index
+				}
+			}
+			let sibling_index = (resize_target.side == 
+
+
+
+			if (parent.orientation == NODE_ORIENTATION_HORIZONTAL) {
+				let delta = x - resize_target.x
+				let size  = entry.rect.w
+
+				//
+				// left top right bottom
+				//
+
+				// w2 * size
+				//
+				//   w1  + w2    + w3    <=>     size
+				// ( w1' + w2' ) + w3    <=>     size
+				//
+
+			} else if (parent.orientation == NODE_ORIENTATION_VERTICAL) {
+				let delta = y - resize_target.y
+				let size  = entry.rect.h
+
+			}
+
+
+			resize_target.x = x
+			resize_target.y = y
+
+		}
+
+	})
+
+	window.addEventListener('mouseup', function(e) {
+		global.resize_target = undefined
+
+
+
+
+
+
+
+	}
+
+
+
+
+
+	})
+
 	setTimeout(update, MSEC_PER_FRAME)
+
 }
