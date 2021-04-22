@@ -18,6 +18,9 @@ const SIDE_TOP    = 1
 const SIDE_RIGHT  = 2
 const SIDE_BOTTOM = 3
 
+const CLOSEST_SIDE_SIDE = 0;
+const CLOSEST_SIDE_DIST = 1;
+
 function Rect(x,y,w,h) {
 	this.x = x
 	this.y = y
@@ -27,22 +30,32 @@ function Rect(x,y,w,h) {
 		return (!(x < this.x || x > this.x + this.w || y < this.y || y > this.y + this.h))
 	}
 	this.distances = function(x,y) {
-		return { 'left':(x - this.x), 'top':(y - this.y), 'right': this.x + this.w - x, 'bottom':(this.y + this.h - y) }
+		// -------
+		// [left.top,right,bottom] format
+		// -------
+		let dist_left 	= x - this.x;
+		let dist_top 	= y - this.y;
+		let dist_right  = this.x + this.w - x;
+		let dist_bottom = this.y + this.h - y;
+
+		return [dist_left, dist_top, dist_right, dist_bottom]
 	}
 	this.closest_side_to_position = function(x,y) {
 		let dists= this.distances(x,y)
-		let min_dist = 100000;
+		let min_dist;
 		let closest_side;
 
-		for (let side in dists) {
-			let dist = dists[side];
-			if (dist < min_dist) {
+		for (let i=0; i <dists.length; i++) {
+			let dist = dists[i];
+			if (!min_dist || dist < min_dist) {
 				min_dist = dist;
-				closest_side = side;
+				closest_side = i;
 			}
 		}
 
-		return { 'side':closest_side, 'dist':min_dist };
+		if (min_dist > 50) { return }
+
+		return [closest_side, min_dist];
 	}
 	return this
 }
@@ -272,10 +285,12 @@ function main()
 				}
 
 				let closest_side = rect.closest_side_to_position(x,y)
-				if ( (!resize_target) ||
-					(closest_side.dist < resize_target.dist) ||
-					(closest_side.dist == resize_target.dist && node.depth < resize_target.node.depth )) {
-					resize_target = new ResizeTarget(node, closest_side.side, closest_side.dist, x, y)
+				if (closest_side) {
+					if ( (!resize_target) ||
+						(closest_side[CLOSEST_SIDE_DIST] < resize_target.dist) ||
+						(closest_side[CLOSEST_SIDE_DIST] == resize_target.dist && node.depth < resize_target.node.depth )) {
+						resize_target = new ResizeTarget(node, closest_side[CLOSEST_SIDE_SIDE], closest_side[CLOSEST_SIDE_DIST], x, y)
+					}
 				}
 			}
 		}
@@ -294,7 +309,7 @@ function main()
 		if (resize_target) {
 			console.log('node_to_move: '+resize_target.node.name+' side: '+resize_target.side)
 		} else {
-			console.log('no cell found!')
+			console.log('no cell to move!')
 		}
 
 	})
@@ -319,15 +334,12 @@ function main()
 			if (!entry) {
 				return
 			}
-			// console.log("entry", entry.node.name)
-			// console.log(x + " " + y)
 
 			let node_index = undefined
 			let sum = 0
 			let index = -1
 			for (let child of parent.children) {
 				index += 1
-				// console.log(index + " " + parent.children[index].name)
 				sum += child.weight
 				if (child == node) {
 					node_index = index
@@ -335,10 +347,7 @@ function main()
 
 			}
 
-			let sibling_index = (resize_target.side == 'left' || resize_target.side == 'top') ? node_index-1 : node_index+1;
-
-			// console.log("resize_target", parent.children[node_index])
-			// console.log("neighbour to move", parent.children[sibling_index])
+			let sibling_index = (resize_target.side == SIDE_LEFT || resize_target.side == SIDE_TOP) ? node_index-1 : node_index+1;
 
 			if (parent.orientation == NODE_ORIENTATION_HORIZONTAL) {
 				let dx = x - resize_target.mouse_x
@@ -347,34 +356,25 @@ function main()
 				let size = entry.rect.w
 
 				let delta = dx / size * sum
-				if (resize_target.side == 'left') {
+				if (resize_target.side == SIDE_LEFT) {
 					parent.children[node_index].weight -= delta
 					parent.children[sibling_index].weight += delta
-				} else if (resize_target.side == 'right') {
+				} else if (resize_target.side == SIDE_RIGHT) {
 					parent.children[node_index].weight += delta
 					parent.children[sibling_index].weight -= delta
 				}
-				//
-				// left top right bottom
-				//
-
-				// w2 * size
-				//
-				//   w1  + w2    + w3    <=>     size
-				// ( w1' + w2' ) + w3    <=>     size
-				//
 
 			} else if (parent.orientation == NODE_ORIENTATION_VERTICAL) {
 				let dy = y - resize_target.mouse_y
 				resize_target.mouse_y = y
-				
+
 				let size = entry.rect.h
 
 				let delta = dy / size * sum
-				if (resize_target.side == 'top') {
+				if (resize_target.side == SIDE_TOP) {
 					parent.children[node_index].weight -= delta
 					parent.children[sibling_index].weight += delta
-				} else if (resize_target.side == 'bottom') {
+				} else if (resize_target.side == SIDE_BOTTOM) {
 					parent.children[node_index].weight += delta
 					parent.children[sibling_index].weight -= delta
 				}
