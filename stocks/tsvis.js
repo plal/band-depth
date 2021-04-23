@@ -1189,6 +1189,662 @@ function set_bubble(range, bubble) {
 	// bubble.style.left = `calc(${newVal}% + (${8 - newVal * 0.15}px))`;
 }
 
+function get_component(component_name) {
+	for (let component of global.components) {
+		if (component.position == component_name) {
+			return component.component;
+		}
+	}
+	return
+}
+
+function fill_ui_components()
+{
+
+	//-------
+	// controls component
+	//-------
+
+	let stats_section_lbl = create_section_label('Stats');
+
+	//----------
+	// stats checkboxes
+	//----------
+
+	let pts_btn = create_checkbox('stat','points');
+	global.ui.pts_btn = pts_btn;
+	install_event_listener(pts_btn, 'click', pts_btn, EVENT.CLICKED_STAT);
+
+	let pts_lbl = create_checkbox_label(pts_btn, 'Points');
+	global.ui.pts_lbl = pts_lbl
+
+	let asts_btn = create_checkbox('stat','assists');
+	global.ui.asts_btn = asts_btn;
+	install_event_listener(asts_btn, 'click', asts_btn, EVENT.CLICKED_STAT);
+
+	let asts_lbl = create_checkbox_label(asts_btn, 'Assists');
+	global.ui.asts_lbl = asts_lbl;
+
+	let rbds_btn = create_checkbox('stat','rebounds');
+	global.ui.rbds_btn = rbds_btn;
+	install_event_listener(rbds_btn, 'click', rbds_btn, EVENT.CLICKED_STAT);
+
+	let rbds_lbl = create_checkbox_label(rbds_btn, 'Rebounds');
+	global.ui.rbds_lbl = rbds_lbl;
+
+	let stls_btn = create_checkbox('stat','steals');
+	global.ui.stls_btn = stls_btn;
+	install_event_listener(stls_btn, 'click', stls_btn, EVENT.CLICKED_STAT);
+
+	let stls_lbl = create_checkbox_label(stls_btn, 'Steals');
+	global.ui.stls_lbl = stls_lbl;
+
+	let blcks_btn = create_checkbox('stat','blocks');
+	global.ui.blcks_btn = blcks_btn;
+	install_event_listener(blcks_btn, 'click', blcks_btn, EVENT.CLICKED_STAT);
+
+	let blcks_lbl = create_checkbox_label(blcks_btn, 'Blocks');
+	global.ui.blcks_lbl = blcks_lbl;
+
+	let tos_btn = create_checkbox('stat','turnovers');
+	global.ui.tos_btn = tos_btn;
+	install_event_listener(tos_btn, 'click', tos_btn, EVENT.CLICKED_STAT);
+
+	let tos_lbl = create_checkbox_label(tos_btn, 'Turnovers');
+	global.ui.tos_lbl = tos_lbl;
+
+	let fls_btn = create_checkbox('stat','fouls');
+	global.ui.fls_btn = fls_btn;
+	install_event_listener(fls_btn, 'click', fls_btn, EVENT.CLICKED_STAT);
+
+	let fls_lbl = create_checkbox_label(fls_btn, 'Fouls');
+	global.ui.fls_lbl = fls_lbl;
+
+	let stats_grid = document.createElement('div');
+	stats_grid.id    = stats_grid;
+	stats_grid.style = 'display:grid; align-content:space-around; grid-template-columns:repeat(2, 50px)';
+	stats_grid.appendChild(pts_btn);
+	stats_grid.appendChild(pts_lbl);
+	stats_grid.appendChild(asts_btn);
+	stats_grid.appendChild(asts_lbl);
+	stats_grid.appendChild(rbds_btn);
+	stats_grid.appendChild(rbds_lbl);
+	stats_grid.appendChild(stls_btn);
+	stats_grid.appendChild(stls_lbl);
+	stats_grid.appendChild(blcks_btn);
+	stats_grid.appendChild(blcks_lbl);
+	stats_grid.appendChild(tos_btn);
+	stats_grid.appendChild(tos_lbl);
+	stats_grid.appendChild(fls_btn);
+	stats_grid.appendChild(fls_lbl);
+	global.ui.stats_grid = stats_grid;
+
+	let get_stats_ranks_btn = document.createElement('button')
+	get_stats_ranks_btn.id 			= "get_stats_ranks_btn"
+	get_stats_ranks_btn.textContent = 'get stats ranks'
+	get_stats_ranks_btn.style 		= "position:relative; width:98%; margin:2px;\
+	 								   border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
+	global.ui.get_stats_ranks_btn = get_stats_ranks_btn
+	install_event_listener(get_stats_ranks_btn, 'click', get_stats_ranks_btn, EVENT.GET_STATS_RANKS)
+
+	let pos_section_lbl = create_section_label('Positions');
+
+	//----------
+	// positions checkboxes
+	//----------
+
+	let g_btn = create_checkbox('position','G');
+	global.ui.g_btn = g_btn;
+	install_event_listener(g_btn, 'click', g_btn, EVENT.CLICKED_POS);
+
+	let g_lbl = create_checkbox_label(g_btn, 'Guard');
+	global.ui.g_lbl = g_lbl
+
+	let f_btn = create_checkbox('position','F');
+	global.ui.f_btn = f_btn;
+	install_event_listener(f_btn, 'click', f_btn, EVENT.CLICKED_POS);
+
+	let f_lbl = create_checkbox_label(f_btn, 'Forward');
+	global.ui.f_lbl = f_lbl
+
+	let c_btn = create_checkbox('position','C');
+	global.ui.c_btn = c_btn;
+	install_event_listener(c_btn, 'click', c_btn, EVENT.CLICKED_POS);
+
+	let c_lbl = create_checkbox_label(c_btn, 'Center');
+	global.ui.c_lbl = c_lbl
+
+	let pos_grid = document.createElement('div');
+	pos_grid.id    = pos_grid;
+	pos_grid.style = 'display:grid; align-content:space-around; grid-template-columns:repeat(2, 50px)';
+	pos_grid.appendChild(g_btn);
+	pos_grid.appendChild(g_lbl);
+	pos_grid.appendChild(f_btn);
+	pos_grid.appendChild(f_lbl);
+	pos_grid.appendChild(c_btn);
+	pos_grid.appendChild(c_lbl);
+	global.ui.pos_grid = pos_grid;
+
+	//----------
+	// min games played filter
+	//----------
+
+	let min_gp_lbl = create_section_label('Min. Games Played');
+
+	let min_gp_sld = document.createElement('input');
+	min_gp_sld.type 	 = 'range';
+	min_gp_sld.min 		 = 1;
+	min_gp_sld.max 		 = 82;
+	min_gp_sld.value 	 = 1;
+	min_gp_sld.className = "slider"
+	min_gp_sld.style	 = 'width:98%;'
+	global.min_gp_sld 	 = min_gp_sld;
+
+	let min_gp_val = document.createElement('output');
+	global.min_gp_val = min_gp_val;
+	min_gp_val.style.left = '50px';
+
+	min_gp_sld.addEventListener("input", () => {
+    	set_bubble(min_gp_sld, min_gp_val);
+  	});
+
+	// ----------
+	// other controls (REVISE USELESS CONTROLS LATER)
+	// ----------
+	let normalize_btn = document.createElement('input')
+	normalize_btn.type 		= "checkbox"
+	global.ui.normalize_btn = normalize_btn
+
+	let normalize_lbl = document.createElement('label')
+	normalize_lbl.setAttribute("for", normalize_btn)
+	normalize_lbl.style 	= 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
+	normalize_lbl.innerHTML = 'Normalize values'
+	global.ui.normalize_lbl = normalize_lbl
+
+	let normalize_grid = document.createElement('div')
+	normalize_grid.id 	 = normalize_grid
+	normalize_grid.style = 'display:flex; flex-direction:row; align-content:space-around'
+	normalize_grid.appendChild(normalize_lbl)
+	normalize_grid.appendChild(normalize_btn)
+	global.ui.normalize_grid = normalize_grid
+
+	let use_diffs_btn = document.createElement('input')
+	use_diffs_btn.type 		= "checkbox"
+	global.ui.use_diffs_btn = use_diffs_btn
+
+	let use_diffs_lbl = document.createElement('label')
+	use_diffs_lbl.setAttribute("for", use_diffs_btn)
+	use_diffs_lbl.style 	= 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:120px'
+	use_diffs_lbl.innerHTML = 'Use diffs on aux view'
+	global.ui.use_diffs_lbl = use_diffs_lbl
+
+	let use_diffs_grid = document.createElement('div')
+	use_diffs_grid.id    = use_diffs_grid
+	use_diffs_grid.style = 'display:flex; flex-direction:row; align-content:space-around'
+	use_diffs_grid.appendChild(use_diffs_lbl)
+	use_diffs_grid.appendChild(use_diffs_btn)
+	global.ui.use_diffs_grid = use_diffs_grid
+
+	let modified_band_depth_btn = document.createElement('input')
+	modified_band_depth_btn.type 	  = "checkbox"
+	global.ui.modified_band_depth_btn = modified_band_depth_btn
+	install_event_listener(modified_band_depth_btn, 'click', modified_band_depth_btn, EVENT.RUN_MODIFIED_BAND_DEPTH_ALGORITHM)
+
+	let modified_band_depth_lbl = document.createElement('label')
+	modified_band_depth_lbl.setAttribute("for", modified_band_depth_btn)
+	modified_band_depth_lbl.style 	  = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
+	modified_band_depth_lbl.innerHTML = 'Functional Boxplot MBD'
+	global.ui.modified_band_depth_lbl = modified_band_depth_lbl
+
+	let modified_band_depth_grid = document.createElement('div')
+	modified_band_depth_grid.id    = modified_band_depth_grid
+	modified_band_depth_grid.style = 'display:flex; flex-direction:row; align-content:space-around'
+	modified_band_depth_grid.appendChild(modified_band_depth_lbl)
+	modified_band_depth_grid.appendChild(modified_band_depth_btn)
+	global.ui.modified_band_depth_grid = modified_band_depth_grid
+
+	let mbd_draw_outliers_btn = document.createElement('input')
+	mbd_draw_outliers_btn.type 		= "checkbox"
+	global.ui.mbd_draw_outliers_btn = mbd_draw_outliers_btn
+
+	let mbd_draw_outliers_lbl = document.createElement('label')
+	mbd_draw_outliers_lbl.setAttribute("for", mbd_draw_outliers_btn)
+	mbd_draw_outliers_lbl.style 	= 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
+	mbd_draw_outliers_lbl.innerHTML = '- Draw outliers'
+	global.ui.mbd_draw_outliers_lbl = mbd_draw_outliers_lbl
+
+	let mbd_draw_outliers_grid = document.createElement('div')
+	mbd_draw_outliers_grid.id    = mbd_draw_outliers_grid
+	mbd_draw_outliers_grid.style = 'display:flex; flex-direction:row; align-content:space-around;' //justify-content:flex-end'
+	mbd_draw_outliers_grid.appendChild(mbd_draw_outliers_lbl)
+	mbd_draw_outliers_grid.appendChild(mbd_draw_outliers_btn)
+	global.ui.mbd_draw_outliers_grid = mbd_draw_outliers_grid
+
+	let extremal_depth_btn = document.createElement('input')
+	extremal_depth_btn.type 	 = "checkbox"
+	global.ui.extremal_depth_btn = extremal_depth_btn
+	install_event_listener(extremal_depth_btn, 'click', extremal_depth_btn, EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM)
+
+	let extremal_depth_lbl = document.createElement('label')
+	extremal_depth_lbl.setAttribute("for", extremal_depth_btn)
+	extremal_depth_lbl.style 	 = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
+	extremal_depth_lbl.innerHTML = 'Functional Boxplot ED'
+	global.ui.extremal_depth_lbl = extremal_depth_lbl
+
+	let extremal_depth_grid = document.createElement('div')
+	extremal_depth_grid.id    = extremal_depth_grid
+	extremal_depth_grid.style = 'display:flex; flex-direction:row; align-content:space-around'
+	extremal_depth_grid.appendChild(extremal_depth_lbl)
+	extremal_depth_grid.appendChild(extremal_depth_btn)
+	global.ui.extremal_depth_grid = extremal_depth_grid
+
+	let draw_curves_btn = document.createElement('input')
+	draw_curves_btn.checked   = 'true'
+	draw_curves_btn.type 	  = "checkbox"
+	global.ui.draw_curves_btn = draw_curves_btn
+
+	let draw_curves_lbl = document.createElement('label')
+	draw_curves_lbl.setAttribute("for", draw_curves_btn)
+	draw_curves_lbl.style 	  = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:120px'
+	draw_curves_lbl.innerHTML = 'Draw curves'
+	global.ui.draw_curves_lbl = draw_curves_lbl
+
+	let draw_curves_grid = document.createElement('div')
+	draw_curves_grid.id    = draw_curves_grid
+	draw_curves_grid.style = 'display:flex; flex-direction:row; align-content:space-around'
+	draw_curves_grid.appendChild(draw_curves_lbl)
+	draw_curves_grid.appendChild(draw_curves_btn)
+	global.ui.draw_curves_grid = draw_curves_grid
+
+	let ed_draw_outliers_btn = document.createElement('input')
+	ed_draw_outliers_btn.type 	   = "checkbox"
+	global.ui.ed_draw_outliers_btn = ed_draw_outliers_btn
+
+	let ed_draw_outliers_lbl = document.createElement('label')
+	ed_draw_outliers_lbl.setAttribute("for", ed_draw_outliers_btn)
+	ed_draw_outliers_lbl.style 	   = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
+	ed_draw_outliers_lbl.innerHTML = '- Draw outliers'
+	global.ui.ed_draw_outliers_lbl = ed_draw_outliers_lbl
+
+	let ed_draw_outliers_grid = document.createElement('div')
+	ed_draw_outliers_grid.id    = ed_draw_outliers_grid
+	ed_draw_outliers_grid.style = 'display:flex; flex-direction:row; align-content:space-around;' //justify-content:flex-end'
+	ed_draw_outliers_grid.appendChild(ed_draw_outliers_lbl)
+	ed_draw_outliers_grid.appendChild(ed_draw_outliers_btn)
+	global.ui.ed_draw_outliers_grid = ed_draw_outliers_grid
+
+	let create_curve_density_matrix_btn = document.createElement('input')
+	global.ui.create_curve_density_matrix_btn = create_curve_density_matrix_btn
+	create_curve_density_matrix_btn.type 	  = "checkbox"
+	install_event_listener(create_curve_density_matrix_btn, 'click', create_curve_density_matrix_btn, EVENT.BUILD_CURVES_DENSITY_MATRIX)
+
+	let create_curve_density_matrix_lbl = document.createElement('label')
+	create_curve_density_matrix_lbl.setAttribute("for", create_curve_density_matrix_btn)
+	global.ui.create_curve_density_matrix_lbl = create_curve_density_matrix_lbl
+	create_curve_density_matrix_lbl.style 	  = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:120px'
+	create_curve_density_matrix_lbl.innerHTML = 'DenseLines'
+
+	let create_curve_density_matrix_resolution = document.createElement('input')
+	global.ui.create_curve_density_matrix_resolution = create_curve_density_matrix_resolution
+	create_curve_density_matrix_resolution.value 	 = "32"
+	create_curve_density_matrix_resolution.style 	 = "position:relative; width:35; margin:2px"
+
+	let create_curve_density_matrix_grid = document.createElement('div')
+	global.ui.create_curve_density_matrix_grid = create_curve_density_matrix_grid
+	create_curve_density_matrix_grid.id 	   = create_curve_density_matrix_grid
+	create_curve_density_matrix_grid.style 	   =
+	create_curve_density_matrix_grid.appendChild(create_curve_density_matrix_lbl)
+	create_curve_density_matrix_grid.appendChild(create_curve_density_matrix_btn)
+	create_curve_density_matrix_grid.appendChild(create_curve_density_matrix_resolution)
+
+	let controls = get_component("controls");
+	if (controls) {
+		controls.appendChild(stats_section_lbl)
+		controls.appendChild(stats_grid)
+		controls.appendChild(get_stats_ranks_btn)
+		controls.appendChild(pos_section_lbl)
+		controls.appendChild(pos_grid)
+		controls.appendChild(min_gp_lbl)
+		controls.appendChild(min_gp_sld)
+		controls.appendChild(min_gp_val)
+		controls.appendChild(modified_band_depth_grid)
+		controls.appendChild(mbd_draw_outliers_grid)
+		controls.appendChild(extremal_depth_grid)
+		controls.appendChild(ed_draw_outliers_grid)
+		controls.appendChild(draw_curves_grid)
+		controls.appendChild(create_curve_density_matrix_grid)
+	}
+
+	//-------
+	// table component
+	//-------
+
+	let filter_input = document.createElement('input')
+	filter_input.setAttribute("type","text")
+	filter_input.id    	   = 'filter_input'
+	filter_input.style 	   = 'position:relative; width:98%; margin-left:3px; margin-bottom:3px; margin-top:3px\
+	 						  overflow:auto; border-radius:2px; background-color:#FFFFFF;font-family:Courier; font-size:14pt;'
+
+	global.ui.filter_input = filter_input
+	install_event_listener(filter_input, 'change', filter_input, EVENT.FILTER)
+
+	let add_table_symbols_btn = document.createElement('button')
+	global.ui.add_table_symbols_btn   = add_table_symbols_btn
+	add_table_symbols_btn.id 		  = "add_table_symbols_btn"
+	add_table_symbols_btn.textContent = 'add curves on table'
+	add_table_symbols_btn.style 	  = "position:relative; width:98%; margin-left:3px; margin-bottom:3px;\
+	 								   	 border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
+	install_event_listener(add_table_symbols_btn, 'click', add_table_symbols_btn, EVENT.ADD_TABLE_SYMBOLS)
+
+	let symbols_table_div = document.createElement('div')
+	global.ui.symbols_table_div = symbols_table_div
+	symbols_table_div.id 		= 'symbols_table_div'
+	symbols_table_div.style 	= 'position:relative; width:98%; height:87.5%; margin:auto;\
+	 							   overflow:auto; border-radius:2px; background-color:#FFFFFF'
+
+	let table = get_component("table");
+	if (table) {
+		table.appendChild(filter_input);
+		table.appendChild(add_table_symbols_btn);
+		table.appendChild(symbols_table_div);
+	}
+
+	//----------
+	// creating table for players (symbols)
+	//----------
+	let symbols_table = symbols_table_div.appendChild(document.createElement('table'))
+	global.ui.symbols_table = symbols_table
+	symbols_table.style 	= 'position:block; width:100%; heigth: 100% !important;'
+	for (let i=0;i<global.symbols.length;i++) {
+		let symbol = global.symbols[i]
+		let row    = symbols_table.appendChild(document.createElement('tr'))
+		let col    = row.appendChild(document.createElement('td'))
+
+		col.innerText 		 = symbol.name
+		col.style 			 = "cursor: pointer"
+		col.style.fontFamily = 'Courier'
+		col.style.fontSize 	 = '14pt'
+		col.style.color 	 ="#6b6f71"
+
+		symbol.ui_row = row
+		symbol.ui_col = col
+		install_event_listener(symbol.ui_col, 'click', symbol, EVENT.TOGGLE_SYMBOL)
+	}
+
+	// -------
+	// visualizations components
+	// -------
+
+	//----------
+	// select to control which stat appears on main view
+	//----------
+	let chosen_stats_select = document.createElement('select')
+	global.ui.chosen_stats_select = chosen_stats_select
+	chosen_stats_select.style 	  = 'background-color:#2f3233; position:absolute; left:3.5%; top:0.5%; width:125px; height:25px;\
+									 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
+
+	//----------
+	// button to reset all views
+	//----------
+	let clear_chart_btn = document.createElement('button')
+	global.ui.clear_chart_btn 	= clear_chart_btn
+	clear_chart_btn.id 			= "clear_chart_btn"
+	clear_chart_btn.textContent = 'clear chart'
+	clear_chart_btn.style 		= "position:absolute; left:91%; top:0.5%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+								   font-family:Courier; font-size:12pt; z-index:2;"
+	install_event_listener(clear_chart_btn, 'click', clear_chart_btn, EVENT.CLEAR_CHART)
+
+	// ****** aux view components ******
+
+	//----------
+	// select between rank cdf and extremal depth cdf
+	//----------
+	let rank_depth_select = document.createElement('select')
+	global.ui.rank_depth_select = rank_depth_select
+	rank_depth_select.style 	= 'position:absolute; left:3.5%; top:48.7%; background-color:#2f3233; \
+								   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
+	install_event_listener(rank_depth_select, 'change', rank_depth_select, EVENT.CHANGE_AUX_VIEW)
+
+	let hidden_option = create_option('none','aux view')
+	hidden_option.selected = 'selected'
+	hidden_option.hidden   = 'hidden'
+
+	let dcdf_option = create_option('dcdf', 'pw depth distribution')
+	let rcdf_option = create_option('rcdf','rank distribution')
+	let none_option = create_option('none', 'none')
+
+	rank_depth_select.appendChild(hidden_option)
+	rank_depth_select.appendChild(dcdf_option)
+	rank_depth_select.appendChild(rcdf_option)
+	rank_depth_select.appendChild(none_option)
+
+	//----------
+	// option to choose aggregated or separated distributions
+	//----------
+	let draw_aux_view_agg = document.createElement('input')
+	global.ui.draw_aux_view_agg = draw_aux_view_agg
+	draw_aux_view_agg.type 		= 'radio'
+	draw_aux_view_agg.checked 	= true
+	draw_aux_view_agg.name 		= 'dcdf-vis-choice'
+
+	let draw_aux_view_agg_lbl = document.createElement('label')
+	draw_aux_view_agg_lbl.setAttribute("for", draw_aux_view_agg)
+	global.ui.draw_aux_view_lbl 	= draw_aux_view_agg_lbl
+	draw_aux_view_agg_lbl.style 	= 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
+	draw_aux_view_agg_lbl.innerHTML = 'Aggregated'
+
+	let draw_aux_view_sep = document.createElement('input')
+	global.ui.draw_aux_view_sep = draw_aux_view_sep
+	draw_aux_view_sep.type 		= 'radio'
+	draw_aux_view_sep.name 		= 'dcdf-vis-choice'
+	draw_aux_view_sep.style 	= 'margin-top:4px'
+
+	let draw_aux_view_sep_lbl = document.createElement('label')
+	draw_aux_view_sep_lbl.setAttribute("for", draw_aux_view_sep)
+	global.ui.draw_aux_view_lbl 	= draw_aux_view_sep_lbl
+	draw_aux_view_sep_lbl.style 	= 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
+	draw_aux_view_sep_lbl.innerHTML = 'Separated'
+
+	let draw_aux_view_type_grid = document.createElement('div')
+	global.ui.draw_aux_view_type_grid = draw_aux_view_type_grid
+	draw_aux_view_type_grid.id 		  = draw_aux_view_type_grid
+	draw_aux_view_type_grid.style 	  = 'position:absolute; left:19.9%; top:48.7%; display:grid;\
+										 align-items:baseline; justify-items:baseline;\
+										 grid-template-rows: 10px; grid-template-columns:repeat(4, 110px); z-index:2'
+
+	draw_aux_view_type_grid.appendChild(draw_aux_view_agg_lbl)
+	draw_aux_view_type_grid.appendChild(draw_aux_view_agg)
+	draw_aux_view_type_grid.appendChild(draw_aux_view_sep_lbl)
+	draw_aux_view_type_grid.appendChild(draw_aux_view_sep)
+
+	//----------
+	// checkbox to draw group envelopes
+	//----------
+	let draw_groups_envelope_btn = create_checkbox();
+	global.ui.draw_groups_envelope_btn = draw_groups_envelope_btn;
+
+	let draw_groups_envelope_lbl = create_checkbox_label(draw_groups_envelope_btn, 'Draw groups envelopes');
+	global.ui.draw_groups_envelope_lbl = draw_groups_envelope_lbl
+
+	let draw_groups_envelope_grid = document.createElement('div')
+	global.ui.draw_groups_envelope_grid = draw_groups_envelope_grid
+	draw_groups_envelope_grid.id 		= draw_groups_envelope_grid
+	draw_groups_envelope_grid.style 	= 'position:absolute; left:3.5%; top:96%; \
+										   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
+	draw_groups_envelope_grid.appendChild(draw_groups_envelope_lbl)
+	draw_groups_envelope_grid.appendChild(draw_groups_envelope_btn)
+
+	//----------
+	// select number of group prototypes to be shown in envelope (besides top and bottom ones)
+	//----------
+	let n_protos_select = document.createElement('select');
+	global.ui.n_protos_select = n_protos_select;
+	n_protos_select.style 	  = 'position:absolute; left:22%; top:96%; width:110px; background-color:#2f3233; \
+								 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
+
+	let n_protos_info_option = create_option(1, 'n_protos');
+	n_protos_info_option.selected = 'selected';
+	n_protos_info_option.hidden   = 'hidden';
+
+	let n_protos_1_option = create_option(1,'1');
+	let n_protos_2_option = create_option(2,'2');
+	let n_protos_3_option = create_option(3,'3');
+
+	n_protos_select.appendChild(n_protos_info_option);
+	n_protos_select.appendChild(n_protos_1_option);
+	n_protos_select.appendChild(n_protos_2_option);
+	n_protos_select.appendChild(n_protos_3_option);
+
+	//----------
+	// select step size
+	//----------
+	let step_select = document.createElement('select');
+	global.ui.step_select = step_select;
+	step_select.style 	  = 'position:absolute; left:30%; top:96%; width:140px; background-color:#2f3233; \
+							 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
+
+	let step_default_option = create_option(1,'default(1)');
+	step_default_option.selected = 'selected';
+
+	let step_3_option  = create_option(3,'3');
+	let step_5_option  = create_option(5,'5');
+	let step_10_option = create_option(10,'10');
+
+	step_select.appendChild(step_default_option);
+	step_select.appendChild(step_3_option);
+	step_select.appendChild(step_5_option);
+	step_select.appendChild(step_10_option);
+
+	// ***** projection view components *****
+
+	//----------
+	// select colorby
+	//----------
+	let proj_colorby_select = document.createElement('select')
+	global.ui.proj_colorby_select = proj_colorby_select
+	proj_colorby_select.style 	  = 'position:absolute; left:51.3%; top:48.7%; background-color:#2f3233; \
+									 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
+	install_event_listener(proj_colorby_select, 'change', proj_colorby_select, EVENT.CHANGE_COLORBY)
+
+	let proj_colorby_info_option = create_option('default', 'color by');
+	proj_colorby_info_option.selected = 'selected';
+	proj_colorby_info_option.hidden   = 'hidden';
+
+	let proj_colorby_default_option 	= create_option('default', 'default')
+	let proj_colorby_position_option 	= create_option('position','position')
+	let proj_colorby_gamesplayed_option = create_option('games_played', 'games played')
+
+	proj_colorby_select.appendChild(proj_colorby_info_option)
+	proj_colorby_select.appendChild(proj_colorby_default_option)
+	proj_colorby_select.appendChild(proj_colorby_position_option)
+	proj_colorby_select.appendChild(proj_colorby_gamesplayed_option)
+
+	//----------
+	// select number of clusters and cluster button
+	//----------
+	let n_clusters_select = document.createElement('select')
+
+	global.ui.n_clusters_select = n_clusters_select
+	n_clusters_select.style 	= 'position:absolute; left:61.7%; top:48.7%; width:130px; background-color:#2f3233; \
+								   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
+
+	let df_option = create_option(0, 'n_clusters');
+	df_option.selected = 'selected';
+	df_option.hidden   = 'hidden';
+
+	let five_option   = create_option(5, '5');
+	let seven_option  = create_option(7, '7');
+	let ten_option    = create_option(10, '10');
+	let twelve_option = create_option(12, '12');
+
+	n_clusters_select.appendChild(df_option);
+	n_clusters_select.appendChild(five_option);
+	n_clusters_select.appendChild(seven_option);
+	n_clusters_select.appendChild(ten_option);
+	n_clusters_select.appendChild(twelve_option);
+
+	let cluster_btn = document.createElement('button')
+	global.ui.cluster_btn 	= cluster_btn
+	cluster_btn.id 			= "cluster_btn"
+	cluster_btn.textContent = 'cluster'
+	cluster_btn.style 		= "position:absolute; left:70%; top:48.7%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+							   font-family:Courier; font-size:12pt; z-index:2;"
+	install_event_listener(cluster_btn, 'click', cluster_btn, EVENT.CLUSTER)
+
+	//----------
+	// button to create group with current selection
+	//----------
+	let create_group_btn = document.createElement('button')
+	global.ui.create_group_btn 	 = create_group_btn
+	create_group_btn.id 		 = "create_group_btn"
+	create_group_btn.textContent = 'create group'
+	create_group_btn.style 		 = "position:absolute; left:81%; top:48.7%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+									font-family:Courier; font-size:12pt; z-index:2;"
+	install_event_listener(create_group_btn, 'click', create_group_btn, EVENT.CREATE_GROUP)
+
+	//----------
+	// button to reset all current groups
+	//----------
+	let reset_groups_btn = document.createElement('button')
+	global.ui.reset_groups_btn   = reset_groups_btn
+	reset_groups_btn.id 	   	 = "reset_groups_btn"
+	reset_groups_btn.textContent = 'reset groups'
+	reset_groups_btn.style 		 = "position:absolute; left:90%; top:48.7%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+									font-family:Courier; font-size:12pt; z-index:2;"
+	install_event_listener(reset_groups_btn, 'click', reset_groups_btn, EVENT.REMOVE_ACTIVE_GROUPS)
+
+
+	let vis_panel = get_component("vis_panel");
+	if (vis_panel) {
+		vis_panel.appendChild(chosen_stats_select)
+		vis_panel.appendChild(clear_chart_btn)
+		vis_panel.appendChild(rank_depth_select)
+		vis_panel.appendChild(draw_aux_view_type_grid)
+		vis_panel.appendChild(draw_groups_envelope_grid)
+		vis_panel.appendChild(n_protos_select)
+		vis_panel.appendChild(step_select)
+		vis_panel.appendChild(proj_colorby_select)
+		vis_panel.appendChild(n_clusters_select)
+		vis_panel.appendChild(cluster_btn)
+		vis_panel.appendChild(create_group_btn)
+		vis_panel.appendChild(reset_groups_btn)
+
+		//----------
+		// canvas to capture events on visualizations
+		//----------
+		let ts_canvas = vis_panel.appendChild(document.createElement('canvas'));
+		global.ui.ts_canvas = ts_canvas;
+		ts_canvas.style		= 'position:relative; left:0px; top:0px; z-index:1;';
+		ts_canvas.id 		= 'ts_canvas';
+		ts_canvas.tabindex 	= '1';
+		install_event_listener(ts_canvas, "mousemove", ts_canvas, EVENT.MOUSEMOVE)
+		install_event_listener(ts_canvas, "wheel", ts_canvas, EVENT.MOUSEWHEEL)
+		install_event_listener(ts_canvas, "mousedown", ts_canvas, EVENT.MOUSEDOWN)
+		install_event_listener(ts_canvas, "mouseup", ts_canvas, EVENT.MOUSEUP)
+		install_event_listener(ts_canvas, "dblclick", ts_canvas, EVENT.DBCLICK)
+		install_event_listener(ts_canvas, "click", ts_canvas, EVENT.CLICK)
+
+	}
+
+	//----------
+	// general div and body
+	//----------
+	// let main_div = document.createElement('div')
+	// global.ui.main_div = main_div
+	// main_div.id 	   = 'main_div'
+	// main_div.style 	   = 'position:absolute; width:100%; height:100%; display:grid;\
+	// 					  grid-template-columns:250px auto; grid-template-rows:100%; grid-column-gap:10px;'
+	// main_div.appendChild(left_panel)
+	// main_div.appendChild(ts_div)
+
+	var body = document.getElementsByTagName('body')[0]
+	global.ui.body = body
+	// body.style 	   = 'margin:0px 2px 2px 0px; background-color:#2f3233'
+
+	install_event_listener(window, "keydown", window, EVENT.KEYDOWN)
+
+}
+
 function prepare_ui()
 {
 
@@ -2689,6 +3345,7 @@ function process_event_queue()
 					// console.log("brush mode active")
 				} else if (e.raw.keyCode == KEY_R) {
 					global.resize_mode_active = true
+					console.log("resize mode toggled", global.resize_mode_active);
 				}
 			}
 		} else if (e.event_type == EVENT.MOUSEWHEEL) {
@@ -2775,6 +3432,7 @@ function process_event_queue()
 				}
 
 				global.resize_target = resize_target
+
 			}
 
 			global.split_cdf.panel_state = PANEL_STATE.START_RESIZE;
@@ -2799,7 +3457,7 @@ function process_event_queue()
 
 			if (global.resize_mode_active) {
 				global.resize_mode_active = false
-				global.resize_target 	  = undefined
+				global.resize_target = undefined
 			}
 
 		} else if (e.event_type == EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM) {
@@ -2886,8 +3544,9 @@ function update_ts()
 {
 	let canvas = global.ui.ts_canvas
 	let ctx = canvas.getContext('2d')
-	canvas.width  = global.ui.ts_div.clientWidth;
-	canvas.height = global.ui.ts_div.clientHeight;
+	let vis_panel = get_component('vis_panel')
+	canvas.width  = vis_panel.clientWidth;
+	canvas.height = vis_panel.clientHeight;
 
 	let local_mouse_pos = get_local_position(global.mouse.position, canvas)
 
@@ -5083,11 +5742,12 @@ function set_ui_components()
 		let c_l     = new Node('l', 1, NODE_ORIENTATION_VERTICAL)
 		let c_l_t   = new Node('controls')
 		let c_l_b   = new Node('table')
-		let c_r     = new Node('r', 5, NODE_ORIENTATION_VERTICAL)
-		let c_r_t   = new Node('scatterplot')
-		let c_r_b   = new Node('rb', 1, NODE_ORIENTATION_HORIZONTAL)
-		let c_r_b_l = new Node('cdf')
-		let c_r_b_r = new Node('projection')
+		let c_r     = new Node('vis_panel', 5)
+		// let c_r     = new Node('r', 5, NODE_ORIENTATION_VERTICAL)
+		// let c_r_t   = new Node('scatterplot')
+		// let c_r_b   = new Node('rb', 1, NODE_ORIENTATION_HORIZONTAL)
+		// let c_r_b_l = new Node('cdf')
+		// let c_r_b_r = new Node('projection')
 
 		c_0.add_child(c_l)
 		c_0.add_child(c_r)
@@ -5095,43 +5755,46 @@ function set_ui_components()
 		c_l.add_child(c_l_t)
 		c_l.add_child(c_l_b)
 
-		c_r.add_child(c_r_t)
-		c_r.add_child(c_r_b)
-
-		c_r_b.add_child(c_r_b_l)
-		c_r_b.add_child(c_r_b_r)
+		// c_r.add_child(c_r_t)
+		// c_r.add_child(c_r_b)
+		//
+		// c_r_b.add_child(c_r_b_l)
+		// c_r_b.add_child(c_r_b_r)
 
 		global.layout_modes.push(c_0)
 	}
 
 	global.layout_index = 0
 
+	//target color: #6b6f71 (with margins to see each component)
 	let controls = document.createElement('div');
-	controls.style='background-color:#000000;'
+	controls.style='background-color:#777777; overflow:auto'
 
 	let table = document.createElement('div');
-	table.style='background-color:#ff0000;'
+	table.style='background-color:#999999; overflow:auto'
 
-	let scatterplot = document.createElement('div');
-	scatterplot.style='background-color:#00ff00;'
+	let vis_panel = document.createElement('div');
+	vis_panel.style='background-color:#555555; overflow:auto'
 
 	let cdf = document.createElement('div');
 	cdf.style='background-color:#0000ff;'
 
 	let projection = document.createElement('div');
-	projection.style='background-color:#ffffff;'
+	projection.style='background-color:#000000;'
 
 	global.components = [
-		{ component: table, position: 'table' },
-		{ component: scatterplot, position: 'scatterplot' },
-		{ component: cdf, position: 'cdf' },
 		{ component: controls, position: 'controls' },
+		{ component: table, position: 'table' },
+		{ component: vis_panel, position: 'vis_panel' },
+		{ component: cdf, position: 'cdf' },
 		{ component: projection, position: 'projection' }
 	]
 
+	document.body.appendChild(controls)
 	document.body.appendChild(table)
-	document.body.appendChild(scatterplot)
+	document.body.appendChild(vis_panel)
 	document.body.appendChild(cdf)
+	document.body.appendChild(projection)
 
 }
 
@@ -5169,8 +5832,8 @@ function update()
 {
 	process_event_queue()
 
+	update_ui();
 	update_ts(); // draw ts
-	// update_ui();
 
 	// schedule update to process events
 	setTimeout(update, MSEC_PER_FRAME)
@@ -5200,12 +5863,13 @@ async function main()
 		global.symbols = symbols
 		global.toggle_state = 0
 
-		prepare_ui();
+		// prepare_ui();
 		install_event_listener(window, "keydown", window, EVENT.KEYDOWN)
 		install_event_listener(window, "mousedown", window, EVENT.MOUSEDOWN)
 		install_event_listener(window, "mousemove", window, EVENT.MOUSEMOVE)
 		install_event_listener(window, "mouseup", window, EVENT.MOUSEUP)
-		// set_ui_components()
+		set_ui_components()
+		fill_ui_components()
 		setTimeout(update, MSEC_PER_FRAME)
 
 	} catch (e) {
