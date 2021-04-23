@@ -1,4 +1,18 @@
 "use strict";
+
+const MSEC_PER_FRAME = 32
+
+const NODE_ORIENTATION_HORIZONTAL = 0
+const NODE_ORIENTATION_VERTICAL   = 1
+
+const SIDE_LEFT   = 0
+const SIDE_TOP    = 1
+const SIDE_RIGHT  = 2
+const SIDE_BOTTOM = 3
+
+const CLOSEST_SIDE_SIDE = 0;
+const CLOSEST_SIDE_DIST = 1;
+
 const MAX_GP = 82
 
 const VIEWS_MARGINS = 15
@@ -94,6 +108,12 @@ const EVENT= {
 
 var global = {
 	ui:{},
+	layout_root: undefined,
+	layout_dimensions: undefined,
+	components: [],
+	layout_modes: [],
+	resize_target: undefined,
+	resize_mode_active: false,
 	symbols: [],
 	selected_symbols: [],
 	chart_symbols: [],
@@ -132,6 +152,116 @@ var global = {
 	split_cdf: { breaks:[0], ww:[1], realign:[], split_rank: null, panel_resize_index: null, panel_resize_side: null, panel_resize_last_x: null, filters: [[]]}
 }
 
+// -------
+// UPDATE 2021-04-22: helper functions to create resizable components
+// -------
+function Rect(x,y,w,h) {
+	this.x = x
+	this.y = y
+	this.w = w
+	this.h = h
+	this.contains = function(x,y) {
+		return (!(x < this.x || x > this.x + this.w || y < this.y || y > this.y + this.h))
+	}
+	this.distances = function(x,y) {
+		// -------
+		// [left.top,right,bottom] format
+		// -------
+		let dist_left 	= x - this.x;
+		let dist_top 	= y - this.y;
+		let dist_right  = this.x + this.w - x;
+		let dist_bottom = this.y + this.h - y;
+
+		return [dist_left, dist_top, dist_right, dist_bottom]
+	}
+	this.closest_side_to_position = function(x,y) {
+		let dists= this.distances(x,y)
+		let min_dist;
+		let closest_side;
+
+		for (let i=0; i <dists.length; i++) {
+			let dist = dists[i];
+			if (!min_dist || dist < min_dist) {
+				min_dist = dist;
+				closest_side = i;
+			}
+		}
+
+		if (min_dist > 50) { return }
+
+		return [closest_side, min_dist];
+	}
+	return this
+}
+
+function Node(name, weight, orientation) {
+	this.name = name
+	if (weight === undefined) weight = 1
+	this.weight = weight
+	if (orientation === undefined) orientation = NODE_ORIENTATION_VERTICAL
+	this.orientation = orientation
+	this.children = []
+	this.depth = 0
+	this.parent = undefined
+	this.set_depth = function(depth) {
+		this.depth = depth
+		for (let c of this.children) {
+			c.set_depth(this.depth+1)
+		}
+	}
+	this.add_child = function(child_node) {
+		child_node.parent = this
+		this.children.push(child_node)
+		child_node.set_depth(this.depth+1)
+	}
+	return this
+}
+
+function ResizeTarget(node, side, dist, x0, y0) {
+	this.node = node
+	this.side = side
+	this.dist = dist
+	this.mouse_x = x0
+	this.mouse_y = y0
+
+	return this
+}
+
+function map_align_nodes(node, rect, output)
+{
+	// clone rect
+	output[node.name] = { node:node, rect:{ ...rect }}
+
+	if (node.children.length > 0) {
+		let sum = 0
+		for (let child of node.children) {
+			sum = sum + child.weight
+		}
+		if (node.orientation == NODE_ORIENTATION_HORIZONTAL) {
+			let x = rect.x
+			let y = rect.y
+			for (let child of node.children) {
+				let w = (child.weight / sum) * rect.w
+				let h = rect.h
+				map_align_nodes(child, new Rect(x, y, w, h), output)
+				x = x + w
+			}
+		} else if (node.orientation == NODE_ORIENTATION_VERTICAL) {
+			let x = rect.x
+			let y = rect.y
+			for (let child of node.children) {
+				let w = rect.w
+				let h = (child.weight / sum) * rect.h
+				map_align_nodes(child, new Rect(x, y, w, h), output)
+				y = y + h
+			}
+		}
+	}
+}
+
+// -------
+// old code
+// -------
 function reset_selections() {
 	for (let i=0; i<global.chart_symbols.length; i++) {
 		let symbol = global.chart_symbols[i]
@@ -1892,10 +2022,6 @@ function get_stats_ranks()
 
 	let symbols_ranks = [];
 
-	// let n = 3
-	// let p = 2
-	// let s = 3
-
 	let mem_checpoint_raw_p = global.tsvis_wasm_module.exports.tsvis_mem_get_checkpoint();
 
 	let mcurve_list_raw_p = global.tsvis_wasm_module.exports.tsvis_MCurveList_new(n);
@@ -1926,8 +2052,6 @@ function get_stats_ranks()
 
 		symbols_ranks.push(symbol);
 
-		// console.log(symbol.name, values);
-
 		let mcurve_raw_p  = global.tsvis_wasm_module.exports.tsvis_MCurve_new(p,s);
 		while (mcurve_raw_p == 0) {
 			grow_heap();
@@ -1943,28 +2067,6 @@ function get_stats_ranks()
 
 	}
 
-	// let values = []
-	// values.push([6,2,1,4,1,0])
-	// values.push([8,6,5,16,12,13])
-	// values.push([10,10,6,8,3,6])
-	//
-	// for (let i=0;i<n;i++) {
-	//
-	// 	let mcurve_raw_p  = global.tsvis_wasm_module.exports.tsvis_MCurve_new(p,s);
-	// 	while (mcurve_raw_p == 0) {
-	// 		grow_heap();
-	// 		mcurve_raw_p = global.tsvis_wasm_module.exports.tsvis_MCurve_new(p,s);
-	// 	}
-	//
-	// 	let values_raw_p = global.tsvis_wasm_module.exports.tsvis_MCurve_values(mcurve_raw_p);
-	// 	console.log(values[i])
-	// 	const c_curve_values = new Float64Array(global.tsvis_wasm_module.exports.memory.buffer, values_raw_p, p*s);
-	// 	c_curve_values.set(values[i]);
-	//
-	// 	let ok = global.tsvis_wasm_module.exports.tsvis_MCurveList_append(mcurve_list_raw_p, mcurve_raw_p);
-	//
-	// }
-
 	let rcdf_raw_p = global.tsvis_wasm_module.exports.rcdf_rank_cdf_run(mcurve_list_raw_p);
 	while (rcdf_raw_p == 0) {
 		grow_heap();
@@ -1976,12 +2078,10 @@ function get_stats_ranks()
 
 	const lt_matrix = new Int32Array(global.tsvis_wasm_module.exports.memory.buffer, lt_matrix_raw_p, n * p);
 	const gt_matrix = new Int32Array(global.tsvis_wasm_module.exports.memory.buffer, gt_matrix_raw_p, n * p);
-	// console.log(gt_matrix)
 
 	for (let i=0; i<n; i++) {
 		let symbol_i  = symbols_ranks[i];
 		let symbol_gp = get_gp(symbol_i);
-		// console.log(symbol_i.name, symbol_gp);
 
 		let lt_ranks = [];
 		let gt_ranks = [];
@@ -2011,61 +2111,17 @@ function get_stats_ranks()
 				}
 			}
 			// UPDATE 2021-04-14: normalize ranks to a 82gp season
-			// lt_ranks_dist.push(count_lt_rankj/range[1])
-			// gt_ranks_dist.push(count_gt_rankj/range[1])
 
-			lt_ranks_dist.push((count_lt_rankj*range[1]/symbol_gp)/range[1]);
-			gt_ranks_dist.push((count_lt_rankj*range[1]/symbol_gp)/range[1]);
+			lt_ranks_dist.push((count_lt_rankj/symbol_gp));
+			gt_ranks_dist.push((count_gt_rankj/symbol_gp));
 
 		}
-
-		// console.log(symbol_i.name, gt_ranks);
-		// console.log(symbol_i.name, gt_ranks_dist);
-		// console.log(symbol_i.name, lt_ranks);
-		// console.log(symbol_i.name, lt_ranks_dist);
 
 		symbol_i.lt_ranks_dist = lt_ranks_dist
 		symbol_i.gt_ranks_dist = gt_ranks_dist
 
 
 	}
-
-	// for (let i=0; i<symbols_ranks.length; i++) {
-	// 	let symbol_i = symbols_ranks[i];
-	//
-	// 	let lt_ranks = [];
-	// 	let gt_ranks = [];
-	// 	for (let j=0; j<range[1]; j++) {
-	// 		let lt_rank = lt_matrix[(n*j)+i];
-	// 		let gt_rank = gt_matrix[(n*j)+i];
-	// 		lt_ranks.push(lt_rank);
-	// 		gt_ranks.push(gt_rank);
-	// 	}
-	// 	console.log(symbol_i.name, gt_ranks);
-	// 	console.log(symbol_i.name, lt_ranks);
-	//
-	// 	let lt_ranks_dist = []
-	// 	let gt_ranks_dist = []
-	// 	for (let j=0; j<n; j++) {
-	// 		let count_lt_rankj = 0
-	// 		let count_gt_rankj = 0
-	// 		for (let k=0; k<range[1]; k++) {
-	// 			if (lt_ranks[k] <= j) {
-	// 				count_lt_rankj += 1
-	// 			}
-	//
-	// 			if (gt_ranks[k] <= j) {
-	// 				count_gt_rankj += 1
-	// 			}
-	// 		}
-	// 		lt_ranks_dist.push(count_lt_rankj/range[1])
-	// 		gt_ranks_dist.push(count_gt_rankj/range[1])
-	// 	}
-	//
-	// 	symbol_i.lt_ranks_dist = lt_ranks_dist
-	// 	symbol_i.gt_ranks_dist = gt_ranks_dist
-	//
-	// }
 
 	global.tsvis_wasm_module.exports.tsvis_mem_set_checkpoint(mem_checpoint_raw_p);
 }
@@ -2444,6 +2500,7 @@ const KEY_PERIOD = 190
 const KEY_COMMA  = 188
 const KEY_BCKSPC = 8
 const KEY_ESC	 = 27
+const KEY_R 	 = 82
 //--------------
 //processing events as they arrive
 //--------------
@@ -2532,6 +2589,75 @@ function process_event_queue()
 		} else if (e.event_type == EVENT.MOUSEMOVE) {
 			global.mouse.position      = [e.raw.x, e.raw.y]
 			global.mouse.last_position = global.mouse.position
+
+			if (global.resize_target) {
+
+				let x = e.raw.clientX
+				let y = e.raw.clientY
+
+				let resize_target = global.resize_target
+				let node = resize_target.node
+				let parent = node.parent
+				if (!parent) {
+					return
+				}
+
+				// -------
+				// parent component to update weights
+				// -------
+				let entry = global.layout_dimensions[parent.name]
+				if (!entry) {
+					return
+				}
+
+				let node_index = undefined
+				let sum = 0
+				let index = -1
+				for (let child of parent.children) {
+					index += 1
+					sum += child.weight
+					if (child == node) {
+						node_index = index
+					}
+
+				}
+
+				let sibling_index = (resize_target.side == SIDE_LEFT || resize_target.side == SIDE_TOP) ? node_index-1 : node_index+1;
+
+				if (parent.orientation == NODE_ORIENTATION_HORIZONTAL) {
+					let dx = x - resize_target.mouse_x
+					resize_target.mouse_x = x
+
+					let size = entry.rect.w
+
+					let delta = dx / size * sum
+					if (resize_target.side == SIDE_LEFT) {
+						parent.children[node_index].weight -= delta
+						parent.children[sibling_index].weight += delta
+					} else if (resize_target.side == SIDE_RIGHT) {
+						parent.children[node_index].weight += delta
+						parent.children[sibling_index].weight -= delta
+					}
+
+				} else if (parent.orientation == NODE_ORIENTATION_VERTICAL) {
+					let dy = y - resize_target.mouse_y
+					resize_target.mouse_y = y
+
+					let size = entry.rect.h
+
+					let delta = dy / size * sum
+					if (resize_target.side == SIDE_TOP) {
+						parent.children[node_index].weight -= delta
+						parent.children[sibling_index].weight += delta
+					} else if (resize_target.side == SIDE_BOTTOM) {
+						parent.children[node_index].weight += delta
+						parent.children[sibling_index].weight -= delta
+					}
+
+				}
+
+			}
+
 		} else if (e.event_type == EVENT.KEYDOWN) {
 			if(e.raw.target.id != "filter_input") {
 				if (e.raw.keyCode == KEY_N) {
@@ -2561,6 +2687,8 @@ function process_event_queue()
 					// console.log("pressed F")
 					global.brush_mode_active = true
 					// console.log("brush mode active")
+				} else if (e.raw.keyCode == KEY_R) {
+					global.resize_mode_active = true
 				}
 			}
 		} else if (e.event_type == EVENT.MOUSEWHEEL) {
@@ -2610,13 +2738,43 @@ function process_event_queue()
 			}
 
 			if (global.brush_mode_active) {
-				// console.log("start brushing...")
 				global.drag.active = false;
 				global.brush_state = BRUSH_STATE.START;
 			}
 
 			if (global.select_mode_active) {
 				global.select_mode_selected = true;
+			}
+
+			if (global.resize_mode_active) {
+				// try to find cell where mouse clicked
+				let x = e.raw.clientX;
+				let y = e.raw.clientY;
+				let best_candidate = undefined;
+				let resize_target = undefined ;
+				for (let k in global.layout_dimensions) {
+					let entry = global.layout_dimensions[k]
+					let rect = entry.rect
+					if (rect.contains(x,y)) {
+						let node = entry.node
+						if (!best_candidate) {
+							best_candidate = node
+						} else if (best_candidate.depth < node.depth) {
+							best_candidate = node
+						}
+
+						let closest_side = rect.closest_side_to_position(x,y)
+						if (closest_side) {
+							if ( (!resize_target) ||
+								(closest_side[CLOSEST_SIDE_DIST] < resize_target.dist) ||
+								(closest_side[CLOSEST_SIDE_DIST] == resize_target.dist && node.depth < resize_target.node.depth )) {
+								resize_target = new ResizeTarget(node, closest_side[CLOSEST_SIDE_SIDE], closest_side[CLOSEST_SIDE_DIST], x, y)
+							}
+						}
+					}
+				}
+
+				global.resize_target = resize_target
 			}
 
 			global.split_cdf.panel_state = PANEL_STATE.START_RESIZE;
@@ -2632,12 +2790,16 @@ function process_event_queue()
 				global.brush_state = BRUSH_STATE.INACTIVE;
 				global.brush_mode_active = false;
 				global.brush = undefined;
-				// console.log("end brush. brush mode inactive")
 			}
 
 			if (global.select_mode_active) {
 				global.select_mode_selected = false;
 				global.select_mode_active = false;
+			}
+
+			if (global.resize_mode_active) {
+				global.resize_mode_active = false
+				global.resize_target 	  = undefined
 			}
 
 		} else if (e.event_type == EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM) {
@@ -4911,14 +5073,107 @@ function update_ts()
 
 }
 
+function set_ui_components()
+{
+	// -------
+	// UPDATE 2021-04-22: setting components
+	// -------
+	{
+		let c_0     = new Node('root', 1, NODE_ORIENTATION_HORIZONTAL)
+		let c_l     = new Node('l', 1, NODE_ORIENTATION_VERTICAL)
+		let c_l_t   = new Node('controls')
+		let c_l_b   = new Node('table')
+		let c_r     = new Node('r', 5, NODE_ORIENTATION_VERTICAL)
+		let c_r_t   = new Node('scatterplot')
+		let c_r_b   = new Node('rb', 1, NODE_ORIENTATION_HORIZONTAL)
+		let c_r_b_l = new Node('cdf')
+		let c_r_b_r = new Node('projection')
+
+		c_0.add_child(c_l)
+		c_0.add_child(c_r)
+
+		c_l.add_child(c_l_t)
+		c_l.add_child(c_l_b)
+
+		c_r.add_child(c_r_t)
+		c_r.add_child(c_r_b)
+
+		c_r_b.add_child(c_r_b_l)
+		c_r_b.add_child(c_r_b_r)
+
+		global.layout_modes.push(c_0)
+	}
+
+	global.layout_index = 0
+
+	let controls = document.createElement('div');
+	controls.style='background-color:#000000;'
+
+	let table = document.createElement('div');
+	table.style='background-color:#ff0000;'
+
+	let scatterplot = document.createElement('div');
+	scatterplot.style='background-color:#00ff00;'
+
+	let cdf = document.createElement('div');
+	cdf.style='background-color:#0000ff;'
+
+	let projection = document.createElement('div');
+	projection.style='background-color:#ffffff;'
+
+	global.components = [
+		{ component: table, position: 'table' },
+		{ component: scatterplot, position: 'scatterplot' },
+		{ component: cdf, position: 'cdf' },
+		{ component: controls, position: 'controls' },
+		{ component: projection, position: 'projection' }
+	]
+
+	document.body.appendChild(table)
+	document.body.appendChild(scatterplot)
+	document.body.appendChild(cdf)
+
+}
+
+function update_ui()
+{
+	// area
+	let area = new Rect(0,0, window.innerWidth, window.innerHeight)
+
+	let dimensions = {}
+	let layout_root = global.layout_modes[global.layout_index]
+	map_align_nodes(layout_root, area, dimensions)
+
+	global.layout_dimensions = dimensions
+
+	for (let it of global.components) {
+		let component = it.component
+		let entry = dimensions[it.position]
+		if (entry) {
+			let rect = entry.rect
+			component.style.position='fixed'
+			component.style.left=rect.x+"px"
+			component.style.top=rect.y+"px"
+			component.style.width=rect.w+"px"
+			component.style.height=rect.h+"px"
+			component.style.visibility="visible"
+		} else {
+			component.style.visibility="hidden"
+		}
+	}
+
+	setTimeout(update, MSEC_PER_FRAME)
+}
+
 function update()
 {
 	process_event_queue()
 
 	update_ts(); // draw ts
+	// update_ui();
 
 	// schedule update to process events
-	setTimeout(update, 32)
+	setTimeout(update, MSEC_PER_FRAME)
 }
 
 async function main()
@@ -4934,7 +5189,7 @@ async function main()
 
 		let result = await fetch('http://localhost:8888/desc')
 		let symbol_names = await result.json()
-		// console.log(symbol_names)
+
 		let symbols = []
 		for (let i=0;i<symbol_names.length;i++) {
 			symbols.push({ name:symbol_names[i], position:null, ui_row:null, ui_col:null,
@@ -4946,7 +5201,12 @@ async function main()
 		global.toggle_state = 0
 
 		prepare_ui();
-		setTimeout(update, 32)
+		install_event_listener(window, "keydown", window, EVENT.KEYDOWN)
+		install_event_listener(window, "mousedown", window, EVENT.MOUSEDOWN)
+		install_event_listener(window, "mousemove", window, EVENT.MOUSEMOVE)
+		install_event_listener(window, "mouseup", window, EVENT.MOUSEUP)
+		// set_ui_components()
+		setTimeout(update, MSEC_PER_FRAME)
 
 	} catch (e) {
 		console.log("Fatal Error: couldn't download data")
