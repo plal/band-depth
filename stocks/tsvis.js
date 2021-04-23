@@ -2110,7 +2110,7 @@ function get_stats_ranks()
 					count_gt_rankj += 1;
 				}
 			}
-			// UPDATE 2021-04-14: normalize ranks to a 82gp season
+			// UPDATE 2021-04-14: normalize ranks to player's # of games played
 
 			lt_ranks_dist.push((count_lt_rankj/symbol_gp));
 			gt_ranks_dist.push((count_gt_rankj/symbol_gp));
