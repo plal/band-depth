@@ -547,7 +547,10 @@ function create_groups_from_response(groups_obj) {
 	groups_table.id = 'groups_table';
 	groups_table.style = 'position:block; width:100%; heigth: 100% !important;';
 
-	global.ui.left_panel.appendChild(groups_table_div);
+	let groups_table_component = get_component('groups_table')
+	if (groups_table_component) {
+		groups_table_component.appendChild(groups_table_div);
+	}
 
 	for (let i=0; i<global.groups.length; i++) {
 		let group = global.groups[i]
@@ -563,6 +566,8 @@ function create_groups_from_response(groups_obj) {
 		group.ui_col = col
 		install_event_listener(group.ui_col, 'click', group, EVENT.TOGGLE_GROUP)
 	}
+
+	global.layout_index = 1;
 }
 
 async function cluster_chart_data() {
@@ -746,7 +751,9 @@ function add_table_symbols() {
 			// add symbol to chart
 			if (!symbol.on_chart) {
 				add_symbol_to_chart(symbol,color)
-				download_symbol_data(symbol)
+				if (symbol.data == null) {
+					download_symbol_data(symbol)
+				}
 			}
 		}
 	}
@@ -897,6 +904,11 @@ function reset_groups() {
 
 	for (let i=0; i<groups.length; i++) {
 		let group = groups[i];
+		let members = group.members;
+		for (let j=0; j<members.length; j++) {
+			let member = members[j]
+			member.group = null;
+		}
 		reset_group_protos(group);
 	}
 
@@ -904,9 +916,6 @@ function reset_groups() {
 	global.group_count 	   = 0;
 	global.ui.groups_table = undefined;
 
-	// if (document.getElementById('groups_table') !== undefined && document.getElementById('groups_table_div') !== undefined) {
-	//
-	// }
 	document.getElementById('groups_table').remove();
 	document.getElementById('groups_table_div').remove();
 
@@ -955,6 +964,7 @@ function clear_chart() {
 							 filters: [[]]};
 
 	global.ui.draw_groups_envelope_btn.checked = false;
+	global.layout_index = 0;
 }
 
 function hashcode(str) {
@@ -1768,14 +1778,16 @@ function fill_ui_components()
 
 	}
 
-	// ***** projection view components *****
+	// -------
+	// projection view components
+	// -------
 
 	//----------
 	// select colorby
 	//----------
 	let proj_colorby_select = document.createElement('select')
 	global.ui.proj_colorby_select = proj_colorby_select
-	proj_colorby_select.style 	  = 'position:absolute; left:51.3%; top:48.7%; background-color:#2f3233; \
+	proj_colorby_select.style 	  = 'position:absolute; left:3.5%; top:0%; background-color:#2f3233; \
 									 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 	install_event_listener(proj_colorby_select, 'change', proj_colorby_select, EVENT.CHANGE_COLORBY)
 
@@ -1798,7 +1810,7 @@ function fill_ui_components()
 	let n_clusters_select = document.createElement('select')
 
 	global.ui.n_clusters_select = n_clusters_select
-	n_clusters_select.style 	= 'position:absolute; left:61.7%; top:48.7%; width:130px; background-color:#2f3233; \
+	n_clusters_select.style 	= 'position:absolute; left:27%; top:0%; width:130px; background-color:#2f3233; \
 								   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 
 	let df_option = create_option(0, 'n_clusters');
@@ -1820,7 +1832,7 @@ function fill_ui_components()
 	global.ui.cluster_btn 	= cluster_btn
 	cluster_btn.id 			= "cluster_btn"
 	cluster_btn.textContent = 'cluster'
-	cluster_btn.style 		= "position:absolute; left:70%; top:48.7%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+	cluster_btn.style 		= "position:absolute; left:45%; top:0%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
 							   font-family:Courier; font-size:12pt; z-index:2;"
 	install_event_listener(cluster_btn, 'click', cluster_btn, EVENT.CLUSTER)
 
@@ -1831,7 +1843,7 @@ function fill_ui_components()
 	global.ui.create_group_btn 	 = create_group_btn
 	create_group_btn.id 		 = "create_group_btn"
 	create_group_btn.textContent = 'create group'
-	create_group_btn.style 		 = "position:absolute; left:81%; top:48.7%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+	create_group_btn.style 		 = "position:absolute; left:61%; top:0%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
 									font-family:Courier; font-size:12pt; z-index:2;"
 	install_event_listener(create_group_btn, 'click', create_group_btn, EVENT.CREATE_GROUP)
 
@@ -1842,35 +1854,35 @@ function fill_ui_components()
 	global.ui.reset_groups_btn   = reset_groups_btn
 	reset_groups_btn.id 	   	 = "reset_groups_btn"
 	reset_groups_btn.textContent = 'reset groups'
-	reset_groups_btn.style 		 = "position:absolute; left:90%; top:48.7%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+	reset_groups_btn.style 		 = "position:absolute; left:80%; top:0%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
 									font-family:Courier; font-size:12pt; z-index:2;"
 	install_event_listener(reset_groups_btn, 'click', reset_groups_btn, EVENT.REMOVE_ACTIVE_GROUPS)
 
 
-	// let line_chart = get_component("line_chart");
-	// if (line_chart) {
-	// 	// vis_panel.appendChild(proj_colorby_select)
-	// 	// vis_panel.appendChild(n_clusters_select)
-	// 	// vis_panel.appendChild(cluster_btn)
-	// 	// vis_panel.appendChild(create_group_btn)
-	// 	// vis_panel.appendChild(reset_groups_btn)
-	//
-	// 	//----------
-	// 	// canvas to capture events on visualizations
-	// 	//----------
-	// 	let ts_canvas = line_chart.appendChild(document.createElement('canvas'));
-	// 	global.ui.ts_canvas = ts_canvas;
-	// 	ts_canvas.style		= 'position:relative; left:0px; top:0px; z-index:1;';
-	// 	ts_canvas.id 		= 'ts_canvas';
-	// 	ts_canvas.tabindex 	= '1';
-	// 	install_event_listener(ts_canvas, "mousemove", ts_canvas, EVENT.MOUSEMOVE)
-	// 	install_event_listener(ts_canvas, "wheel", ts_canvas, EVENT.MOUSEWHEEL)
-	// 	install_event_listener(ts_canvas, "mousedown", ts_canvas, EVENT.MOUSEDOWN)
-	// 	install_event_listener(ts_canvas, "mouseup", ts_canvas, EVENT.MOUSEUP)
-	// 	install_event_listener(ts_canvas, "dblclick", ts_canvas, EVENT.DBCLICK)
-	// 	install_event_listener(ts_canvas, "click", ts_canvas, EVENT.CLICK)
-	//
-	// }
+	let projection = get_component("projection");
+	if (projection) {
+		projection.appendChild(proj_colorby_select)
+		projection.appendChild(n_clusters_select)
+		projection.appendChild(cluster_btn)
+		projection.appendChild(create_group_btn)
+		projection.appendChild(reset_groups_btn)
+
+		//----------
+		// canvas to capture events on visualizations
+		//----------
+		let p_canvas = projection.appendChild(document.createElement('canvas'));
+		global.ui.p_canvas  = p_canvas;
+		p_canvas.style		= 'position:relative; left:0px; top:0px; z-index:1;';
+		p_canvas.id 		= 'p_canvas';
+		p_canvas.tabindex 	= '1';
+		install_event_listener(p_canvas, "mousemove", p_canvas, EVENT.MOUSEMOVE)
+		install_event_listener(p_canvas, "wheel", p_canvas, EVENT.MOUSEWHEEL)
+		install_event_listener(p_canvas, "mousedown", p_canvas, EVENT.MOUSEDOWN)
+		install_event_listener(p_canvas, "mouseup", p_canvas, EVENT.MOUSEUP)
+		install_event_listener(p_canvas, "dblclick", p_canvas, EVENT.DBCLICK)
+		install_event_listener(p_canvas, "click", p_canvas, EVENT.CLICK)
+
+	}
 
 	//----------
 	// general div and body
@@ -3277,6 +3289,7 @@ function process_event_queue()
 			}
 		} else if (e.event_type == EVENT.REMOVE_ACTIVE_GROUPS) {
 			reset_groups()
+			global.layout_index = 0;
 		} else if (e.event_type == EVENT.CLEAR_CHART) {
 			clear_chart()
 		} else if (e.event_type == EVENT.UPDATE_START_DATE) {
@@ -4567,7 +4580,7 @@ function update_ts()
 
 	let av_local_mouse_pos = get_local_position(global.mouse.position, av_canvas)
 
-	// av_ctx.clearRect(0,0,av_canvas.width, av_canvas.height)
+	av_ctx.clearRect(0, 0, av_canvas.width, av_canvas.height)
 
 	let aux_rect_inf = [0,0, av_canvas.width, av_canvas.height]
 	let aux_rect_margins = [ 30, 15, 20, 15 ]
@@ -4575,14 +4588,6 @@ function update_ts()
 					 aux_rect_inf[1] + aux_rect_margins[SIDE.TOP],
 					 aux_rect_inf[2] - aux_rect_margins[SIDE.LEFT] - aux_rect_margins[SIDE.RIGHT],
 					 aux_rect_inf[3] - aux_rect_margins[SIDE.BOTTOM] - aux_rect_margins[SIDE.TOP] ]
-
-	// let proj_rect_margins = [ 40, 20, 15, 10 ]
-	// let proj_rect_inf = [canvas.width/2, canvas.height/2, canvas.width/2, canvas.height/2]
-	// let proj_rect = [ proj_rect_inf[0] + proj_rect_margins[SIDE.LEFT],
-	// 			  	  proj_rect_inf[1] + proj_rect_margins[SIDE.TOP],
-	// 			  	  proj_rect_inf[2] - proj_rect_margins[SIDE.LEFT] - proj_rect_margins[SIDE.RIGHT],
-	// 			  	  proj_rect_inf[3] - proj_rect_margins[SIDE.BOTTOM] - proj_rect_margins[SIDE.TOP] ]
-
 
 	let aux_view_closest_symbol = null
 
@@ -4593,13 +4598,6 @@ function update_ts()
 		av_ctx.moveTo(aux_rect_inf[0], aux_rect_inf[1])
 		av_ctx.rect(aux_rect[RECT.LEFT], aux_rect[RECT.TOP], aux_rect[RECT.WIDTH], aux_rect[RECT.HEIGHT])
 		av_ctx.fill()
-
-		// {
-		// 	ctx.moveTo(proj_rect_inf[0], proj_rect_inf[1])
-		// 	ctx.rect(proj_rect[RECT.LEFT], proj_rect[RECT.TOP], proj_rect[RECT.WIDTH], proj_rect[RECT.HEIGHT])
-		// 	ctx.fill()
-		// }
-
 
 		av_ctx.font = "bold 14pt Courier"
 		av_ctx.fillStyle = "#FFFFFF";
@@ -4727,18 +4725,15 @@ function update_ts()
 			let dist = h_sq
 			if (dist <= min_distance_threshold && dist < closest_distance) {
 				aux_view_closest_symbol = symbol
-				// symbol.focused = true
 			}
 		}
 
 		function update_closest_point(symbol, rank, px, py) {
-			let dx = local_mouse_pos[0] - px
-			let dy = local_mouse_pos[1] - py
+			let dx = av_local_mouse_pos[0] - px
+			let dy = av_local_mouse_pos[1] - py
 			let dist = dx * dx + dy * dy
 			if (dist <= min_distance_threshold && dist < closest_distance) {
 				aux_view_closest_symbol = symbol
-				// closest_rank = rank
-				// symbol.focused = true;
 			}
 		}
 
@@ -5423,355 +5418,379 @@ function update_ts()
 
 	} // aux view drawings
 
+	let p_canvas = global.ui.p_canvas;
+	let p_ctx = p_canvas.getContext('2d');
+	let projection = get_component('projection');
+	p_canvas.width  = projection.clientWidth;
+	p_canvas.height = projection.clientHeight;
+
+	let p_local_mouse_pos = get_local_position(global.mouse.position, p_canvas)
+
+	p_ctx.clearRect(0, 0, p_canvas.width, p_canvas.height)
+
+	let proj_rect_inf 	  = [0, 0, p_canvas.width, p_canvas.height]
+	let proj_rect_margins = [30, 15, 20, 15] //[ 40, 20, 15, 10 ]
+	let proj_rect 		  = [ proj_rect_inf[0] + proj_rect_margins[SIDE.LEFT],
+				  	  		  proj_rect_inf[1] + proj_rect_margins[SIDE.TOP],
+				  	  		  proj_rect_inf[2] - proj_rect_margins[SIDE.LEFT] - proj_rect_margins[SIDE.RIGHT],
+				  	  		  proj_rect_inf[3] - proj_rect_margins[SIDE.BOTTOM] - proj_rect_margins[SIDE.TOP] ]
+
+
 	let proj_closest_symbol = null
 
-	// {
-	//
-	// 	//--------------
-	// 	// find x and y range
-	// 	//--------------
-	// 	let proj_y_min = 10000.0
-	// 	let proj_y_max = -10000.0
-	// 	let proj_x_min = 10000.0
-	// 	let proj_x_max = -10000.0
-	// 	let last_valid_value = 1
-	//
-	// 	for (let i=0;i<global.chart_symbols.length;i++) {
-	// 		let symbol = global.chart_symbols[i]
-	//
-	// 		let proj_coords = symbol.projection_coords
-	//
-	// 		if (proj_coords == null) {
-	// 			continue
-	// 		}
-	//
-	// 		proj_x_min = Math.min(proj_x_min, proj_coords[0])
-	// 		proj_x_max = Math.max(proj_x_max, proj_coords[0])
-	// 		proj_y_min = Math.min(proj_y_min, proj_coords[1])
-	// 		proj_y_max = Math.max(proj_y_max, proj_coords[1])
-	// 	}
-	//
-	// 	if (global.recompute_proj_viewbox) {
-	// 		global.proj_viewbox.x 	   	   = proj_x_min
-	// 		global.proj_viewbox.y 	   	   = proj_y_min
-	// 		global.proj_viewbox.width 	   = proj_x_max - proj_x_min
-	// 		global.proj_viewbox.height 	   = proj_y_max - proj_y_min
-	// 		global.recompute_proj_viewbox  = false
-	// 	} else {
-	// 		proj_x_min = global.proj_viewbox.x
-	// 		proj_y_min = global.proj_viewbox.y
-	// 		proj_x_max = global.proj_viewbox.x + global.proj_viewbox.width
-	// 		proj_y_max = global.proj_viewbox.y + global.proj_viewbox.height
-	// 	}
-	//
-	// 	function proj_rect_map(x, y) {
-	// 		let px = (proj_rect[RECT.LEFT]+VIEWS_MARGINS) + (1.0 * (x - proj_x_min) / (proj_x_max - proj_x_min)) * (proj_rect[RECT.WIDTH]-(2*VIEWS_MARGINS))
-	// 		let py = (proj_rect[RECT.TOP]+VIEWS_MARGINS) + ((proj_rect[RECT.HEIGHT]-(2*VIEWS_MARGINS)) - 1 - (1.0 * (y - proj_y_min) / (proj_y_max - proj_y_min)) * (proj_rect[RECT.HEIGHT]-(2*VIEWS_MARGINS)))
-	// 		return [px,py]
-	// 	}
-	//
-	// 	function proj_rect_inverse_map(px, py) {
-	// 		let x = ((px - (proj_rect[RECT.LEFT]+VIEWS_MARGINS)) / (proj_rect[RECT.WIDTH]-(2*VIEWS_MARGINS))) * (1.0*(proj_x_max - proj_x_min)) + proj_x_min
-	// 		let y = -((((py - (proj_rect[RECT.TOP]+VIEWS_MARGINS) - (proj_rect[RECT.HEIGHT]-(2*VIEWS_MARGINS)) + 1) * (1.0 * (proj_y_max - proj_y_min))) / (proj_rect[RECT.HEIGHT]-(2*VIEWS_MARGINS))) - proj_y_min)
-	// 		return [x,y]
-	// 	}
-	//
-	// 	//--------------
-	// 	// zoom and pan
-	// 	//--------------
-	// 	let factor = 1.1
-	// 	let ref    = proj_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
-	// 	let y_ref  = ref[1]
-	// 	let x_ref  = ref[0]
-	//
-	// 	if (point_inside_rect(local_mouse_pos, proj_rect)) {
-	//
-	// 		if (global.proj_zoom_y != 0) {
-	//
-	// 			let h = global.proj_viewbox.height
-	// 			let h_
-	//
-	// 			if (global.proj_zoom_y > 0) {
-	// 				h_ = h * factor
-	// 			} else {
-	// 				h_ = h / factor
-	// 			}
-	//
-	// 			global.proj_viewbox.y = -((h_*((y_ref-global.proj_viewbox.y)/h))-y_ref)
-	// 			global.proj_viewbox.height = h_
-	//
-	// 			proj_y_min = global.proj_viewbox.y
-	// 			proj_y_max = global.proj_viewbox.y + global.proj_viewbox.height
-	//
-	// 			global.zoom_y = 0
-	// 		}
-	//
-	// 		if (global.proj_zoom_x != 0) {
-	//
-	// 			let w = global.proj_viewbox.width
-	// 			let w_
-	//
-	// 			if (global.proj_zoom_x > 0) {
-	// 				w_ = w * factor
-	// 			} else {
-	// 				w_ = w / factor
-	// 			}
-	//
-	// 			global.proj_viewbox.x = -((w_*((x_ref-global.proj_viewbox.x)/w))-x_ref)
-	// 			global.proj_viewbox.width  = w_
-	//
-	// 			proj_x_min = global.proj_viewbox.x
-	// 			proj_x_max = global.proj_viewbox.x + global.proj_viewbox.width
-	//
-	// 			global.zoom_x = 0
-	// 		}
-	//
-	// 	} else {
-	// 		global.zoom_y = 0
-	// 		global.zoom_x = 0
-	// 	}
-	//
-	// 	if (global.proj_drag.active) {
-	//
-	// 		let proj_local_dragstart_pos = get_local_position(global.proj_drag.startpos, canvas)
-	//
-	// 		if (point_inside_rect(proj_local_dragstart_pos, proj_rect)) {
-	//
-	// 			proj_local_dragstart_pos = proj_rect_inverse_map(proj_local_dragstart_pos[0], proj_local_dragstart_pos[1])
-	//
-	// 			let local_currmouse_pos = proj_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
-	//
-	// 			global.proj_viewbox.x = global.proj_drag.startprojvbox[0] - (local_currmouse_pos[0] - proj_local_dragstart_pos[0])
-	// 			global.proj_viewbox.y = global.proj_drag.startprojvbox[1] - (local_currmouse_pos[1] - proj_local_dragstart_pos[1])
-	//
-	// 			proj_x_min = global.proj_viewbox.x
-	// 			proj_x_max = global.proj_viewbox.x + global.proj_viewbox.width
-	//
-	// 			proj_y_min = global.proj_viewbox.y
-	// 			proj_y_max = global.proj_viewbox.y + global.proj_viewbox.height
-	// 		}
-	// 	}
-	//
-	// 	//--------------
-	// 	// brush states
-	// 	//--------------
-	// 	if (global.brush_state == BRUSH_STATE.START) {
-	// 		reset_selections();
-	// 		if (!point_inside_rect(local_mouse_pos, proj_rect)) {
-	// 			global.brush_state = BRUSH_STATE.INACTIVE
-	// 		} else {
-	// 			let dm_brush_startpos = proj_rect_inverse_map(local_mouse_pos[0],local_mouse_pos[1]);
-	//
-	// 			global.brush = { left:dm_brush_startpos[0], top:dm_brush_startpos[1], width:0, height:0 };
-	// 			global.brush_state = BRUSH_STATE.UPDATE;
-	// 		}
-	// 	} else if (global.brush_state == BRUSH_STATE.UPDATE) {
-	// 		if (point_inside_rect(local_mouse_pos, proj_rect)) {
-	// 			let dm_brush_endpos = proj_rect_inverse_map(local_mouse_pos[0],local_mouse_pos[1]);
-	//
-	// 			let width  = dm_brush_endpos[0] - global.brush.left;
-	// 			let height = global.brush.top - dm_brush_endpos[1];
-	//
-	// 			global.brush.width  = width;
-	// 			global.brush.height = height;
-	// 		}
-	// 	}
-	//
-	// 	//--------------
-	// 	// drawing and utils functions for symbols (players)
-	// 	//--------------
-	// 	let min_distance_threshold = 5 * 5
-	// 	let closest_distance = 100000
-	//
-	// 	function update_closest_point(symbol, px, py) {
-	// 		let dx = local_mouse_pos[0] - px
-	// 		let dy = local_mouse_pos[1] - py
-	// 		let dist = dx * dx + dy * dy
-	// 		if (dist <= min_distance_threshold && dist < closest_distance) {
-	// 			proj_closest_symbol = symbol
-	// 		}
-	// 	}
-	//
-	// 	function check_symbol_on_brush(symbol) {
-	// 		let proj_x = symbol.projection_coords[0];
-	// 		let proj_y = symbol.projection_coords[1];
-	//
-	// 		let inside_x_range;
-	// 		if (global.brush.width > 0) {
-	// 			inside_x_range = ((global.brush.left <= proj_x) && (proj_x <= global.brush.left+global.brush.width))
-	// 		} else {
-	// 			inside_x_range = ((global.brush.left+global.brush.width <= proj_x) && (proj_x <= global.brush.left))
-	// 		}
-	//
-	// 		let inside_y_range;
-	// 		if (global.brush.height < 0) {
-	// 			inside_y_range = ((global.brush.top <= proj_y) && (proj_y <= global.brush.top-global.brush.height));
-	// 		} else {
-	// 			inside_y_range = ((global.brush.top-global.brush.height <= proj_y) && (proj_y <= global.brush.top));
-	// 		}
-	//
-	// 		return (inside_x_range && inside_y_range)
-	// 	}
-	//
-	// 	function draw_symbol_projection(symbol) {
-	//
-	// 		let idx = global.chart_symbols.indexOf(symbol)
-	// 		if (symbol.projection_coords == null) {
-	// 			return
-	// 		}
-	//
-	// 		if (global.brush !== undefined) {
-	// 			if (symbol.selected == false) {
-	// 				if (check_symbol_on_brush(symbol)) {
-	// 					symbol.selected = true;
-	// 				}
-	// 			}
-	// 			// if (check_symbol_on_brush(symbol)) {
-	// 			// 	symbol.selected = true;
-	// 			// } else {
-	// 			// 	symbol.selected = false;
-	// 			// }
-	// 		}
-	//
-	// 		let point_color;
-	// 		let point_focused_color;
-	//
-	// 		switch (global.colorby) {
-	// 			case 'default': {
-	// 				point_color = "#FFFFFF44";
-	// 				point_focused_color = global.chart_colors[idx];
-	// 				} break;
-	// 			case 'position': {
-	// 				point_color = POSITION_COLORS[symbol.position[0]];
-	// 				point_focused_color = POSITION_COLORS[symbol.position[0]];
-	// 				} break;
-	// 			case 'games_played': {
-	// 				let seq_scale_idx 	 = (Object.keys(symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1);
-	// 				let seq_scale_idx_fl = Math.floor(seq_scale_idx);
-	//
-	// 				let a = seq_scale_idx_fl;
-	// 				let b = Math.min(a+1, SEQUENTIAL_COLORS.length-1);
-	//
-	// 				let lambda = 1-(seq_scale_idx-seq_scale_idx_fl);
-	// 				let color  = hex_lerp(SEQUENTIAL_COLORS[a], SEQUENTIAL_COLORS[b], lambda);
-	//
-	// 				point_color	 		= color;
-	// 				point_focused_color = color;
-	// 				} break;
-	// 			default: {
-	// 				let sr = global.stats_ranges[global.colorby];
-	// 				let s  = symbol.summary[global.colorby];
-	//
-	// 				let seq_scale_idx 	 = (s - sr[0]) / (sr[1] - sr[0]) * (SEQUENTIAL_COLORS.length-1);
-	// 				let seq_scale_idx_fl = Math.floor(seq_scale_idx);
-	//
-	// 				let a = seq_scale_idx_fl;
-	// 				let b = Math.min(a+1, SEQUENTIAL_COLORS.length-1);
-	//
-	// 				let lambda = 1-(seq_scale_idx-seq_scale_idx_fl);
-	// 				let color  = hex_lerp(SEQUENTIAL_COLORS[a], SEQUENTIAL_COLORS[b], lambda);
-	//
-	// 				point_color 		= color;
-	// 				point_focused_color = color;
-	// 				} break;
-	// 		}
-	//
-	// 		ctx.save();
-	// 		ctx.fillStyle = point_color;
-	//
-	// 		if (symbol.group) {
-	// 			ctx.fillStyle = symbol.group.color;
-	// 		}
-	//
-	// 		let x = symbol.projection_coords[0];
-	// 		let y = symbol.projection_coords[1];
-	//
-	// 		let p = proj_rect_map(x, y);
-	// 		update_closest_point(symbol, p[0], p[1]);
-	//
-	// 		ctx.beginPath()
-	// 		if ((symbol == global.focused_symbol) || symbol.selected) {
-	// 			if (symbol.group) {
-	// 				ctx.fillStyle = symbol.group.color;
-	// 			} else {
-	// 				ctx.fillStyle = point_focused_color
-	// 			}
-	// 			ctx.strokeStyle = "#FFFFFFAA"
-	// 			ctx.arc(p[0], p[1], 6, 0, 2 * Math.PI)
-	// 		} else {
-	// 			ctx.strokeStyle = point_color
-	// 			ctx.arc(p[0], p[1], 4, 0, 2 * Math.PI)
-	// 		}
-	// 		ctx.closePath()
-	// 		ctx.fill()
-	// 		ctx.stroke()
-	//
-	// 		ctx.restore()
-	//
-	// 	}
-	//
-	// 	//--------------
-	// 	// drawings
-	// 	//--------------
-	// 	ctx.save()
-	//
-	// 	ctx.moveTo(proj_rect[RECT.LEFT],proj_rect[RECT.TOP])
-	// 	ctx.beginPath()
-	// 	ctx.rect(proj_rect[RECT.LEFT],proj_rect[RECT.TOP],proj_rect[RECT.WIDTH],proj_rect[RECT.HEIGHT])
-	// 	ctx.clip()
-	//
-	// 	if ((global.brush !== undefined)) {
-	// 		if (global.brush.width !== 0 && global.brush.height !== 0 && global.brush_state !== BRUSH_STATE.INACTIVE) {
-	// 			// console.log(global.brush)
-	// 			let cv_brush_startpos = proj_rect_map(global.brush.left, global.brush.top);
-	// 			let cv_brush_endpos   = proj_rect_map(global.brush.left + global.brush.width, global.brush.top + global.brush.height);
-	//
-	// 			let brush_rect = [cv_brush_startpos[0], cv_brush_startpos[1], cv_brush_endpos[0]-cv_brush_startpos[0], cv_brush_startpos[1]-cv_brush_endpos[1]];
-	// 			global.brush.rect = brush_rect;
-	//
-	// 			ctx.strokeStyle = "#FFFFFF";
-	// 			ctx.strokeRect(brush_rect[RECT.LEFT], brush_rect[RECT.TOP], brush_rect[RECT.WIDTH], brush_rect[RECT.HEIGHT]);
-	//
-	// 		}
-	// 	}
-	//
-	// 	for (let m=0;m<global.chart_symbols.length;m++) {
-	//
-	// 		let symbol = global.chart_symbols[m]
-	// 		// check_filters(symbol)
-	// 		draw_symbol_projection(symbol);
-	//
-	// 	}
-	//
-	// 	ctx.restore() //PROJ RECT CLIP RESTORE
-	//
-	// 	if (global.focused_symbol != null) {
-	// 		draw_symbol_projection(global.focused_symbol)
-	//
-	// 		if (global.select_mode_selected) {
-	// 			global.focused_symbol.selected = !global.focused_symbol.selected;
-	// 		}
-	//
-	// 		let symbol = global.focused_symbol
-	// 		let proj_text = `${global.focused_symbol.name} // GP: ${Object.keys(global.focused_symbol.data).length} //  TOTALS: `
-	//
-	// 		for (let i=0; i<global.chosen_stats.length; i++) {
-	// 			let stat = global.chosen_stats[i]
-	// 			if (i == global.chosen_stats.length-1) {
-	// 				proj_text += `${stat}: ${symbol.summary[stat]}`
-	// 			} else {
-	// 				proj_text += `${stat}: ${symbol.summary[stat]} // `
-	// 			}
-	// 		}
-	//
-	// 		ctx.font = '14px Monospace';
-	// 		ctx.fillStyle = "#FFFFFF"
-	//
-	// 		ctx.fillText(proj_text, canvas.width-proj_rect[2]/2, proj_rect[1]+proj_rect[3]+15);
-	// 	}
-	//
-	//
-	// } // projection drawings
+	{
+
+		p_ctx.fillStyle="#2f3233"
+
+		p_ctx.moveTo(proj_rect_inf[0], proj_rect_inf[1])
+		p_ctx.rect(proj_rect[RECT.LEFT], proj_rect[RECT.TOP], proj_rect[RECT.WIDTH], proj_rect[RECT.HEIGHT])
+		p_ctx.fill()
+
+		//--------------
+		// find x and y range
+		//--------------
+		let proj_y_min = 10000.0
+		let proj_y_max = -10000.0
+		let proj_x_min = 10000.0
+		let proj_x_max = -10000.0
+		let last_valid_value = 1
+
+		for (let i=0;i<global.chart_symbols.length;i++) {
+			let symbol = global.chart_symbols[i]
+
+			let proj_coords = symbol.projection_coords
+
+			if (proj_coords == null) {
+				continue
+			}
+
+			proj_x_min = Math.min(proj_x_min, proj_coords[0])
+			proj_x_max = Math.max(proj_x_max, proj_coords[0])
+			proj_y_min = Math.min(proj_y_min, proj_coords[1])
+			proj_y_max = Math.max(proj_y_max, proj_coords[1])
+		}
+
+		if (global.recompute_proj_viewbox) {
+			global.proj_viewbox.x 	   	   = proj_x_min
+			global.proj_viewbox.y 	   	   = proj_y_min
+			global.proj_viewbox.width 	   = proj_x_max - proj_x_min
+			global.proj_viewbox.height 	   = proj_y_max - proj_y_min
+			global.recompute_proj_viewbox  = false
+		} else {
+			proj_x_min = global.proj_viewbox.x
+			proj_y_min = global.proj_viewbox.y
+			proj_x_max = global.proj_viewbox.x + global.proj_viewbox.width
+			proj_y_max = global.proj_viewbox.y + global.proj_viewbox.height
+		}
+
+		function proj_rect_map(x, y) {
+			let px = (proj_rect[RECT.LEFT]+VIEWS_MARGINS) + (1.0 * (x - proj_x_min) / (proj_x_max - proj_x_min)) * (proj_rect[RECT.WIDTH]-(2*VIEWS_MARGINS))
+			let py = (proj_rect[RECT.TOP]+VIEWS_MARGINS) + ((proj_rect[RECT.HEIGHT]-(2*VIEWS_MARGINS)) - 1 - (1.0 * (y - proj_y_min) / (proj_y_max - proj_y_min)) * (proj_rect[RECT.HEIGHT]-(2*VIEWS_MARGINS)))
+			return [px,py]
+		}
+
+		function proj_rect_inverse_map(px, py) {
+			let x = ((px - (proj_rect[RECT.LEFT]+VIEWS_MARGINS)) / (proj_rect[RECT.WIDTH]-(2*VIEWS_MARGINS))) * (1.0*(proj_x_max - proj_x_min)) + proj_x_min
+			let y = -((((py - (proj_rect[RECT.TOP]+VIEWS_MARGINS) - (proj_rect[RECT.HEIGHT]-(2*VIEWS_MARGINS)) + 1) * (1.0 * (proj_y_max - proj_y_min))) / (proj_rect[RECT.HEIGHT]-(2*VIEWS_MARGINS))) - proj_y_min)
+			return [x,y]
+		}
+
+		//--------------
+		// zoom and pan
+		//--------------
+		let factor = 1.1
+		let ref    = proj_rect_inverse_map(p_local_mouse_pos[0], p_local_mouse_pos[1])
+		let y_ref  = ref[1]
+		let x_ref  = ref[0]
+
+		if (point_inside_rect(p_local_mouse_pos, proj_rect)) {
+
+			if (global.proj_zoom_y != 0) {
+
+				let h = global.proj_viewbox.height
+				let h_
+
+				if (global.proj_zoom_y > 0) {
+					h_ = h * factor
+				} else {
+					h_ = h / factor
+				}
+
+				global.proj_viewbox.y = -((h_*((y_ref-global.proj_viewbox.y)/h))-y_ref)
+				global.proj_viewbox.height = h_
+
+				proj_y_min = global.proj_viewbox.y
+				proj_y_max = global.proj_viewbox.y + global.proj_viewbox.height
+
+				global.zoom_y = 0
+			}
+
+			if (global.proj_zoom_x != 0) {
+
+				let w = global.proj_viewbox.width
+				let w_
+
+				if (global.proj_zoom_x > 0) {
+					w_ = w * factor
+				} else {
+					w_ = w / factor
+				}
+
+				global.proj_viewbox.x = -((w_*((x_ref-global.proj_viewbox.x)/w))-x_ref)
+				global.proj_viewbox.width  = w_
+
+				proj_x_min = global.proj_viewbox.x
+				proj_x_max = global.proj_viewbox.x + global.proj_viewbox.width
+
+				global.zoom_x = 0
+			}
+
+		} else {
+			global.zoom_y = 0
+			global.zoom_x = 0
+		}
+
+		if (global.proj_drag.active) {
+
+			let proj_local_dragstart_pos = get_local_position(global.proj_drag.startpos, p_canvas)
+
+			if (point_inside_rect(proj_local_dragstart_pos, proj_rect)) {
+
+				proj_local_dragstart_pos = proj_rect_inverse_map(proj_local_dragstart_pos[0], proj_local_dragstart_pos[1])
+
+				let local_currmouse_pos = proj_rect_inverse_map(p_local_mouse_pos[0], p_local_mouse_pos[1])
+
+				global.proj_viewbox.x = global.proj_drag.startprojvbox[0] - (local_currmouse_pos[0] - proj_local_dragstart_pos[0])
+				global.proj_viewbox.y = global.proj_drag.startprojvbox[1] - (local_currmouse_pos[1] - proj_local_dragstart_pos[1])
+
+				proj_x_min = global.proj_viewbox.x
+				proj_x_max = global.proj_viewbox.x + global.proj_viewbox.width
+
+				proj_y_min = global.proj_viewbox.y
+				proj_y_max = global.proj_viewbox.y + global.proj_viewbox.height
+			}
+		}
+
+		//--------------
+		// brush states
+		//--------------
+		if (global.brush_state == BRUSH_STATE.START) {
+			reset_selections();
+			if (!point_inside_rect(p_local_mouse_pos, proj_rect)) {
+				global.brush_state = BRUSH_STATE.INACTIVE
+			} else {
+				let dm_brush_startpos = proj_rect_inverse_map(p_local_mouse_pos[0],p_local_mouse_pos[1]);
+
+				global.brush = { left:dm_brush_startpos[0], top:dm_brush_startpos[1], width:0, height:0 };
+				global.brush_state = BRUSH_STATE.UPDATE;
+			}
+		} else if (global.brush_state == BRUSH_STATE.UPDATE) {
+			if (point_inside_rect(p_local_mouse_pos, proj_rect)) {
+				let dm_brush_endpos = proj_rect_inverse_map(p_local_mouse_pos[0],p_local_mouse_pos[1]);
+
+				let width  = dm_brush_endpos[0] - global.brush.left;
+				let height = global.brush.top - dm_brush_endpos[1];
+
+				global.brush.width  = width;
+				global.brush.height = height;
+			}
+		}
+
+		//--------------
+		// drawing and utils functions for symbols (players)
+		//--------------
+		let min_distance_threshold = 5 * 5
+		let closest_distance = 100000
+
+		function update_closest_point(symbol, px, py) {
+			let dx = p_local_mouse_pos[0] - px
+			let dy = p_local_mouse_pos[1] - py
+			let dist = dx * dx + dy * dy
+			if (dist <= min_distance_threshold && dist < closest_distance) {
+				proj_closest_symbol = symbol
+			}
+		}
+
+		function check_symbol_on_brush(symbol) {
+			let proj_x = symbol.projection_coords[0];
+			let proj_y = symbol.projection_coords[1];
+
+			let inside_x_range;
+			if (global.brush.width > 0) {
+				inside_x_range = ((global.brush.left <= proj_x) && (proj_x <= global.brush.left+global.brush.width))
+			} else {
+				inside_x_range = ((global.brush.left+global.brush.width <= proj_x) && (proj_x <= global.brush.left))
+			}
+
+			let inside_y_range;
+			if (global.brush.height < 0) {
+				inside_y_range = ((global.brush.top <= proj_y) && (proj_y <= global.brush.top-global.brush.height));
+			} else {
+				inside_y_range = ((global.brush.top-global.brush.height <= proj_y) && (proj_y <= global.brush.top));
+			}
+
+			return (inside_x_range && inside_y_range)
+		}
+
+		function draw_symbol_projection(symbol) {
+
+			let idx = global.chart_symbols.indexOf(symbol)
+			if (symbol.projection_coords == null) {
+				return
+			}
+
+			if (global.brush !== undefined) {
+				if (symbol.selected == false) {
+					if (check_symbol_on_brush(symbol)) {
+						symbol.selected = true;
+					}
+				}
+				// if (check_symbol_on_brush(symbol)) {
+				// 	symbol.selected = true;
+				// } else {
+				// 	symbol.selected = false;
+				// }
+			}
+
+			let point_color;
+			let point_focused_color;
+
+			switch (global.colorby) {
+				case 'default': {
+					point_color = "#FFFFFF44";
+					point_focused_color = global.chart_colors[idx];
+					} break;
+				case 'position': {
+					point_color = POSITION_COLORS[symbol.position[0]];
+					point_focused_color = POSITION_COLORS[symbol.position[0]];
+					} break;
+				case 'games_played': {
+					let seq_scale_idx 	 = (Object.keys(symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1);
+					let seq_scale_idx_fl = Math.floor(seq_scale_idx);
+
+					let a = seq_scale_idx_fl;
+					let b = Math.min(a+1, SEQUENTIAL_COLORS.length-1);
+
+					let lambda = 1-(seq_scale_idx-seq_scale_idx_fl);
+					let color  = hex_lerp(SEQUENTIAL_COLORS[a], SEQUENTIAL_COLORS[b], lambda);
+
+					point_color	 		= color;
+					point_focused_color = color;
+					} break;
+				default: {
+					let sr = global.stats_ranges[global.colorby];
+					let s  = symbol.summary[global.colorby];
+
+					let seq_scale_idx 	 = (s - sr[0]) / (sr[1] - sr[0]) * (SEQUENTIAL_COLORS.length-1);
+					let seq_scale_idx_fl = Math.floor(seq_scale_idx);
+
+					let a = seq_scale_idx_fl;
+					let b = Math.min(a+1, SEQUENTIAL_COLORS.length-1);
+
+					let lambda = 1-(seq_scale_idx-seq_scale_idx_fl);
+					let color  = hex_lerp(SEQUENTIAL_COLORS[a], SEQUENTIAL_COLORS[b], lambda);
+
+					point_color 		= color;
+					point_focused_color = color;
+					} break;
+			}
+
+			p_ctx.save();
+			p_ctx.fillStyle = point_color;
+
+			if (symbol.group) {
+				p_ctx.fillStyle = symbol.group.color;
+			}
+
+			let x = symbol.projection_coords[0];
+			let y = symbol.projection_coords[1];
+
+			let p = proj_rect_map(x, y);
+			update_closest_point(symbol, p[0], p[1]);
+
+			p_ctx.beginPath()
+			if ((symbol == global.focused_symbol) || symbol.selected) {
+				if (symbol.group) {
+					p_ctx.fillStyle = symbol.group.color;
+				} else {
+					p_ctx.fillStyle = point_focused_color
+				}
+				p_ctx.strokeStyle = "#FFFFFFAA"
+				p_ctx.arc(p[0], p[1], 6, 0, 2 * Math.PI)
+			} else {
+				p_ctx.strokeStyle = point_color
+				p_ctx.arc(p[0], p[1], 4, 0, 2 * Math.PI)
+			}
+			p_ctx.closePath()
+			p_ctx.fill()
+			p_ctx.stroke()
+
+			p_ctx.restore()
+
+		}
+
+		//--------------
+		// drawings
+		//--------------
+		p_ctx.save()
+
+		p_ctx.moveTo(proj_rect[RECT.LEFT],proj_rect[RECT.TOP])
+		p_ctx.beginPath()
+		p_ctx.rect(proj_rect[RECT.LEFT],proj_rect[RECT.TOP],proj_rect[RECT.WIDTH],proj_rect[RECT.HEIGHT])
+		p_ctx.clip()
+
+		if ((global.brush !== undefined)) {
+			if (global.brush.width !== 0 && global.brush.height !== 0 && global.brush_state !== BRUSH_STATE.INACTIVE) {
+				// console.log(global.brush)
+				let cv_brush_startpos = proj_rect_map(global.brush.left, global.brush.top);
+				let cv_brush_endpos   = proj_rect_map(global.brush.left + global.brush.width, global.brush.top + global.brush.height);
+
+				let brush_rect = [cv_brush_startpos[0], cv_brush_startpos[1], cv_brush_endpos[0]-cv_brush_startpos[0], cv_brush_startpos[1]-cv_brush_endpos[1]];
+				global.brush.rect = brush_rect;
+
+				p_ctx.strokeStyle = "#FFFFFF";
+				p_ctx.strokeRect(brush_rect[RECT.LEFT], brush_rect[RECT.TOP], brush_rect[RECT.WIDTH], brush_rect[RECT.HEIGHT]);
+
+			}
+		}
+
+		for (let m=0;m<global.chart_symbols.length;m++) {
+
+			let symbol = global.chart_symbols[m]
+			// check_filters(symbol)
+			draw_symbol_projection(symbol);
+
+		}
+
+		p_ctx.restore() //PROJ RECT CLIP RESTORE
+
+		if (global.focused_symbol != null) {
+			draw_symbol_projection(global.focused_symbol)
+
+			if (global.select_mode_selected) {
+				global.focused_symbol.selected = !global.focused_symbol.selected;
+			}
+
+			let symbol = global.focused_symbol
+			let proj_text = `${global.focused_symbol.name} // GP: ${Object.keys(global.focused_symbol.data).length} //  TOTALS: `
+
+			for (let i=0; i<global.chosen_stats.length; i++) {
+				let stat = global.chosen_stats[i]
+				if (i == global.chosen_stats.length-1) {
+					proj_text += `${stat}: ${symbol.summary[stat]}`
+				} else {
+					proj_text += `${stat}: ${symbol.summary[stat]} // `
+				}
+			}
+
+			p_ctx.font = '14px Monospace';
+			p_ctx.fillStyle = "#FFFFFF"
+
+			p_ctx.fillText(proj_text, p_canvas.width-proj_rect[2]/2, proj_rect[1]+proj_rect[3]+15);
+		}
+
+
+	} // projection drawings
 
 	if (lc_closest_symbol != null) {
 		global.focused_symbol = lc_closest_symbol
@@ -5789,6 +5808,9 @@ function set_ui_components()
 	// UPDATE 2021-04-22: setting components
 	// -------
 	{
+		// -------
+		// default layout
+		// -------
 		let c_0     = new Node('root', 1, NODE_ORIENTATION_HORIZONTAL)
 		let c_l     = new Node('l', 1, NODE_ORIENTATION_VERTICAL)
 		let c_l_t   = new Node('controls')
@@ -5814,6 +5836,37 @@ function set_ui_components()
 		global.layout_modes.push(c_0)
 	}
 
+	{
+		// -------
+		// default layout w/ groups table
+		// -------
+		let c_0     = new Node('root', 1, NODE_ORIENTATION_HORIZONTAL)
+		let c_l     = new Node('l', 1, NODE_ORIENTATION_VERTICAL)
+		let c_l_t   = new Node('controls')
+		let c_l_m   = new Node('table')
+		let c_l_b   = new Node('groups_table')
+		let c_r     = new Node('r', 5, NODE_ORIENTATION_VERTICAL)
+		let c_r_t   = new Node('line_chart')
+		let c_r_b   = new Node('rb', 1, NODE_ORIENTATION_HORIZONTAL)
+		let c_r_b_l = new Node('aux_view')
+		let c_r_b_r = new Node('projection')
+
+		c_0.add_child(c_l)
+		c_0.add_child(c_r)
+
+		c_l.add_child(c_l_t)
+		c_l.add_child(c_l_m)
+		c_l.add_child(c_l_b)
+
+		c_r.add_child(c_r_t)
+		c_r.add_child(c_r_b)
+
+		c_r_b.add_child(c_r_b_l)
+		c_r_b.add_child(c_r_b_r)
+
+		global.layout_modes.push(c_0)
+	}
+
 	global.layout_index = 0
 
 	//target color: #6b6f71 (with margins to see each component)
@@ -5822,6 +5875,9 @@ function set_ui_components()
 
 	let table = document.createElement('div');
 	table.style='background-color:#999999; overflow:auto'
+
+	let groups_table = document.createElement('div');
+	groups_table.style='background-color:#333333; overflow:auto'
 
 	let line_chart = document.createElement('div');
 	line_chart.style='background-color:#555555; overflow:auto'
@@ -5835,6 +5891,7 @@ function set_ui_components()
 	global.components = [
 		{ component: controls, position: 'controls' },
 		{ component: table, position: 'table' },
+		{ component: groups_table, position: 'groups_table'},
 		{ component: line_chart, position: 'line_chart' },
 		{ component: aux_view, position: 'aux_view' },
 		{ component: projection, position: 'projection' }
@@ -5842,6 +5899,7 @@ function set_ui_components()
 
 	document.body.appendChild(controls)
 	document.body.appendChild(table)
+	document.body.appendChild(groups_table)
 	document.body.appendChild(line_chart)
 	document.body.appendChild(aux_view)
 	document.body.appendChild(projection)
