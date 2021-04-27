@@ -143,6 +143,8 @@ var global = {
 	recompute_viewbox: true,
 	recompute_proj_viewbox: true,
 	zoom: 0,
+	zoom_x:0,
+	zoom_y:0,
 	drag: { active:false, startpos:[0,0] },
 	proj_drag: { active:false, startpos:[0,0] },
 	filter_list:[],
@@ -1572,7 +1574,11 @@ function fill_ui_components()
 	}
 
 	// -------
-	// visualizations components
+	// VIEWS
+	// -------
+
+	// -------
+	// line_chart components
 	// -------
 
 	//----------
@@ -1594,14 +1600,39 @@ function fill_ui_components()
 								   font-family:Courier; font-size:12pt; z-index:2;"
 	install_event_listener(clear_chart_btn, 'click', clear_chart_btn, EVENT.CLEAR_CHART)
 
-	// ****** aux view components ******
+	let line_chart = get_component("line_chart");
+	if (line_chart) {
+		line_chart.appendChild(chosen_stats_select)
+		line_chart.appendChild(clear_chart_btn)
+
+		//----------
+		// canvas to capture events on line chart
+		//----------
+		let lc_canvas = line_chart.appendChild(document.createElement('canvas'));
+		global.ui.lc_canvas = lc_canvas;
+		lc_canvas.style		= 'position:relative; left:0px; top:0px; z-index:1;';
+		lc_canvas.id 		= 'lc_canvas';
+		lc_canvas.tabindex 	= '1';
+		install_event_listener(lc_canvas, "mousemove", lc_canvas, EVENT.MOUSEMOVE)
+		install_event_listener(lc_canvas, "wheel", lc_canvas, EVENT.MOUSEWHEEL)
+		install_event_listener(lc_canvas, "mousedown", lc_canvas, EVENT.MOUSEDOWN)
+		install_event_listener(lc_canvas, "mouseup", lc_canvas, EVENT.MOUSEUP)
+		install_event_listener(lc_canvas, "dblclick", lc_canvas, EVENT.DBCLICK)
+		install_event_listener(lc_canvas, "click", lc_canvas, EVENT.CLICK)
+
+	}
+
+
+	// -------
+	// aux_view components
+	// -------
 
 	//----------
 	// select between rank cdf and extremal depth cdf
 	//----------
 	let rank_depth_select = document.createElement('select')
 	global.ui.rank_depth_select = rank_depth_select
-	rank_depth_select.style 	= 'position:absolute; left:3.5%; top:48.7%; background-color:#2f3233; \
+	rank_depth_select.style 	= 'position:absolute; left:3.5%; top:0%; background-color:#2f3233; \
 								   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 	install_event_listener(rank_depth_select, 'change', rank_depth_select, EVENT.CHANGE_AUX_VIEW)
 
@@ -1648,7 +1679,7 @@ function fill_ui_components()
 	let draw_aux_view_type_grid = document.createElement('div')
 	global.ui.draw_aux_view_type_grid = draw_aux_view_type_grid
 	draw_aux_view_type_grid.id 		  = draw_aux_view_type_grid
-	draw_aux_view_type_grid.style 	  = 'position:absolute; left:19.9%; top:48.7%; display:grid;\
+	draw_aux_view_type_grid.style 	  = 'position:absolute; left:40%; top:1%; display:grid;\
 										 align-items:baseline; justify-items:baseline;\
 										 grid-template-rows: 10px; grid-template-columns:repeat(4, 110px); z-index:2'
 
@@ -1669,7 +1700,7 @@ function fill_ui_components()
 	let draw_groups_envelope_grid = document.createElement('div')
 	global.ui.draw_groups_envelope_grid = draw_groups_envelope_grid
 	draw_groups_envelope_grid.id 		= draw_groups_envelope_grid
-	draw_groups_envelope_grid.style 	= 'position:absolute; left:3.5%; top:96%; \
+	draw_groups_envelope_grid.style 	= 'position:absolute; left:3.5%; top:94%; \
 										   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 	draw_groups_envelope_grid.appendChild(draw_groups_envelope_lbl)
 	draw_groups_envelope_grid.appendChild(draw_groups_envelope_btn)
@@ -1679,7 +1710,7 @@ function fill_ui_components()
 	//----------
 	let n_protos_select = document.createElement('select');
 	global.ui.n_protos_select = n_protos_select;
-	n_protos_select.style 	  = 'position:absolute; left:22%; top:96%; width:110px; background-color:#2f3233; \
+	n_protos_select.style 	  = 'position:absolute; left:40%; top:94%; width:110px; background-color:#2f3233; \
 								 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 
 	let n_protos_info_option = create_option(1, 'n_protos');
@@ -1700,7 +1731,7 @@ function fill_ui_components()
 	//----------
 	let step_select = document.createElement('select');
 	global.ui.step_select = step_select;
-	step_select.style 	  = 'position:absolute; left:30%; top:96%; width:140px; background-color:#2f3233; \
+	step_select.style 	  = 'position:absolute; left:60%; top:94%; width:140px; background-color:#2f3233; \
 							 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 
 	let step_default_option = create_option(1,'default(1)');
@@ -1714,6 +1745,28 @@ function fill_ui_components()
 	step_select.appendChild(step_3_option);
 	step_select.appendChild(step_5_option);
 	step_select.appendChild(step_10_option);
+
+	let aux_view = get_component('aux_view');
+	if (aux_view) {
+		aux_view.appendChild(rank_depth_select)
+		aux_view.appendChild(draw_aux_view_type_grid)
+		aux_view.appendChild(draw_groups_envelope_grid)
+		aux_view.appendChild(n_protos_select)
+		aux_view.appendChild(step_select)
+
+		//----------
+		// canvas to capture events on aux view
+		//----------
+		let av_canvas = aux_view.appendChild(document.createElement('canvas'));
+		global.ui.av_canvas = av_canvas;
+		av_canvas.style		= 'position:relative; left:0px; top:0px; z-index:1;';
+		av_canvas.id 		= 'av_canvas';
+		av_canvas.tabindex 	= '1';
+		install_event_listener(av_canvas, "mousemove", av_canvas, EVENT.MOUSEMOVE)
+		install_event_listener(av_canvas, "mousedown", av_canvas, EVENT.MOUSEDOWN)
+		install_event_listener(av_canvas, "mouseup", av_canvas, EVENT.MOUSEUP)
+
+	}
 
 	// ***** projection view components *****
 
@@ -1794,37 +1847,30 @@ function fill_ui_components()
 	install_event_listener(reset_groups_btn, 'click', reset_groups_btn, EVENT.REMOVE_ACTIVE_GROUPS)
 
 
-	let vis_panel = get_component("vis_panel");
-	if (vis_panel) {
-		vis_panel.appendChild(chosen_stats_select)
-		vis_panel.appendChild(clear_chart_btn)
-		vis_panel.appendChild(rank_depth_select)
-		vis_panel.appendChild(draw_aux_view_type_grid)
-		vis_panel.appendChild(draw_groups_envelope_grid)
-		vis_panel.appendChild(n_protos_select)
-		vis_panel.appendChild(step_select)
-		vis_panel.appendChild(proj_colorby_select)
-		vis_panel.appendChild(n_clusters_select)
-		vis_panel.appendChild(cluster_btn)
-		vis_panel.appendChild(create_group_btn)
-		vis_panel.appendChild(reset_groups_btn)
-
-		//----------
-		// canvas to capture events on visualizations
-		//----------
-		let ts_canvas = vis_panel.appendChild(document.createElement('canvas'));
-		global.ui.ts_canvas = ts_canvas;
-		ts_canvas.style		= 'position:relative; left:0px; top:0px; z-index:1;';
-		ts_canvas.id 		= 'ts_canvas';
-		ts_canvas.tabindex 	= '1';
-		install_event_listener(ts_canvas, "mousemove", ts_canvas, EVENT.MOUSEMOVE)
-		install_event_listener(ts_canvas, "wheel", ts_canvas, EVENT.MOUSEWHEEL)
-		install_event_listener(ts_canvas, "mousedown", ts_canvas, EVENT.MOUSEDOWN)
-		install_event_listener(ts_canvas, "mouseup", ts_canvas, EVENT.MOUSEUP)
-		install_event_listener(ts_canvas, "dblclick", ts_canvas, EVENT.DBCLICK)
-		install_event_listener(ts_canvas, "click", ts_canvas, EVENT.CLICK)
-
-	}
+	// let line_chart = get_component("line_chart");
+	// if (line_chart) {
+	// 	// vis_panel.appendChild(proj_colorby_select)
+	// 	// vis_panel.appendChild(n_clusters_select)
+	// 	// vis_panel.appendChild(cluster_btn)
+	// 	// vis_panel.appendChild(create_group_btn)
+	// 	// vis_panel.appendChild(reset_groups_btn)
+	//
+	// 	//----------
+	// 	// canvas to capture events on visualizations
+	// 	//----------
+	// 	let ts_canvas = line_chart.appendChild(document.createElement('canvas'));
+	// 	global.ui.ts_canvas = ts_canvas;
+	// 	ts_canvas.style		= 'position:relative; left:0px; top:0px; z-index:1;';
+	// 	ts_canvas.id 		= 'ts_canvas';
+	// 	ts_canvas.tabindex 	= '1';
+	// 	install_event_listener(ts_canvas, "mousemove", ts_canvas, EVENT.MOUSEMOVE)
+	// 	install_event_listener(ts_canvas, "wheel", ts_canvas, EVENT.MOUSEWHEEL)
+	// 	install_event_listener(ts_canvas, "mousedown", ts_canvas, EVENT.MOUSEDOWN)
+	// 	install_event_listener(ts_canvas, "mouseup", ts_canvas, EVENT.MOUSEUP)
+	// 	install_event_listener(ts_canvas, "dblclick", ts_canvas, EVENT.DBCLICK)
+	// 	install_event_listener(ts_canvas, "click", ts_canvas, EVENT.CLICK)
+	//
+	// }
 
 	//----------
 	// general div and body
@@ -3345,7 +3391,7 @@ function process_event_queue()
 					// console.log("brush mode active")
 				} else if (e.raw.keyCode == KEY_R) {
 					global.resize_mode_active = true
-					console.log("resize mode toggled", global.resize_mode_active);
+					// console.log("resize mode toggled", global.resize_mode_active);
 				}
 			}
 		} else if (e.event_type == EVENT.MOUSEWHEEL) {
@@ -3375,12 +3421,6 @@ function process_event_queue()
 		} else if (e.event_type == EVENT.DBCLICK) {
 			reset_zoom()
 		} else if (e.event_type == EVENT.MOUSEDOWN) {
-			//--------------
-			//drag
-			//--------------
-			global.drag.active = true
-			global.drag.startpos = [e.raw.x, e.raw.y]
-			global.drag.startvbox = [global.viewbox.x, global.viewbox.y]
 
 			//--------------
 			//drawing segment filters
@@ -3388,22 +3428,15 @@ function process_event_queue()
 			if (e.raw.getModifierState("Shift")) {
 				global.filter_state = FILTER_STATE.START
 				global.filter_type  = FILTER_TYPE.BLUE
-			}
-			if (e.raw.getModifierState("Control")) {
+			} else if (e.raw.getModifierState("Control")) {
 				global.filter_state = FILTER_STATE.START
 				global.filter_type  = FILTER_TYPE.RED
-			}
-
-			if (global.brush_mode_active) {
+			}else if (global.brush_mode_active) {
 				global.drag.active = false;
 				global.brush_state = BRUSH_STATE.START;
-			}
-
-			if (global.select_mode_active) {
+			}else if (global.select_mode_active) {
 				global.select_mode_selected = true;
-			}
-
-			if (global.resize_mode_active) {
+			}else if (global.resize_mode_active) {
 				// try to find cell where mouse clicked
 				let x = e.raw.clientX;
 				let y = e.raw.clientY;
@@ -3433,6 +3466,13 @@ function process_event_queue()
 
 				global.resize_target = resize_target
 
+			} else {
+				//--------------
+				//drag
+				//--------------
+				global.drag.active = true
+				global.drag.startpos = [e.raw.x, e.raw.y]
+				global.drag.startvbox = [global.viewbox.x, global.viewbox.y]
 			}
 
 			global.split_cdf.panel_state = PANEL_STATE.START_RESIZE;
@@ -3542,13 +3582,6 @@ function process_event_queue()
 //--------------
 function update_ts()
 {
-	let canvas = global.ui.ts_canvas
-	let ctx = canvas.getContext('2d')
-	let vis_panel = get_component('vis_panel')
-	canvas.width  = vis_panel.clientWidth;
-	canvas.height = vis_panel.clientHeight;
-
-	let local_mouse_pos = get_local_position(global.mouse.position, canvas)
 
 	const SIDE = {
 		BOTTOM: 0,
@@ -3574,82 +3607,69 @@ function update_ts()
 		}
 	}
 
-	let rect = [0, 0, canvas.width, canvas.height]
-	let aux_rect_inf = null
-	{
-		rect = [0, 0, canvas.width, canvas.height/2]
-		aux_rect_inf = [0, canvas.height/2, canvas.width/2, canvas.height/2]
-	}
+	// -------
+	// set line chart canvas, context and rect
+	// -------
+	let lc_canvas = global.ui.lc_canvas
+	let lc_ctx = lc_canvas.getContext('2d')
+	let line_chart = get_component('line_chart')
+	lc_canvas.width  = line_chart.clientWidth;
+	lc_canvas.height = line_chart.clientHeight;
 
-	let margin = [ 30, 55, 5, 5 ]
+	let lc_local_mouse_pos = get_local_position(global.mouse.position, lc_canvas)
 
-	let ts_rect = [ rect[0] + margin[SIDE.LEFT],
-		        	rect[1] + margin[SIDE.TOP],
-		        	rect[2] - margin[SIDE.LEFT] - margin[SIDE.RIGHT],
-		        	rect[3] - margin[SIDE.BOTTOM] - margin[SIDE.TOP] ]
 
-	let aux_rect = null
-	let aux_rect_margins = [ 40, 55, 15, 5 ]
-	{
-		aux_rect = [ aux_rect_inf[0] + aux_rect_margins[SIDE.LEFT],
-					  aux_rect_inf[1] + aux_rect_margins[SIDE.TOP],
-					  aux_rect_inf[2] - aux_rect_margins[SIDE.LEFT] - aux_rect_margins[SIDE.RIGHT],
-					  aux_rect_inf[3] - aux_rect_margins[SIDE.BOTTOM] - aux_rect_margins[SIDE.TOP] ]
-	}
+	let lc_rect_inf = [0, 0, lc_canvas.width, lc_canvas.height]
+	let lc_rect_margins = [ 30, 55, 5, 5 ]
+	let lc_rect = [ lc_rect_inf[0] + lc_rect_margins[SIDE.LEFT],
+		        	lc_rect_inf[1] + lc_rect_margins[SIDE.TOP],
+		        	lc_rect_inf[2] - lc_rect_margins[SIDE.LEFT] - lc_rect_margins[SIDE.RIGHT],
+		        	lc_rect_inf[3] - lc_rect_margins[SIDE.BOTTOM] - lc_rect_margins[SIDE.TOP] ]
 
-	let proj_rect_margins = [ 40, 20, 15, 10 ]
-	let proj_rect_inf = [canvas.width/2, canvas.height/2, canvas.width/2, canvas.height/2]
-	let proj_rect = [ proj_rect_inf[0] + proj_rect_margins[SIDE.LEFT],
-				  	  proj_rect_inf[1] + proj_rect_margins[SIDE.TOP],
-				  	  proj_rect_inf[2] - proj_rect_margins[SIDE.LEFT] - proj_rect_margins[SIDE.RIGHT],
-				  	  proj_rect_inf[3] - proj_rect_margins[SIDE.BOTTOM] - proj_rect_margins[SIDE.TOP] ]
-
-	ctx.clearRect(0,0,canvas.width, canvas.height)
-
-	let ts_closest_symbol  = null
+	let lc_closest_symbol  = null
 
 	{
 
-		ctx.fillStyle="#2f3233"
+		lc_ctx.fillStyle="#2f3233"
 
-		ctx.moveTo(0,0)
-		ctx.rect(ts_rect[RECT.LEFT],ts_rect[RECT.TOP],ts_rect[RECT.WIDTH],ts_rect[RECT.HEIGHT])
-		ctx.fill()
+		lc_ctx.moveTo(0,0)
+		lc_ctx.rect(lc_rect[RECT.LEFT],lc_rect[RECT.TOP],lc_rect[RECT.WIDTH],lc_rect[RECT.HEIGHT])
+		lc_ctx.fill()
 
-		{
-			ctx.moveTo(aux_rect_inf[0], aux_rect_inf[1])
-			ctx.rect(aux_rect[RECT.LEFT], aux_rect[RECT.TOP], aux_rect[RECT.WIDTH], aux_rect[RECT.HEIGHT])
-			ctx.fill()
-		}
-
-		{
-			ctx.moveTo(proj_rect_inf[0], proj_rect_inf[1])
-			ctx.rect(proj_rect[RECT.LEFT], proj_rect[RECT.TOP], proj_rect[RECT.WIDTH], proj_rect[RECT.HEIGHT])
-			ctx.fill()
-		}
+		// {
+		// 	ctx.moveTo(aux_rect_inf[0], aux_rect_inf[1])
+		// 	ctx.rect(aux_rect[RECT.LEFT], aux_rect[RECT.TOP], aux_rect[RECT.WIDTH], aux_rect[RECT.HEIGHT])
+		// 	ctx.fill()
+		// }
+		//
+		// {
+		// 	ctx.moveTo(proj_rect_inf[0], proj_rect_inf[1])
+		// 	ctx.rect(proj_rect[RECT.LEFT], proj_rect[RECT.TOP], proj_rect[RECT.WIDTH], proj_rect[RECT.HEIGHT])
+		// 	ctx.fill()
+		// }
 
 		let date_start = date_offset(global.date_start)
 		let date_end   = date_offset(global.date_end)
 		let date_norm  = date_offset(global.date_norm)
 
-		ctx.font = "bold 14pt Courier"
-		ctx.fillStyle = "#FFFFFF";
-		ctx.textAlign = "center";
+		lc_ctx.font = "bold 14pt Courier"
+		lc_ctx.fillStyle = "#FFFFFF";
+		lc_ctx.textAlign = "center";
 
 		//--------------
 		//drawing axis strokes
 		//--------------
-		ctx.strokeStyle = "#FFFFFF";
-		ctx.lineWidth   = 2;
+		lc_ctx.strokeStyle = "#FFFFFF";
+		lc_ctx.lineWidth   = 2;
 
-		ctx.beginPath()
+		lc_ctx.beginPath()
 		//y axis
-		ctx.moveTo(ts_rect[RECT.LEFT], ts_rect[RECT.TOP])
-		ctx.lineTo(ts_rect[RECT.LEFT], ts_rect[RECT.HEIGHT]+6)
+		lc_ctx.moveTo(lc_rect[RECT.LEFT], lc_rect[RECT.TOP])
+		lc_ctx.lineTo(lc_rect[RECT.LEFT], lc_rect[RECT.HEIGHT]+6)
 		//x axis
-		ctx.moveTo(ts_rect[RECT.LEFT], ts_rect[RECT.HEIGHT]+6)
-		ctx.lineTo(ts_rect[RECT.LEFT] + ts_rect[RECT.WIDTH], ts_rect[RECT.HEIGHT]+6)
-		ctx.stroke()
+		lc_ctx.moveTo(lc_rect[RECT.LEFT], lc_rect[RECT.HEIGHT]+6)
+		lc_ctx.lineTo(lc_rect[RECT.LEFT] + lc_rect[RECT.WIDTH], lc_rect[RECT.HEIGHT]+6)
+		lc_ctx.stroke()
 
 		//--------------
 		// x range
@@ -3684,8 +3704,6 @@ function update_ts()
 		let x_max = 82
 		let last_valid_value = 1
 
-		// console.log(global.chosen_pos)
-
 		let main_stat;
 		let selected_stat = global.ui.chosen_stats_select.value
 		if (selected_stat !== '') {
@@ -3717,8 +3735,6 @@ function update_ts()
 			}
 			let ts_current_values = []
 			let ts_current_values_diffs = []
-			// console.log("before finding values")
-			// console.log(global.chosen_stats)
 			for (let j=x_min;j<=x_max;j++) {
 				let value;
 				if (j in symbol.data) {
@@ -3802,30 +3818,30 @@ function update_ts()
 		}
 
 		let resolution = parseInt(global.ui.create_curve_density_matrix_resolution.value)
-		let rows = Math.floor(ts_rect[RECT.HEIGHT] / resolution)
-		let cols = Math.floor(ts_rect[RECT.WIDTH] / resolution)
+		let rows = Math.floor(lc_rect[RECT.HEIGHT] / resolution)
+		let cols = Math.floor(lc_rect[RECT.WIDTH] / resolution)
 		global.viewbox.resolution = resolution
 		global.viewbox.rows = rows
 		global.viewbox.cols = cols
 
 		function map(x, y) {
-			let px = (ts_rect[RECT.LEFT]+TSVIEW_MARGINS.X) + (1.0 * (x - x_min) / (x_max - x_min)) * (ts_rect[RECT.WIDTH]-2*TSVIEW_MARGINS.X)
-			let py = (ts_rect[RECT.TOP]+TSVIEW_MARGINS.Y) + ((ts_rect[RECT.HEIGHT]-TSVIEW_MARGINS.Y) - 1 - (1.0 * (y - y_min) / (y_max - y_min)) * (ts_rect[RECT.HEIGHT]-TSVIEW_MARGINS.Y))
+			let px = (lc_rect[RECT.LEFT]+TSVIEW_MARGINS.X) + (1.0 * (x - x_min) / (x_max - x_min)) * (lc_rect[RECT.WIDTH]-2*TSVIEW_MARGINS.X)
+			let py = (lc_rect[RECT.TOP]+TSVIEW_MARGINS.Y) + ((lc_rect[RECT.HEIGHT]-TSVIEW_MARGINS.Y) - 1 - (1.0 * (y - y_min) / (y_max - y_min)) * (lc_rect[RECT.HEIGHT]-TSVIEW_MARGINS.Y))
 			return [px,py]
 		}
 
 		function inverse_map(px, py) {
-			let x = (px - (ts_rect[RECT.LEFT]+TSVIEW_MARGINS.X)) / (ts_rect[RECT.WIDTH]-2*TSVIEW_MARGINS.X) * (1.0*(x_max - x_min)) + x_min
-			let y = -((((py - (ts_rect[RECT.TOP]+TSVIEW_MARGINS.Y) - (ts_rect[RECT.HEIGHT]-TSVIEW_MARGINS.Y) + 1) * (1.0 * (y_max - y_min))) / (ts_rect[RECT.HEIGHT]-TSVIEW_MARGINS.Y)) - y_min)
+			let x = (px - (lc_rect[RECT.LEFT]+TSVIEW_MARGINS.X)) / (lc_rect[RECT.WIDTH]-2*TSVIEW_MARGINS.X) * (1.0*(x_max - x_min)) + x_min
+			let y = -((((py - (lc_rect[RECT.TOP]+TSVIEW_MARGINS.Y) - (lc_rect[RECT.HEIGHT]-TSVIEW_MARGINS.Y) + 1) * (1.0 * (y_max - y_min))) / (lc_rect[RECT.HEIGHT]-TSVIEW_MARGINS.Y)) - y_min)
 			return [x,y]
 		}
 
 		let factor = 1.1
-		let ref    = inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+		let ref    = inverse_map(lc_local_mouse_pos[0], lc_local_mouse_pos[1])
 		let y_ref  = ref[1]
 		let x_ref  = ref[0]
 
-		if (point_inside_rect(local_mouse_pos, ts_rect)) {
+		if (point_inside_rect(lc_local_mouse_pos, lc_rect)) {
 			if (global.zoom_y != 0) {
 				let h = global.viewbox.height
 				let h_
@@ -3869,12 +3885,12 @@ function update_ts()
 		}
 
 		if (global.drag.active) {
-			let local_dragstart_pos = get_local_position(global.drag.startpos, canvas)
-			if (point_inside_rect(local_dragstart_pos, ts_rect)) {
+			let local_dragstart_pos = get_local_position(global.drag.startpos, lc_canvas)
+			if (point_inside_rect(local_dragstart_pos, lc_rect)) {
 
 				local_dragstart_pos = inverse_map(local_dragstart_pos[0], local_dragstart_pos[1])
 
-				let local_currmouse_pos = inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+				let local_currmouse_pos = inverse_map(lc_local_mouse_pos[0], lc_local_mouse_pos[1])
 
 				global.viewbox.x = global.drag.startvbox[0] - Math.floor(local_currmouse_pos[0] - local_dragstart_pos[0])
 				global.viewbox.y = global.drag.startvbox[1] - (local_currmouse_pos[1] - local_dragstart_pos[1])
@@ -3906,28 +3922,25 @@ function update_ts()
 			x_ticks.push(x_tick)
 		}
 
-		// console.log(x_ticks)
-
 		for(let i=0; i<x_ticks.length; i++) {
-			ctx.strokeStyle = "#555555";
-			ctx.lineWidth   = 1;
+			lc_ctx.strokeStyle = "#555555";
+			lc_ctx.lineWidth   = 1;
 
 			let p0 = map(x_ticks[i], y_min)
 			let p1 = map(x_ticks[i], y_max)
 
-			ctx.beginPath()
-			ctx.moveTo(p0[0], p0[1])
-			ctx.lineTo(p1[0], p1[1])
-			ctx.stroke()
+			lc_ctx.beginPath()
+			lc_ctx.moveTo(p0[0], p0[1])
+			lc_ctx.lineTo(p1[0], p1[1])
+			lc_ctx.stroke()
 
 
-			ctx.save();
-			ctx.font = "bold 10pt Courier"
-			ctx.fillStyle = "#FFFFFF"
-			ctx.translate(p0[0], p0[1]+15);
-			// ctx.rotate(-Math.PI/4);
-			ctx.fillText(x_ticks[i], 0, 0);
-			ctx.restore();
+			lc_ctx.save();
+			lc_ctx.font = "bold 10pt Courier"
+			lc_ctx.fillStyle = "#FFFFFF"
+			lc_ctx.translate(p0[0], p0[1]+15);
+			lc_ctx.fillText(x_ticks[i], 0, 0);
+			lc_ctx.restore();
 		}
 
 
@@ -3942,33 +3955,33 @@ function update_ts()
 		}
 
 		for(let i=0; i<y_ticks.length; i++) {
-			ctx.strokeStyle = "#555555";
-			ctx.lineWidth   = 1;
+			lc_ctx.strokeStyle = "#555555";
+			lc_ctx.lineWidth   = 1;
 
 			let p0 = map(x_min, y_ticks[i])
 			let p1 = map(x_max, y_ticks[i])
 
-			ctx.beginPath()
-			ctx.moveTo(p0[0], p0[1])
-			ctx.lineTo(p1[0], p1[1])
-			ctx.stroke()
+			lc_ctx.beginPath()
+			lc_ctx.moveTo(p0[0], p0[1])
+			lc_ctx.lineTo(p1[0], p1[1])
+			lc_ctx.stroke()
 
-			ctx.font = "bold 10pt Courier"
-			ctx.fillStyle = "#FFFFFF"
+			lc_ctx.font = "bold 10pt Courier"
+			lc_ctx.fillStyle = "#FFFFFF"
 			if(i==(y_ticks.length-1)) {
-				ctx.fillText(parseInt(y_ticks[i]), p0[0]-25, p0[1]+8);
+				lc_ctx.fillText(parseInt(y_ticks[i]), p0[0]-25, p0[1]+8);
 			} else {
-				ctx.fillText(parseInt(y_ticks[i]), p0[0]-25, p0[1]+5);
+				lc_ctx.fillText(parseInt(y_ticks[i]), p0[0]-25, p0[1]+5);
 			}
 
 		}
 
-		ctx.save()
+		lc_ctx.save()
 
-		ctx.moveTo(0,0)
-		ctx.beginPath()
-		ctx.rect(ts_rect[RECT.LEFT],ts_rect[RECT.TOP],ts_rect[RECT.WIDTH],ts_rect[RECT.HEIGHT])
-		ctx.clip()
+		lc_ctx.moveTo(0,0)
+		lc_ctx.beginPath()
+		lc_ctx.rect(lc_rect[RECT.LEFT],lc_rect[RECT.TOP],lc_rect[RECT.WIDTH],lc_rect[RECT.HEIGHT])
+		lc_ctx.clip()
 
 		if (global.ui.normalize_btn.checked) {
 			//--------------
@@ -3976,24 +3989,24 @@ function update_ts()
 			//--------------
 			let x_norm = date_norm - date_start
 
-			ctx.strokeStyle = "#FFFFFFFF";
-			ctx.lineWidth   = 1;
+			lc_ctx.strokeStyle = "#FFFFFFFF";
+			lc_ctx.lineWidth   = 1;
 
 			let p0 = map(x_norm, y_min)
 			let p1 = map(x_norm, y_max)
 
-			ctx.beginPath()
-			ctx.moveTo(p0[0], p0[1])
-			ctx.lineTo(p1[0], p1[1])
-			ctx.stroke()
+			lc_ctx.beginPath()
+			lc_ctx.moveTo(p0[0], p0[1])
+			lc_ctx.lineTo(p1[0], p1[1])
+			lc_ctx.stroke()
 
-			ctx.save();
-			ctx.font = "bold 12pt Courier"
-			ctx.fillStyle = "#FFFFFFFF"
-			ctx.translate(p1[0]+10, p1[1]+50);
-			ctx.rotate(Math.PI/2);
-			ctx.fillText(date_offset_to_string(date_start+x_norm), 0, 0);
-			ctx.restore();
+			lc_ctx.save();
+			lc_ctx.font = "bold 12pt Courier"
+			lc_ctx.fillStyle = "#FFFFFFFF"
+			lc_ctx.translate(p1[0]+10, p1[1]+50);
+			lc_ctx.rotate(Math.PI/2);
+			lc_ctx.fillText(date_offset_to_string(date_start+x_norm), 0, 0);
+			lc_ctx.restore();
 
 		}
 
@@ -4011,8 +4024,8 @@ function update_ts()
 			// a.b/|b| = |a|*cos(theta)
 			// |a|^2 - (|a|*cos(theta))^2 = h^2
 			// |a|^2 - (a.b/|b|)^2 = h^2
-			let ax = local_mouse_pos[0] - p0x
-			let ay = local_mouse_pos[1] - p0y
+			let ax = lc_local_mouse_pos[0] - p0x
+			let ay = lc_local_mouse_pos[1] - p0y
 
 			let bx = p1x - p0x
 			let by = p1y - p0y
@@ -4032,7 +4045,7 @@ function update_ts()
 
 			let dist = h_sq
 			if (dist <= min_distance_threshold && dist < closest_distance) {
-				ts_closest_symbol = symbol
+				lc_closest_symbol = symbol
 				// symbol.focused = true;
 			}
 		}
@@ -4121,17 +4134,17 @@ function update_ts()
 				symbol_color 		= symbol.group.color;
 			}
 
-			ctx.strokeStyle = curve_color
+			lc_ctx.strokeStyle = curve_color
 			symbol.ui_col.style.color = symbol_color
 
 			if ((symbol == global.focused_symbol) || symbol.selected) {
-				ctx.lineWidth = 4
-				ctx.strokeStyle = curve_focused_color
+				lc_ctx.lineWidth = 4
+				lc_ctx.strokeStyle = curve_focused_color
 			} else {
-				ctx.lineWidth = 2
+				lc_ctx.lineWidth = 2
 			}
 
-			ctx.beginPath()
+			lc_ctx.beginPath()
 			let p_prev = null
 			for (let j=x_min;j<=x_max;j++) {
 				// let date_offset = date_start+j
@@ -4142,13 +4155,13 @@ function update_ts()
 				}
 				p_prev = p
 				if (!first_point_drawn) {
-					ctx.moveTo(p[0],p[1])
+					lc_ctx.moveTo(p[0],p[1])
 					first_point_drawn = true
 				} else {
-					ctx.lineTo(p[0],p[1])
+					lc_ctx.lineTo(p[0],p[1])
 				}
 			}
-			ctx.stroke()
+			lc_ctx.stroke()
 		}
 
 
@@ -4160,15 +4173,15 @@ function update_ts()
 			cols = global.viewbox.cols
 			let max_value = Math.max.apply(null, global.denselines.entries)
 
-			let cell_width  = ts_rect[RECT.WIDTH] / global.viewbox.cols
-			let cell_height = ts_rect[RECT.HEIGHT] / global.viewbox.rows
+			let cell_width  = lc_rect[RECT.WIDTH] / global.viewbox.cols
+			let cell_height = lc_rect[RECT.HEIGHT] / global.viewbox.rows
 
-			let starting_x = ts_rect[RECT.LEFT]
-			let starting_y = ts_rect[RECT.TOP]
+			let starting_x = lc_rect[RECT.LEFT]
+			let starting_y = lc_rect[RECT.TOP]
 
 			let matrix = global.denselines.entries
 
-			ctx.save()
+			lc_ctx.save()
 			for (let i=0; i<rows; i++) {
 				for (let j=0; j<cols; j++) {
 					let value = matrix[(cols*i)+j]
@@ -4186,17 +4199,17 @@ function update_ts()
 						color = hex_lerp(color_scale[x_idx], color_scale[x_idx_next], lambda)
 					}
 
-					ctx.fillStyle = color
-					ctx.strokeStyle = ctx.fillStyle
-					ctx.beginPath()
-					ctx.rect( starting_x + (cell_width*j),
-						  ts_rect[RECT.HEIGHT] - (i + 1) * cell_height, cell_width, cell_height)
-					ctx.closePath()
-					ctx.fill()
-					ctx.stroke()
+					lc_ctx.fillStyle = color
+					lc_ctx.strokeStyle = ctx.fillStyle
+					lc_ctx.beginPath()
+					lc_ctx.rect( starting_x + (cell_width*j),
+						  		 lc_rect[RECT.HEIGHT] - (i + 1) * cell_height, cell_width, cell_height)
+					lc_ctx.closePath()
+					lc_ctx.fill()
+					lc_ctx.stroke()
 				}
 			}
-			ctx.restore()
+			lc_ctx.restore()
 		}
 
 		//--------------
@@ -4214,24 +4227,24 @@ function update_ts()
 				let ymax = global.extremal_depth.fbplot.inner_band.upper
 				let num_timesteps = global.extremal_depth.ranked_symbols[0].ts_current_values.length
 
-				ctx.save()
+				lc_ctx.save()
 
-				ctx.beginPath()
+				lc_ctx.beginPath()
 				let p = map(0,ymin[0])
-				ctx.moveTo(p[0],p[1])
+				lc_ctx.moveTo(p[0],p[1])
 				for (let j=1;j<num_timesteps;j++) {
 					p = map(j,ymin[j])
-					ctx.lineTo(p[0],p[1])
+					lc_ctx.lineTo(p[0],p[1])
 				}
 				for (let j=num_timesteps-1;j>=0;j--) {
 					p = map(jupdate_focused_symbol,ymax[j])
-					ctx.lineTo(p[0],p[1])
+					lc_ctx.lineTo(p[0],p[1])
 				}
-				ctx.closePath()
-				ctx.fillStyle="#00FFFF55"
-				ctx.fill()
+				lc_ctx.closePath()
+				lc_ctx.fillStyle="#00FFFF55"
+				lc_ctx.fill()
 
-				ctx.restore()
+				lc_ctx.restore()
 
 				//--------------
 				// drawing outer band
@@ -4239,22 +4252,22 @@ function update_ts()
 				let ymin_outer = global.extremal_depth.fbplot.outer_band.lower
 				let ymax_outer = global.extremal_depth.fbplot.outer_band.upper
 
-				ctx.save()
-				ctx.strokeStyle = "#FFFFFF"
-				ctx.setLineDash([5, 3])
-				ctx.beginPath()
+				lc_ctx.save()
+				lc_ctx.strokeStyle = "#FFFFFF"
+				lc_ctx.setLineDash([5, 3])
+				lc_ctx.beginPath()
 				p = map(0,ymin_outer[0])
-				ctx.moveTo(p[0],p[1])
+				lc_ctx.moveTo(p[0],p[1])
 				for (let j=1;j<num_timesteps;j++) {
-					p = map(jupdate_focused_symbol,ymin_outer[j])
-					ctx.lineTo(p[0],p[1])
+					p = map(j,ymin_outer[j])
+					lc_ctx.lineTo(p[0],p[1])
 				}
 				for (let j=num_timesteps-1;j>=0;j--) {
 					p = map(j,ymax_outer[j])
-					ctx.lineTo(p[0],p[1])
+					lc_ctx.lineTo(p[0],p[1])
 				}
-				ctx.stroke()
-				ctx.restore()
+				lc_ctx.stroke()
+				lc_ctx.restore()
 
 				//--------------
 				// drawing median curve
@@ -4289,22 +4302,22 @@ function update_ts()
 				let ymax = global.modified_band_depth.fbplot.inner_band.upper
 				let num_timesteps = global.modified_band_depth.ranked_symbols[0].ts_current_values.length
 
-				ctx.save()
-				ctx.beginPath()
+				lc_ctx.save()
+				lc_ctx.beginPath()
 				let p = map(0,ymin[0])
-				ctx.moveTo(p[0],p[1])
+				lc_ctx.moveTo(p[0],p[1])
 				for (let j=1;j<num_timesteps;j++) {
 					p = map(j,ymin[j])
-					ctx.lineTo(p[0],p[1])
+					lc_ctx.lineTo(p[0],p[1])
 				}
 				for (let j=num_timesteps-1;j>=0;j--) {
 					p = map(j,ymax[j])
-					ctx.lineTo(p[0],p[1])
+					lc_ctx.lineTo(p[0],p[1])
 				}
-				ctx.closePath()
-				ctx.fillStyle="#FF000055"
-				ctx.fill()
-				ctx.restore()
+				lc_ctx.closePath()
+				lc_ctx.fillStyle="#FF000055"
+				lc_ctx.fill()
+				lc_ctx.restore()
 
 				//--------------
 				// drawing outer band
@@ -4312,22 +4325,22 @@ function update_ts()
 				let ymin_outer = global.modified_band_depth.fbplot.outer_band.lower
 				let ymax_outer = global.modified_band_depth.fbplot.outer_band.upper
 
-				ctx.save()
-				ctx.strokeStyle = "#FFFFFF"
-				ctx.setLineDash([5, 3])
-				ctx.beginPath()
+				lc_ctx.save()
+				lc_ctx.strokeStyle = "#FFFFFF"
+				lc_ctx.setLineDash([5, 3])
+				lc_ctx.beginPath()
 				p = map(0,ymin_outer[0])
-				ctx.moveTo(p[0],p[1])
+				lc_ctx.moveTo(p[0],p[1])
 				for (let j=1;j<num_timesteps;j++) {
 					p = map(j,ymin_outer[j])
-					ctx.lineTo(p[0],p[1])
+					lc_ctx.lineTo(p[0],p[1])
 				}
 				for (let j=num_timesteps-1;j>=0;j--) {
 					p = map(j,ymax_outer[j])
-					ctx.lineTo(p[0],p[1])
+					lc_ctx.lineTo(p[0],p[1])
 				}
-				ctx.stroke()
-				ctx.restore()
+				lc_ctx.stroke()
+				lc_ctx.restore()
 
 				//--------------
 				// drawing median curve
@@ -4407,22 +4420,22 @@ function update_ts()
 			let ymax = group_depth.inner_band.upper
 			let num_timesteps = group_depth.ranked_symbols[0].ts_current_values.length
 
-			ctx.save()
-			ctx.beginPath()
+			lc_ctx.save()
+			lc_ctx.beginPath()
 			let p = map(0,ymin[0])
-			ctx.moveTo(p[0],p[1])
+			lc_ctx.moveTo(p[0],p[1])
 			for (let j=1;j<num_timesteps;j++) {
 				p = map(j,ymin[j])
-				ctx.lineTo(p[0],p[1])
+				lc_ctx.lineTo(p[0],p[1])
 			}
 			for (let j=num_timesteps-1;j>=0;j--) {
 				p = map(j,ymax[j])
-				ctx.lineTo(p[0],p[1])
+				lc_ctx.lineTo(p[0],p[1])
 			}
-			ctx.closePath()
-			ctx.fillStyle = group.color + "55"
-			ctx.fill()
-			ctx.restore()
+			lc_ctx.closePath()
+			lc_ctx.fillStyle = group.color + "55"
+			lc_ctx.fill()
+			lc_ctx.restore()
 
 			//--------------
 			// drawing outer band
@@ -4430,22 +4443,22 @@ function update_ts()
 			let ymin_outer = group_depth.outer_band.lower
 			let ymax_outer = group_depth.outer_band.upper
 
-			ctx.save()
-			ctx.strokeStyle = group.color + "DD"
-			ctx.setLineDash([5, 3])
-			ctx.beginPath()
+			lc_ctx.save()
+			lc_ctx.strokeStyle = group.color + "DD"
+			lc_ctx.setLineDash([5, 3])
+			lc_ctx.beginPath()
 			p = map(0,ymin_outer[0])
-			ctx.moveTo(p[0],p[1])
+			lc_ctx.moveTo(p[0],p[1])
 			for (let j=1;j<num_timesteps;j++) {
 				p = map(j,ymin_outer[j])
-				ctx.lineTo(p[0],p[1])
+				lc_ctx.lineTo(p[0],p[1])
 			}
 			for (let j=num_timesteps-1;j>=0;j--) {
 				p = map(j,ymax_outer[j])
-				ctx.lineTo(p[0],p[1])
+				lc_ctx.lineTo(p[0],p[1])
 			}
-			ctx.stroke()
-			ctx.restore()
+			lc_ctx.stroke()
+			lc_ctx.restore()
 
 			//--------------
 			// drawing median curve
@@ -4474,12 +4487,12 @@ function update_ts()
 			let text = `player: ${global.focused_symbol.name} // position: ${global.focused_symbol.position}`
 
 			if (global.aux_view != 'none') {
-				ctx.font = '14px Monospace';
+				lc_ctx.font = '14px Monospace';
 			} else {
-				ctx.font = '20px Monospace';
+				lc_ctx.font = '20px Monospace';
 			}
-			ctx.textAlign = 'center';
-			ctx.fillText(text, ts_rect[2]/2, 40);
+			lc_ctx.textAlign = 'center';
+			lc_ctx.fillText(text, lc_rect[2]/2, 40);
 		}
 
 		let clamp = function(a,b,c) {
@@ -4489,14 +4502,14 @@ function update_ts()
 		//--------------
 		//auxiliar lines on mouse position to track date and value
 		//--------------
-		let pt = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
+		let pt = inverse_map(lc_local_mouse_pos[0],lc_local_mouse_pos[1])
 		pt[0] = clamp(pt[0],x_min,x_max)
 		pt[1] = clamp(pt[1],y_min,y_max)
 
 		// let y_p0 = map(Math.floor(0.5+pt[0]),y_min)
 		// let y_p1 = map(Math.floor(0.5+pt[0]),y_max)
 
-		ctx.strokeStyle = "#555555"
+		lc_ctx.strokeStyle = "#555555"
 		// ctx.beginPath()
 		// ctx.moveTo(y_p0[0], y_p0[1])
 		// ctx.lineTo(y_p1[0], y_p1[1])
@@ -4505,15 +4518,15 @@ function update_ts()
 		let x_p0 = map(x_min, pt[1])
 		let x_p1 = map(x_max, pt[1])
 
-		ctx.beginPath()
-		ctx.moveTo(x_p0[0], x_p0[1])
-		ctx.lineTo(x_p1[0], x_p1[1])
-		ctx.stroke()
+		lc_ctx.beginPath()
+		lc_ctx.moveTo(x_p0[0], x_p0[1])
+		lc_ctx.lineTo(x_p1[0], x_p1[1])
+		lc_ctx.stroke()
 
-		ctx.restore() // TS_RECT CLIP END
+		lc_ctx.restore() // LC_RECT CLIP END
 
 		// drawTextBG(ctx, date_offset_to_string(date_start+pt[0]), y_p0[0], y_p0[1])
-		drawTextBG(ctx, pt[1].toFixed(2), x_p0[0], x_p0[1])
+		drawTextBG(lc_ctx, pt[1].toFixed(2), x_p0[0], x_p0[1])
 
 		//--------------
 		// update start, end and norm dates on keyboard controls
@@ -4546,20 +4559,58 @@ function update_ts()
 		}
 	} // time series drawings
 
+	let av_canvas = global.ui.av_canvas;
+	let av_ctx = av_canvas.getContext('2d');
+	let aux_view = get_component('aux_view');
+	av_canvas.width  = aux_view.clientWidth;
+	av_canvas.height = aux_view.clientHeight;
+
+	let av_local_mouse_pos = get_local_position(global.mouse.position, av_canvas)
+
+	// av_ctx.clearRect(0,0,av_canvas.width, av_canvas.height)
+
+	let aux_rect_inf = [0,0, av_canvas.width, av_canvas.height]
+	let aux_rect_margins = [ 30, 15, 20, 15 ]
+	let aux_rect = [ aux_rect_inf[0] + aux_rect_margins[SIDE.LEFT],
+					 aux_rect_inf[1] + aux_rect_margins[SIDE.TOP],
+					 aux_rect_inf[2] - aux_rect_margins[SIDE.LEFT] - aux_rect_margins[SIDE.RIGHT],
+					 aux_rect_inf[3] - aux_rect_margins[SIDE.BOTTOM] - aux_rect_margins[SIDE.TOP] ]
+
+	// let proj_rect_margins = [ 40, 20, 15, 10 ]
+	// let proj_rect_inf = [canvas.width/2, canvas.height/2, canvas.width/2, canvas.height/2]
+	// let proj_rect = [ proj_rect_inf[0] + proj_rect_margins[SIDE.LEFT],
+	// 			  	  proj_rect_inf[1] + proj_rect_margins[SIDE.TOP],
+	// 			  	  proj_rect_inf[2] - proj_rect_margins[SIDE.LEFT] - proj_rect_margins[SIDE.RIGHT],
+	// 			  	  proj_rect_inf[3] - proj_rect_margins[SIDE.BOTTOM] - proj_rect_margins[SIDE.TOP] ]
+
+
 	let aux_view_closest_symbol = null
 
 	{
 
-		ctx.font = "bold 14pt Courier"
-		ctx.fillStyle = "#FFFFFF";
-		ctx.textAlign = "center";
+		av_ctx.fillStyle="#2f3233"
+
+		av_ctx.moveTo(aux_rect_inf[0], aux_rect_inf[1])
+		av_ctx.rect(aux_rect[RECT.LEFT], aux_rect[RECT.TOP], aux_rect[RECT.WIDTH], aux_rect[RECT.HEIGHT])
+		av_ctx.fill()
+
+		// {
+		// 	ctx.moveTo(proj_rect_inf[0], proj_rect_inf[1])
+		// 	ctx.rect(proj_rect[RECT.LEFT], proj_rect[RECT.TOP], proj_rect[RECT.WIDTH], proj_rect[RECT.HEIGHT])
+		// 	ctx.fill()
+		// }
+
+
+		av_ctx.font = "bold 14pt Courier"
+		av_ctx.fillStyle = "#FFFFFF";
+		av_ctx.textAlign = "center";
 
 		//--------------
 		//drawing axis strokes
 		//--------------
-		ctx.save()
-		ctx.strokeStyle = "#FFFFFF";
-		ctx.lineWidth   = 2;
+		av_ctx.save()
+		av_ctx.strokeStyle = "#FFFFFF";
+		av_ctx.lineWidth   = 2;
 
 		//--------------
 		// find y range
@@ -4654,8 +4705,8 @@ function update_ts()
 			// |a|^2 - (|a|*cos(theta))^2 = h^2
 			// |a|^2 - (a.b/|b|)^2 = h^2
 
-			let ax = local_mouse_pos[0] - p0x
-			let ay = local_mouse_pos[1] - p0y
+			let ax = av_local_mouse_pos[0] - p0x
+			let ay = av_local_mouse_pos[1] - p0y
 
 			let bx = p1x - p0x
 			let by = p1y - p0y
@@ -4747,8 +4798,8 @@ function update_ts()
 		}
 
 		if (global.split_cdf.panel_state == PANEL_STATE.RESIZING) {
-			let dx = local_mouse_pos[0] - global.split_cdf.panel_resize_last_x
-			global.split_cdf.panel_resize_last_x = local_mouse_pos[0]
+			let dx = av_local_mouse_pos[0] - global.split_cdf.panel_resize_last_x
+			global.split_cdf.panel_resize_last_x = av_local_mouse_pos[0]
 
 			let panel_idx 		   = global.split_cdf.panel_resize_index
 			let panel_resize_width = global.split_cdf.ww[panel_idx] * aux_rect[RECT.WIDTH]
@@ -4781,7 +4832,7 @@ function update_ts()
 
 			let offset = aux_rect[RECT.LEFT]
 			for (let i=0; i<sorted_wws.length; i++) {
-				ctx.fillStyle = "#555555"
+				av_ctx.fillStyle = "#555555"
 
 				let panel_rect = null
 				let panel_width = aux_rect[RECT.WIDTH]*sorted_wws[i]
@@ -4791,10 +4842,10 @@ function update_ts()
 							   aux_rect[RECT.HEIGHT]-10 ]
 
 				offset += panel_width
-				ctx.beginPath()
-				ctx.rect(panel_rect[RECT.LEFT], panel_rect[RECT.TOP],
+				av_ctx.beginPath()
+				av_ctx.rect(panel_rect[RECT.LEFT], panel_rect[RECT.TOP],
 						 panel_rect[RECT.WIDTH], panel_rect[RECT.HEIGHT])
-				ctx.fill()
+				av_ctx.fill()
 
 				let step = parseInt(global.ui.step_select.value);
 				let offset_start = sorted_breaks[i] + step - 1;
@@ -4858,23 +4909,23 @@ function update_ts()
 					return clicked_filter
 				}
 
-				if(point_inside_rect(local_mouse_pos, panel_rect)) {
+				if(point_inside_rect(av_local_mouse_pos, panel_rect)) {
 					if (global.key_break) {
-						let break_pt = panel_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+						let break_pt = panel_rect_inverse_map(av_local_mouse_pos[0], av_local_mouse_pos[1])
 						global.split_cdf.split_rank = Math.floor(break_pt[0])
 						global.key_break = false
 					}
 
 					if (global.split_cdf.panel_state == PANEL_STATE.START_RESIZE) {
 						global.split_cdf.panel_resize_index  = i
-						global.split_cdf.panel_resize_last_x = local_mouse_pos[0]
+						global.split_cdf.panel_resize_last_x = av_local_mouse_pos[0]
 
 						if (i==0) {
 							global.split_cdf.panel_resize_side = PANEL_RESIZE_SIDE.RIGHT
 						} else if (i==(sorted_wws.length-1)) {
 							global.split_cdf.panel_resize_side = PANEL_RESIZE_SIDE.LEFT
 						} else {
-							let mouse_on_left_half = local_mouse_pos[0] < (panel_rect[RECT.LEFT]+panel_rect[RECT.WIDTH]/2)
+							let mouse_on_left_half = av_local_mouse_pos[0] < (panel_rect[RECT.LEFT]+panel_rect[RECT.WIDTH]/2)
 							global.split_cdf.panel_resize_side = (mouse_on_left_half) ? PANEL_RESIZE_SIDE.LEFT : PANEL_RESIZE_SIDE.RIGHT
 						}
 
@@ -4882,12 +4933,12 @@ function update_ts()
 					}
 
 					if (global.filter_state == FILTER_STATE.START) {
-						let clicked_filter = detect_click_inside_filter(local_mouse_pos)
+						let clicked_filter = detect_click_inside_filter(av_local_mouse_pos)
 						if (clicked_filter) {
 							global.filter_moving = clicked_filter
 							global.filter_state  = FILTER_STATE.MOVE
 						} else {
-							let dm_filter_pos = panel_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+							let dm_filter_pos = panel_rect_inverse_map(av_local_mouse_pos[0], av_local_mouse_pos[1])
 
 							let filter = { y: dm_filter_pos[1], type: global.filter_type, panel: i }
 
@@ -4896,9 +4947,9 @@ function update_ts()
 
 						}
 					} else if (global.filter_state == FILTER_STATE.MOVE) {
-						if (point_inside_rect(local_mouse_pos, panel_rect)) {
+						if (point_inside_rect(av_local_mouse_pos, panel_rect)) {
 							let filter = global.filter_moving
-							let dm_filter_newpos = panel_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+							let dm_filter_newpos = panel_rect_inverse_map(av_local_mouse_pos[0], av_local_mouse_pos[1])
 
 							filter.y = dm_filter_newpos[1]
 
@@ -4928,8 +4979,8 @@ function update_ts()
 							color = "#8888FF"
 						}
 
-						ctx.fillStyle = color
-						ctx.fillRect(filter_rect[RECT.LEFT], filter_rect[RECT.TOP], filter_rect[RECT.WIDTH], filter_rect[RECT.HEIGHT])
+						av_ctx.fillStyle = color
+						av_ctx.fillRect(filter_rect[RECT.LEFT], filter_rect[RECT.TOP], filter_rect[RECT.WIDTH], filter_rect[RECT.HEIGHT])
 					}
 				}
 
@@ -5030,9 +5081,9 @@ function update_ts()
 						curve_color = color
 					}
 
-					ctx.save()
+					av_ctx.save()
 					if ((symbol == global.focused_symbol) || symbol.selected) {
-						ctx.lineWidth = 4;
+						av_ctx.lineWidth = 4;
 						let seq_scale_idx;
 
 						switch (global.colorby) {
@@ -5071,22 +5122,22 @@ function update_ts()
 								} break;
 						}
 					} else {
-						ctx.lineWidth = 2;
+						av_ctx.lineWidth = 2;
 					}
 
 					if (symbol.group) {
 						curve_color = symbol.group.color;
 					}
 
-					ctx.strokeStyle = curve_color;
-					ctx.fillStyle = curve_color;
+					av_ctx.strokeStyle = curve_color;
+					av_ctx.fillStyle = curve_color;
 
 
 					let first_point_drawn = false
 
 					let p_prev = null
 					if ((panel_x_max-panel_x_min) > 1) {
-						ctx.beginPath();
+						av_ctx.beginPath();
 						for (let j=panel_x_min;j<panel_x_max;j=j+step) {
 							let yi
 							if (i==0) {
@@ -5103,10 +5154,10 @@ function update_ts()
 
 							p_prev = p
 							if (!first_point_drawn) {
-								ctx.moveTo(p[0],p[1])
+								av_ctx.moveTo(p[0],p[1])
 								first_point_drawn = true
 							} else {
-								ctx.lineTo(p[0],p[1])
+								av_ctx.lineTo(p[0],p[1])
 							}
 						}
 						if (global.ui.step_select.value != 1) {
@@ -5123,9 +5174,9 @@ function update_ts()
 								update_aux_closest_segment(symbol, p_prev[0], p_prev[1], final_p[0], final_p[1])
 							}
 							p_prev = final_p;
-							ctx.lineTo(final_p[0], final_p[1]);
+							av_ctx.lineTo(final_p[0], final_p[1]);
 						}
-						ctx.stroke()
+						av_ctx.stroke()
 					} else {
 						let x = panel_x_min
 						let y
@@ -5144,13 +5195,13 @@ function update_ts()
 						p_prev = p
 						update_closest_point(symbol, x, p[0], p[1])
 
-						ctx.beginPath()
-						ctx.arc(p[0], p[1], 5, 0, 2 * Math.PI)
-						ctx.closePath()
-						ctx.fill()
-						ctx.stroke()
+						av_ctx.beginPath()
+						av_ctx.arc(p[0], p[1], 5, 0, 2 * Math.PI)
+						av_ctx.closePath()
+						av_ctx.fill()
+						av_ctx.stroke()
 					}
-					ctx.restore()
+					av_ctx.restore()
 				}
 
 				function prepare_group_envelope(group, panel_x_min, panel_x_max, panel_rank) {
@@ -5199,11 +5250,11 @@ function update_ts()
 					let upper_bound = envelope.upper;
 					let lower_bound = envelope.lower;
 
-					ctx.save()
-					ctx.beginPath()
+					av_ctx.save()
+					av_ctx.beginPath()
 					let p = panel_rect_map(panel_x_min,lower_bound[panel_x_min])
 					p[0] = p[0] + x_axis_offset;
-					ctx.moveTo(p[0],p[1])
+					av_ctx.moveTo(p[0],p[1])
 
 					for (let j=panel_x_min+step;j<panel_x_max;j=j+step) {
 						let x = j;
@@ -5215,7 +5266,7 @@ function update_ts()
 						}
 						p = panel_rect_map(x,y);
 						p[0] = p[0] + x_axis_offset;
-						ctx.lineTo(p[0],p[1]);
+						av_ctx.lineTo(p[0],p[1]);
 					}
 					if (global.ui.step_select.value != 1) {
 						let final_x = panel_x_max-1;
@@ -5228,7 +5279,7 @@ function update_ts()
 						}
 						let final_lower_p = panel_rect_map(final_x, final_lower_y);
 						final_lower_p[0] = final_lower_p[0] + x_axis_offset;
-						ctx.lineTo(final_lower_p[0],final_lower_p[1]);
+						av_ctx.lineTo(final_lower_p[0],final_lower_p[1]);
 
 						let final_upper_y;
 						if (i==0) {
@@ -5238,7 +5289,7 @@ function update_ts()
 						}
 						let final_upper_p = panel_rect_map(final_x, final_upper_y);
 						final_upper_p[0] = final_upper_p[0] + x_axis_offset;
-						ctx.lineTo(final_upper_p[0],final_upper_p[1]);
+						av_ctx.lineTo(final_upper_p[0],final_upper_p[1]);
 					}
 
 					for (let j=(panel_x_max-(panel_x_max % step)-1); j>=panel_x_min; j=j-step) {
@@ -5251,7 +5302,7 @@ function update_ts()
 						}
 						p = panel_rect_map(x,y);
 						p[0] = p[0] + x_axis_offset;
-						ctx.lineTo(p[0],p[1]);
+						av_ctx.lineTo(p[0],p[1]);
 					}
 					if (global.ui.step_select.value != 1) {
 						let first_x = panel_x_min;
@@ -5263,13 +5314,13 @@ function update_ts()
 						}
 						let first_p = panel_rect_map(first_x, first_y);
 						first_p[0] = first_p[0] + x_axis_offset;
-						ctx.lineTo(first_p[0],first_p[1]);
+						av_ctx.lineTo(first_p[0],first_p[1]);
 					}
 
-					ctx.closePath();
-					ctx.fillStyle = group.color + "88";
-					ctx.fill();
-					ctx.restore();
+					av_ctx.closePath();
+					av_ctx.fillStyle = group.color + "88";
+					av_ctx.fill();
+					av_ctx.restore();
 
 				}
 
@@ -5309,8 +5360,8 @@ function update_ts()
 				}
 
 				for(let l=0; l<panel_x_ticks.length; l++) {
-					ctx.strokeStyle = "#555555";
-					ctx.lineWidth   = 1;
+					av_ctx.strokeStyle = "#555555";
+					av_ctx.lineWidth   = 1;
 
 					let p0 = panel_rect_map(panel_x_ticks[l], panel_y_min)
 					let p1 = panel_rect_map(panel_x_ticks[l], panel_y_max)
@@ -5322,11 +5373,11 @@ function update_ts()
 					} else if (global.aux_view == 'rcdf') {
 						tick_text = Math.floor(panel_x_ticks[l]) + 1;
 					}
-					ctx.save()
-					ctx.font = "bold 10pt Courier"
-					ctx.fillStyle = "#FFFFFF"
-					ctx.fillText(tick_text, p0[0], p0[1]+15);
-					ctx.restore()
+					av_ctx.save()
+					av_ctx.font = "bold 10pt Courier"
+					av_ctx.fillStyle = "#FFFFFF"
+					av_ctx.fillText(tick_text, p0[0], p0[1]+15);
+					av_ctx.restore()
 				}
 
 				let panel_y_num_ticks = 9
@@ -5336,29 +5387,29 @@ function update_ts()
 					panel_y_ticks.push(y_tick)
 				}
 				for(let l=0; l<panel_y_ticks.length; l++) {
-					ctx.strokeStyle = "#555555";
-					ctx.lineWidth   = 1;
+					av_ctx.strokeStyle = "#555555";
+					av_ctx.lineWidth   = 1;
 
 					let p0 = panel_rect_map(panel_x_min, panel_y_ticks[l])
 					let p1 = panel_rect_map(panel_x_max, panel_y_ticks[l])
 
-					ctx.save()
-					ctx.font = "bold 10pt Courier"
-					ctx.fillStyle = "#FFFFFF"
+					av_ctx.save()
+					av_ctx.font = "bold 10pt Courier"
+					av_ctx.fillStyle = "#FFFFFF"
 					if (i==0) {
 						if(l==(panel_y_ticks.length-1)) {
-							ctx.fillText(parseInt(panel_y_ticks[l]*82), p0[0]-10, p0[1]+8);
+							av_ctx.fillText(parseInt(panel_y_ticks[l]*82), p0[0]-10, p0[1]+8);
 						} else {
-							ctx.fillText(parseInt(panel_y_ticks[l]*82), p0[0]-10, p0[1]);
+							av_ctx.fillText(parseInt(panel_y_ticks[l]*82), p0[0]-10, p0[1]);
 						}
 					} else {
 						if(l==(panel_y_ticks.length-1)) {
-							ctx.fillText(parseInt(panel_y_ticks[l]*82), p0[0]+10, p0[1]+8);
+							av_ctx.fillText(parseInt(panel_y_ticks[l]*82), p0[0]+10, p0[1]+8);
 						} else {
-							ctx.fillText(parseInt(panel_y_ticks[l]*82), p0[0]+10, p0[1]);
+							av_ctx.fillText(parseInt(panel_y_ticks[l]*82), p0[0]+10, p0[1]);
 						}
 					}
-					ctx.restore()
+					av_ctx.restore()
 
 				}
 
@@ -5374,356 +5425,356 @@ function update_ts()
 
 	let proj_closest_symbol = null
 
-	{
-
-		//--------------
-		// find x and y range
-		//--------------
-		let proj_y_min = 10000.0
-		let proj_y_max = -10000.0
-		let proj_x_min = 10000.0
-		let proj_x_max = -10000.0
-		let last_valid_value = 1
-
-		for (let i=0;i<global.chart_symbols.length;i++) {
-			let symbol = global.chart_symbols[i]
-
-			let proj_coords = symbol.projection_coords
-
-			if (proj_coords == null) {
-				continue
-			}
-
-			proj_x_min = Math.min(proj_x_min, proj_coords[0])
-			proj_x_max = Math.max(proj_x_max, proj_coords[0])
-			proj_y_min = Math.min(proj_y_min, proj_coords[1])
-			proj_y_max = Math.max(proj_y_max, proj_coords[1])
-		}
-
-		if (global.recompute_proj_viewbox) {
-			global.proj_viewbox.x 	   	   = proj_x_min
-			global.proj_viewbox.y 	   	   = proj_y_min
-			global.proj_viewbox.width 	   = proj_x_max - proj_x_min
-			global.proj_viewbox.height 	   = proj_y_max - proj_y_min
-			global.recompute_proj_viewbox  = false
-		} else {
-			proj_x_min = global.proj_viewbox.x
-			proj_y_min = global.proj_viewbox.y
-			proj_x_max = global.proj_viewbox.x + global.proj_viewbox.width
-			proj_y_max = global.proj_viewbox.y + global.proj_viewbox.height
-		}
-
-		function proj_rect_map(x, y) {
-			let px = (proj_rect[RECT.LEFT]+VIEWS_MARGINS) + (1.0 * (x - proj_x_min) / (proj_x_max - proj_x_min)) * (proj_rect[RECT.WIDTH]-(2*VIEWS_MARGINS))
-			let py = (proj_rect[RECT.TOP]+VIEWS_MARGINS) + ((proj_rect[RECT.HEIGHT]-(2*VIEWS_MARGINS)) - 1 - (1.0 * (y - proj_y_min) / (proj_y_max - proj_y_min)) * (proj_rect[RECT.HEIGHT]-(2*VIEWS_MARGINS)))
-			return [px,py]
-		}
-
-		function proj_rect_inverse_map(px, py) {
-			let x = ((px - (proj_rect[RECT.LEFT]+VIEWS_MARGINS)) / (proj_rect[RECT.WIDTH]-(2*VIEWS_MARGINS))) * (1.0*(proj_x_max - proj_x_min)) + proj_x_min
-			let y = -((((py - (proj_rect[RECT.TOP]+VIEWS_MARGINS) - (proj_rect[RECT.HEIGHT]-(2*VIEWS_MARGINS)) + 1) * (1.0 * (proj_y_max - proj_y_min))) / (proj_rect[RECT.HEIGHT]-(2*VIEWS_MARGINS))) - proj_y_min)
-			return [x,y]
-		}
-
-		//--------------
-		// zoom and pan
-		//--------------
-		let factor = 1.1
-		let ref    = proj_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
-		let y_ref  = ref[1]
-		let x_ref  = ref[0]
-
-		if (point_inside_rect(local_mouse_pos, proj_rect)) {
-
-			if (global.proj_zoom_y != 0) {
-
-				let h = global.proj_viewbox.height
-				let h_
-
-				if (global.proj_zoom_y > 0) {
-					h_ = h * factor
-				} else {
-					h_ = h / factor
-				}
-
-				global.proj_viewbox.y = -((h_*((y_ref-global.proj_viewbox.y)/h))-y_ref)
-				global.proj_viewbox.height = h_
-
-				proj_y_min = global.proj_viewbox.y
-				proj_y_max = global.proj_viewbox.y + global.proj_viewbox.height
-
-				global.zoom_y = 0
-			}
-
-			if (global.proj_zoom_x != 0) {
-
-				let w = global.proj_viewbox.width
-				let w_
-
-				if (global.proj_zoom_x > 0) {
-					w_ = w * factor
-				} else {
-					w_ = w / factor
-				}
-
-				global.proj_viewbox.x = -((w_*((x_ref-global.proj_viewbox.x)/w))-x_ref)
-				global.proj_viewbox.width  = w_
-
-				proj_x_min = global.proj_viewbox.x
-				proj_x_max = global.proj_viewbox.x + global.proj_viewbox.width
-
-				global.zoom_x = 0
-			}
-
-		} else {
-			global.zoom_y = 0
-			global.zoom_x = 0
-		}
-
-		if (global.proj_drag.active) {
-
-			let proj_local_dragstart_pos = get_local_position(global.proj_drag.startpos, canvas)
-
-			if (point_inside_rect(proj_local_dragstart_pos, proj_rect)) {
-
-				proj_local_dragstart_pos = proj_rect_inverse_map(proj_local_dragstart_pos[0], proj_local_dragstart_pos[1])
-
-				let local_currmouse_pos = proj_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
-
-				global.proj_viewbox.x = global.proj_drag.startprojvbox[0] - (local_currmouse_pos[0] - proj_local_dragstart_pos[0])
-				global.proj_viewbox.y = global.proj_drag.startprojvbox[1] - (local_currmouse_pos[1] - proj_local_dragstart_pos[1])
-
-				proj_x_min = global.proj_viewbox.x
-				proj_x_max = global.proj_viewbox.x + global.proj_viewbox.width
-
-				proj_y_min = global.proj_viewbox.y
-				proj_y_max = global.proj_viewbox.y + global.proj_viewbox.height
-			}
-		}
-
-		//--------------
-		// brush states
-		//--------------
-		if (global.brush_state == BRUSH_STATE.START) {
-			reset_selections();
-			if (!point_inside_rect(local_mouse_pos, proj_rect)) {
-				global.brush_state = BRUSH_STATE.INACTIVE
-			} else {
-				let dm_brush_startpos = proj_rect_inverse_map(local_mouse_pos[0],local_mouse_pos[1]);
-
-				global.brush = { left:dm_brush_startpos[0], top:dm_brush_startpos[1], width:0, height:0 };
-				global.brush_state = BRUSH_STATE.UPDATE;
-			}
-		} else if (global.brush_state == BRUSH_STATE.UPDATE) {
-			if (point_inside_rect(local_mouse_pos, proj_rect)) {
-				let dm_brush_endpos = proj_rect_inverse_map(local_mouse_pos[0],local_mouse_pos[1]);
-
-				let width  = dm_brush_endpos[0] - global.brush.left;
-				let height = global.brush.top - dm_brush_endpos[1];
-
-				global.brush.width  = width;
-				global.brush.height = height;
-			}
-		}
-
-		//--------------
-		// drawing and utils functions for symbols (players)
-		//--------------
-		let min_distance_threshold = 5 * 5
-		let closest_distance = 100000
-
-		function update_closest_point(symbol, px, py) {
-			let dx = local_mouse_pos[0] - px
-			let dy = local_mouse_pos[1] - py
-			let dist = dx * dx + dy * dy
-			if (dist <= min_distance_threshold && dist < closest_distance) {
-				proj_closest_symbol = symbol
-			}
-		}
-
-		function check_symbol_on_brush(symbol) {
-			let proj_x = symbol.projection_coords[0];
-			let proj_y = symbol.projection_coords[1];
-
-			let inside_x_range;
-			if (global.brush.width > 0) {
-				inside_x_range = ((global.brush.left <= proj_x) && (proj_x <= global.brush.left+global.brush.width))
-			} else {
-				inside_x_range = ((global.brush.left+global.brush.width <= proj_x) && (proj_x <= global.brush.left))
-			}
-
-			let inside_y_range;
-			if (global.brush.height < 0) {
-				inside_y_range = ((global.brush.top <= proj_y) && (proj_y <= global.brush.top-global.brush.height));
-			} else {
-				inside_y_range = ((global.brush.top-global.brush.height <= proj_y) && (proj_y <= global.brush.top));
-			}
-
-			return (inside_x_range && inside_y_range)
-		}
-
-		function draw_symbol_projection(symbol) {
-
-			let idx = global.chart_symbols.indexOf(symbol)
-			if (symbol.projection_coords == null) {
-				return
-			}
-
-			if (global.brush !== undefined) {
-				if (symbol.selected == false) {
-					if (check_symbol_on_brush(symbol)) {
-						symbol.selected = true;
-					}
-				}
-				// if (check_symbol_on_brush(symbol)) {
-				// 	symbol.selected = true;
-				// } else {
-				// 	symbol.selected = false;
-				// }
-			}
-
-			let point_color;
-			let point_focused_color;
-
-			switch (global.colorby) {
-				case 'default': {
-					point_color = "#FFFFFF44";
-					point_focused_color = global.chart_colors[idx];
-					} break;
-				case 'position': {
-					point_color = POSITION_COLORS[symbol.position[0]];
-					point_focused_color = POSITION_COLORS[symbol.position[0]];
-					} break;
-				case 'games_played': {
-					let seq_scale_idx 	 = (Object.keys(symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1);
-					let seq_scale_idx_fl = Math.floor(seq_scale_idx);
-
-					let a = seq_scale_idx_fl;
-					let b = Math.min(a+1, SEQUENTIAL_COLORS.length-1);
-
-					let lambda = 1-(seq_scale_idx-seq_scale_idx_fl);
-					let color  = hex_lerp(SEQUENTIAL_COLORS[a], SEQUENTIAL_COLORS[b], lambda);
-
-					point_color	 		= color;
-					point_focused_color = color;
-					} break;
-				default: {
-					let sr = global.stats_ranges[global.colorby];
-					let s  = symbol.summary[global.colorby];
-
-					let seq_scale_idx 	 = (s - sr[0]) / (sr[1] - sr[0]) * (SEQUENTIAL_COLORS.length-1);
-					let seq_scale_idx_fl = Math.floor(seq_scale_idx);
-
-					let a = seq_scale_idx_fl;
-					let b = Math.min(a+1, SEQUENTIAL_COLORS.length-1);
-
-					let lambda = 1-(seq_scale_idx-seq_scale_idx_fl);
-					let color  = hex_lerp(SEQUENTIAL_COLORS[a], SEQUENTIAL_COLORS[b], lambda);
-
-					point_color 		= color;
-					point_focused_color = color;
-					} break;
-			}
-
-			ctx.save();
-			ctx.fillStyle = point_color;
-
-			if (symbol.group) {
-				ctx.fillStyle = symbol.group.color;
-			}
-
-			let x = symbol.projection_coords[0];
-			let y = symbol.projection_coords[1];
-
-			let p = proj_rect_map(x, y);
-			update_closest_point(symbol, p[0], p[1]);
-
-			ctx.beginPath()
-			if ((symbol == global.focused_symbol) || symbol.selected) {
-				if (symbol.group) {
-					ctx.fillStyle = symbol.group.color;
-				} else {
-					ctx.fillStyle = point_focused_color
-				}
-				ctx.strokeStyle = "#FFFFFFAA"
-				ctx.arc(p[0], p[1], 6, 0, 2 * Math.PI)
-			} else {
-				ctx.strokeStyle = point_color
-				ctx.arc(p[0], p[1], 4, 0, 2 * Math.PI)
-			}
-			ctx.closePath()
-			ctx.fill()
-			ctx.stroke()
-
-			ctx.restore()
-
-		}
-
-		//--------------
-		// drawings
-		//--------------
-		ctx.save()
-
-		ctx.moveTo(proj_rect[RECT.LEFT],proj_rect[RECT.TOP])
-		ctx.beginPath()
-		ctx.rect(proj_rect[RECT.LEFT],proj_rect[RECT.TOP],proj_rect[RECT.WIDTH],proj_rect[RECT.HEIGHT])
-		ctx.clip()
-
-		if ((global.brush !== undefined)) {
-			if (global.brush.width !== 0 && global.brush.height !== 0 && global.brush_state !== BRUSH_STATE.INACTIVE) {
-				// console.log(global.brush)
-				let cv_brush_startpos = proj_rect_map(global.brush.left, global.brush.top);
-				let cv_brush_endpos   = proj_rect_map(global.brush.left + global.brush.width, global.brush.top + global.brush.height);
-
-				let brush_rect = [cv_brush_startpos[0], cv_brush_startpos[1], cv_brush_endpos[0]-cv_brush_startpos[0], cv_brush_startpos[1]-cv_brush_endpos[1]];
-				global.brush.rect = brush_rect;
-
-				ctx.strokeStyle = "#FFFFFF";
-				ctx.strokeRect(brush_rect[RECT.LEFT], brush_rect[RECT.TOP], brush_rect[RECT.WIDTH], brush_rect[RECT.HEIGHT]);
-
-			}
-		}
-
-		for (let m=0;m<global.chart_symbols.length;m++) {
-
-			let symbol = global.chart_symbols[m]
-			// check_filters(symbol)
-			draw_symbol_projection(symbol);
-
-		}
-
-		ctx.restore() //PROJ RECT CLIP RESTORE
-
-		if (global.focused_symbol != null) {
-			draw_symbol_projection(global.focused_symbol)
-
-			if (global.select_mode_selected) {
-				global.focused_symbol.selected = !global.focused_symbol.selected;
-			}
-
-			let symbol = global.focused_symbol
-			let proj_text = `${global.focused_symbol.name} // GP: ${Object.keys(global.focused_symbol.data).length} //  TOTALS: `
-
-			for (let i=0; i<global.chosen_stats.length; i++) {
-				let stat = global.chosen_stats[i]
-				if (i == global.chosen_stats.length-1) {
-					proj_text += `${stat}: ${symbol.summary[stat]}`
-				} else {
-					proj_text += `${stat}: ${symbol.summary[stat]} // `
-				}
-			}
-
-			ctx.font = '14px Monospace';
-			ctx.fillStyle = "#FFFFFF"
-
-			ctx.fillText(proj_text, canvas.width-proj_rect[2]/2, proj_rect[1]+proj_rect[3]+15);
-		}
-
-
-	} // projection drawings
-
-	if (ts_closest_symbol != null) {
-		global.focused_symbol = ts_closest_symbol
+	// {
+	//
+	// 	//--------------
+	// 	// find x and y range
+	// 	//--------------
+	// 	let proj_y_min = 10000.0
+	// 	let proj_y_max = -10000.0
+	// 	let proj_x_min = 10000.0
+	// 	let proj_x_max = -10000.0
+	// 	let last_valid_value = 1
+	//
+	// 	for (let i=0;i<global.chart_symbols.length;i++) {
+	// 		let symbol = global.chart_symbols[i]
+	//
+	// 		let proj_coords = symbol.projection_coords
+	//
+	// 		if (proj_coords == null) {
+	// 			continue
+	// 		}
+	//
+	// 		proj_x_min = Math.min(proj_x_min, proj_coords[0])
+	// 		proj_x_max = Math.max(proj_x_max, proj_coords[0])
+	// 		proj_y_min = Math.min(proj_y_min, proj_coords[1])
+	// 		proj_y_max = Math.max(proj_y_max, proj_coords[1])
+	// 	}
+	//
+	// 	if (global.recompute_proj_viewbox) {
+	// 		global.proj_viewbox.x 	   	   = proj_x_min
+	// 		global.proj_viewbox.y 	   	   = proj_y_min
+	// 		global.proj_viewbox.width 	   = proj_x_max - proj_x_min
+	// 		global.proj_viewbox.height 	   = proj_y_max - proj_y_min
+	// 		global.recompute_proj_viewbox  = false
+	// 	} else {
+	// 		proj_x_min = global.proj_viewbox.x
+	// 		proj_y_min = global.proj_viewbox.y
+	// 		proj_x_max = global.proj_viewbox.x + global.proj_viewbox.width
+	// 		proj_y_max = global.proj_viewbox.y + global.proj_viewbox.height
+	// 	}
+	//
+	// 	function proj_rect_map(x, y) {
+	// 		let px = (proj_rect[RECT.LEFT]+VIEWS_MARGINS) + (1.0 * (x - proj_x_min) / (proj_x_max - proj_x_min)) * (proj_rect[RECT.WIDTH]-(2*VIEWS_MARGINS))
+	// 		let py = (proj_rect[RECT.TOP]+VIEWS_MARGINS) + ((proj_rect[RECT.HEIGHT]-(2*VIEWS_MARGINS)) - 1 - (1.0 * (y - proj_y_min) / (proj_y_max - proj_y_min)) * (proj_rect[RECT.HEIGHT]-(2*VIEWS_MARGINS)))
+	// 		return [px,py]
+	// 	}
+	//
+	// 	function proj_rect_inverse_map(px, py) {
+	// 		let x = ((px - (proj_rect[RECT.LEFT]+VIEWS_MARGINS)) / (proj_rect[RECT.WIDTH]-(2*VIEWS_MARGINS))) * (1.0*(proj_x_max - proj_x_min)) + proj_x_min
+	// 		let y = -((((py - (proj_rect[RECT.TOP]+VIEWS_MARGINS) - (proj_rect[RECT.HEIGHT]-(2*VIEWS_MARGINS)) + 1) * (1.0 * (proj_y_max - proj_y_min))) / (proj_rect[RECT.HEIGHT]-(2*VIEWS_MARGINS))) - proj_y_min)
+	// 		return [x,y]
+	// 	}
+	//
+	// 	//--------------
+	// 	// zoom and pan
+	// 	//--------------
+	// 	let factor = 1.1
+	// 	let ref    = proj_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+	// 	let y_ref  = ref[1]
+	// 	let x_ref  = ref[0]
+	//
+	// 	if (point_inside_rect(local_mouse_pos, proj_rect)) {
+	//
+	// 		if (global.proj_zoom_y != 0) {
+	//
+	// 			let h = global.proj_viewbox.height
+	// 			let h_
+	//
+	// 			if (global.proj_zoom_y > 0) {
+	// 				h_ = h * factor
+	// 			} else {
+	// 				h_ = h / factor
+	// 			}
+	//
+	// 			global.proj_viewbox.y = -((h_*((y_ref-global.proj_viewbox.y)/h))-y_ref)
+	// 			global.proj_viewbox.height = h_
+	//
+	// 			proj_y_min = global.proj_viewbox.y
+	// 			proj_y_max = global.proj_viewbox.y + global.proj_viewbox.height
+	//
+	// 			global.zoom_y = 0
+	// 		}
+	//
+	// 		if (global.proj_zoom_x != 0) {
+	//
+	// 			let w = global.proj_viewbox.width
+	// 			let w_
+	//
+	// 			if (global.proj_zoom_x > 0) {
+	// 				w_ = w * factor
+	// 			} else {
+	// 				w_ = w / factor
+	// 			}
+	//
+	// 			global.proj_viewbox.x = -((w_*((x_ref-global.proj_viewbox.x)/w))-x_ref)
+	// 			global.proj_viewbox.width  = w_
+	//
+	// 			proj_x_min = global.proj_viewbox.x
+	// 			proj_x_max = global.proj_viewbox.x + global.proj_viewbox.width
+	//
+	// 			global.zoom_x = 0
+	// 		}
+	//
+	// 	} else {
+	// 		global.zoom_y = 0
+	// 		global.zoom_x = 0
+	// 	}
+	//
+	// 	if (global.proj_drag.active) {
+	//
+	// 		let proj_local_dragstart_pos = get_local_position(global.proj_drag.startpos, canvas)
+	//
+	// 		if (point_inside_rect(proj_local_dragstart_pos, proj_rect)) {
+	//
+	// 			proj_local_dragstart_pos = proj_rect_inverse_map(proj_local_dragstart_pos[0], proj_local_dragstart_pos[1])
+	//
+	// 			let local_currmouse_pos = proj_rect_inverse_map(local_mouse_pos[0], local_mouse_pos[1])
+	//
+	// 			global.proj_viewbox.x = global.proj_drag.startprojvbox[0] - (local_currmouse_pos[0] - proj_local_dragstart_pos[0])
+	// 			global.proj_viewbox.y = global.proj_drag.startprojvbox[1] - (local_currmouse_pos[1] - proj_local_dragstart_pos[1])
+	//
+	// 			proj_x_min = global.proj_viewbox.x
+	// 			proj_x_max = global.proj_viewbox.x + global.proj_viewbox.width
+	//
+	// 			proj_y_min = global.proj_viewbox.y
+	// 			proj_y_max = global.proj_viewbox.y + global.proj_viewbox.height
+	// 		}
+	// 	}
+	//
+	// 	//--------------
+	// 	// brush states
+	// 	//--------------
+	// 	if (global.brush_state == BRUSH_STATE.START) {
+	// 		reset_selections();
+	// 		if (!point_inside_rect(local_mouse_pos, proj_rect)) {
+	// 			global.brush_state = BRUSH_STATE.INACTIVE
+	// 		} else {
+	// 			let dm_brush_startpos = proj_rect_inverse_map(local_mouse_pos[0],local_mouse_pos[1]);
+	//
+	// 			global.brush = { left:dm_brush_startpos[0], top:dm_brush_startpos[1], width:0, height:0 };
+	// 			global.brush_state = BRUSH_STATE.UPDATE;
+	// 		}
+	// 	} else if (global.brush_state == BRUSH_STATE.UPDATE) {
+	// 		if (point_inside_rect(local_mouse_pos, proj_rect)) {
+	// 			let dm_brush_endpos = proj_rect_inverse_map(local_mouse_pos[0],local_mouse_pos[1]);
+	//
+	// 			let width  = dm_brush_endpos[0] - global.brush.left;
+	// 			let height = global.brush.top - dm_brush_endpos[1];
+	//
+	// 			global.brush.width  = width;
+	// 			global.brush.height = height;
+	// 		}
+	// 	}
+	//
+	// 	//--------------
+	// 	// drawing and utils functions for symbols (players)
+	// 	//--------------
+	// 	let min_distance_threshold = 5 * 5
+	// 	let closest_distance = 100000
+	//
+	// 	function update_closest_point(symbol, px, py) {
+	// 		let dx = local_mouse_pos[0] - px
+	// 		let dy = local_mouse_pos[1] - py
+	// 		let dist = dx * dx + dy * dy
+	// 		if (dist <= min_distance_threshold && dist < closest_distance) {
+	// 			proj_closest_symbol = symbol
+	// 		}
+	// 	}
+	//
+	// 	function check_symbol_on_brush(symbol) {
+	// 		let proj_x = symbol.projection_coords[0];
+	// 		let proj_y = symbol.projection_coords[1];
+	//
+	// 		let inside_x_range;
+	// 		if (global.brush.width > 0) {
+	// 			inside_x_range = ((global.brush.left <= proj_x) && (proj_x <= global.brush.left+global.brush.width))
+	// 		} else {
+	// 			inside_x_range = ((global.brush.left+global.brush.width <= proj_x) && (proj_x <= global.brush.left))
+	// 		}
+	//
+	// 		let inside_y_range;
+	// 		if (global.brush.height < 0) {
+	// 			inside_y_range = ((global.brush.top <= proj_y) && (proj_y <= global.brush.top-global.brush.height));
+	// 		} else {
+	// 			inside_y_range = ((global.brush.top-global.brush.height <= proj_y) && (proj_y <= global.brush.top));
+	// 		}
+	//
+	// 		return (inside_x_range && inside_y_range)
+	// 	}
+	//
+	// 	function draw_symbol_projection(symbol) {
+	//
+	// 		let idx = global.chart_symbols.indexOf(symbol)
+	// 		if (symbol.projection_coords == null) {
+	// 			return
+	// 		}
+	//
+	// 		if (global.brush !== undefined) {
+	// 			if (symbol.selected == false) {
+	// 				if (check_symbol_on_brush(symbol)) {
+	// 					symbol.selected = true;
+	// 				}
+	// 			}
+	// 			// if (check_symbol_on_brush(symbol)) {
+	// 			// 	symbol.selected = true;
+	// 			// } else {
+	// 			// 	symbol.selected = false;
+	// 			// }
+	// 		}
+	//
+	// 		let point_color;
+	// 		let point_focused_color;
+	//
+	// 		switch (global.colorby) {
+	// 			case 'default': {
+	// 				point_color = "#FFFFFF44";
+	// 				point_focused_color = global.chart_colors[idx];
+	// 				} break;
+	// 			case 'position': {
+	// 				point_color = POSITION_COLORS[symbol.position[0]];
+	// 				point_focused_color = POSITION_COLORS[symbol.position[0]];
+	// 				} break;
+	// 			case 'games_played': {
+	// 				let seq_scale_idx 	 = (Object.keys(symbol.data).length / MAX_GP) * (SEQUENTIAL_COLORS.length-1);
+	// 				let seq_scale_idx_fl = Math.floor(seq_scale_idx);
+	//
+	// 				let a = seq_scale_idx_fl;
+	// 				let b = Math.min(a+1, SEQUENTIAL_COLORS.length-1);
+	//
+	// 				let lambda = 1-(seq_scale_idx-seq_scale_idx_fl);
+	// 				let color  = hex_lerp(SEQUENTIAL_COLORS[a], SEQUENTIAL_COLORS[b], lambda);
+	//
+	// 				point_color	 		= color;
+	// 				point_focused_color = color;
+	// 				} break;
+	// 			default: {
+	// 				let sr = global.stats_ranges[global.colorby];
+	// 				let s  = symbol.summary[global.colorby];
+	//
+	// 				let seq_scale_idx 	 = (s - sr[0]) / (sr[1] - sr[0]) * (SEQUENTIAL_COLORS.length-1);
+	// 				let seq_scale_idx_fl = Math.floor(seq_scale_idx);
+	//
+	// 				let a = seq_scale_idx_fl;
+	// 				let b = Math.min(a+1, SEQUENTIAL_COLORS.length-1);
+	//
+	// 				let lambda = 1-(seq_scale_idx-seq_scale_idx_fl);
+	// 				let color  = hex_lerp(SEQUENTIAL_COLORS[a], SEQUENTIAL_COLORS[b], lambda);
+	//
+	// 				point_color 		= color;
+	// 				point_focused_color = color;
+	// 				} break;
+	// 		}
+	//
+	// 		ctx.save();
+	// 		ctx.fillStyle = point_color;
+	//
+	// 		if (symbol.group) {
+	// 			ctx.fillStyle = symbol.group.color;
+	// 		}
+	//
+	// 		let x = symbol.projection_coords[0];
+	// 		let y = symbol.projection_coords[1];
+	//
+	// 		let p = proj_rect_map(x, y);
+	// 		update_closest_point(symbol, p[0], p[1]);
+	//
+	// 		ctx.beginPath()
+	// 		if ((symbol == global.focused_symbol) || symbol.selected) {
+	// 			if (symbol.group) {
+	// 				ctx.fillStyle = symbol.group.color;
+	// 			} else {
+	// 				ctx.fillStyle = point_focused_color
+	// 			}
+	// 			ctx.strokeStyle = "#FFFFFFAA"
+	// 			ctx.arc(p[0], p[1], 6, 0, 2 * Math.PI)
+	// 		} else {
+	// 			ctx.strokeStyle = point_color
+	// 			ctx.arc(p[0], p[1], 4, 0, 2 * Math.PI)
+	// 		}
+	// 		ctx.closePath()
+	// 		ctx.fill()
+	// 		ctx.stroke()
+	//
+	// 		ctx.restore()
+	//
+	// 	}
+	//
+	// 	//--------------
+	// 	// drawings
+	// 	//--------------
+	// 	ctx.save()
+	//
+	// 	ctx.moveTo(proj_rect[RECT.LEFT],proj_rect[RECT.TOP])
+	// 	ctx.beginPath()
+	// 	ctx.rect(proj_rect[RECT.LEFT],proj_rect[RECT.TOP],proj_rect[RECT.WIDTH],proj_rect[RECT.HEIGHT])
+	// 	ctx.clip()
+	//
+	// 	if ((global.brush !== undefined)) {
+	// 		if (global.brush.width !== 0 && global.brush.height !== 0 && global.brush_state !== BRUSH_STATE.INACTIVE) {
+	// 			// console.log(global.brush)
+	// 			let cv_brush_startpos = proj_rect_map(global.brush.left, global.brush.top);
+	// 			let cv_brush_endpos   = proj_rect_map(global.brush.left + global.brush.width, global.brush.top + global.brush.height);
+	//
+	// 			let brush_rect = [cv_brush_startpos[0], cv_brush_startpos[1], cv_brush_endpos[0]-cv_brush_startpos[0], cv_brush_startpos[1]-cv_brush_endpos[1]];
+	// 			global.brush.rect = brush_rect;
+	//
+	// 			ctx.strokeStyle = "#FFFFFF";
+	// 			ctx.strokeRect(brush_rect[RECT.LEFT], brush_rect[RECT.TOP], brush_rect[RECT.WIDTH], brush_rect[RECT.HEIGHT]);
+	//
+	// 		}
+	// 	}
+	//
+	// 	for (let m=0;m<global.chart_symbols.length;m++) {
+	//
+	// 		let symbol = global.chart_symbols[m]
+	// 		// check_filters(symbol)
+	// 		draw_symbol_projection(symbol);
+	//
+	// 	}
+	//
+	// 	ctx.restore() //PROJ RECT CLIP RESTORE
+	//
+	// 	if (global.focused_symbol != null) {
+	// 		draw_symbol_projection(global.focused_symbol)
+	//
+	// 		if (global.select_mode_selected) {
+	// 			global.focused_symbol.selected = !global.focused_symbol.selected;
+	// 		}
+	//
+	// 		let symbol = global.focused_symbol
+	// 		let proj_text = `${global.focused_symbol.name} // GP: ${Object.keys(global.focused_symbol.data).length} //  TOTALS: `
+	//
+	// 		for (let i=0; i<global.chosen_stats.length; i++) {
+	// 			let stat = global.chosen_stats[i]
+	// 			if (i == global.chosen_stats.length-1) {
+	// 				proj_text += `${stat}: ${symbol.summary[stat]}`
+	// 			} else {
+	// 				proj_text += `${stat}: ${symbol.summary[stat]} // `
+	// 			}
+	// 		}
+	//
+	// 		ctx.font = '14px Monospace';
+	// 		ctx.fillStyle = "#FFFFFF"
+	//
+	// 		ctx.fillText(proj_text, canvas.width-proj_rect[2]/2, proj_rect[1]+proj_rect[3]+15);
+	// 	}
+	//
+	//
+	// } // projection drawings
+
+	if (lc_closest_symbol != null) {
+		global.focused_symbol = lc_closest_symbol
 	} else if (aux_view_closest_symbol != null) {
 		global.focused_symbol = aux_view_closest_symbol
 	} else {
@@ -5742,12 +5793,11 @@ function set_ui_components()
 		let c_l     = new Node('l', 1, NODE_ORIENTATION_VERTICAL)
 		let c_l_t   = new Node('controls')
 		let c_l_b   = new Node('table')
-		let c_r     = new Node('vis_panel', 5)
-		// let c_r     = new Node('r', 5, NODE_ORIENTATION_VERTICAL)
-		// let c_r_t   = new Node('scatterplot')
-		// let c_r_b   = new Node('rb', 1, NODE_ORIENTATION_HORIZONTAL)
-		// let c_r_b_l = new Node('cdf')
-		// let c_r_b_r = new Node('projection')
+		let c_r     = new Node('r', 5, NODE_ORIENTATION_VERTICAL)
+		let c_r_t   = new Node('line_chart')
+		let c_r_b   = new Node('rb', 1, NODE_ORIENTATION_HORIZONTAL)
+		let c_r_b_l = new Node('aux_view')
+		let c_r_b_r = new Node('projection')
 
 		c_0.add_child(c_l)
 		c_0.add_child(c_r)
@@ -5755,11 +5805,11 @@ function set_ui_components()
 		c_l.add_child(c_l_t)
 		c_l.add_child(c_l_b)
 
-		// c_r.add_child(c_r_t)
-		// c_r.add_child(c_r_b)
-		//
-		// c_r_b.add_child(c_r_b_l)
-		// c_r_b.add_child(c_r_b_r)
+		c_r.add_child(c_r_t)
+		c_r.add_child(c_r_b)
+
+		c_r_b.add_child(c_r_b_l)
+		c_r_b.add_child(c_r_b_r)
 
 		global.layout_modes.push(c_0)
 	}
@@ -5773,27 +5823,27 @@ function set_ui_components()
 	let table = document.createElement('div');
 	table.style='background-color:#999999; overflow:auto'
 
-	let vis_panel = document.createElement('div');
-	vis_panel.style='background-color:#555555; overflow:auto'
+	let line_chart = document.createElement('div');
+	line_chart.style='background-color:#555555; overflow:auto'
 
-	let cdf = document.createElement('div');
-	cdf.style='background-color:#0000ff;'
+	let aux_view = document.createElement('div');
+	aux_view.style='background-color:#AAAAAA; overflow:auto'
 
 	let projection = document.createElement('div');
-	projection.style='background-color:#000000;'
+	projection.style='background-color:#000000; overflow:auto'
 
 	global.components = [
 		{ component: controls, position: 'controls' },
 		{ component: table, position: 'table' },
-		{ component: vis_panel, position: 'vis_panel' },
-		{ component: cdf, position: 'cdf' },
+		{ component: line_chart, position: 'line_chart' },
+		{ component: aux_view, position: 'aux_view' },
 		{ component: projection, position: 'projection' }
 	]
 
 	document.body.appendChild(controls)
 	document.body.appendChild(table)
-	document.body.appendChild(vis_panel)
-	document.body.appendChild(cdf)
+	document.body.appendChild(line_chart)
+	document.body.appendChild(aux_view)
 	document.body.appendChild(projection)
 
 }
