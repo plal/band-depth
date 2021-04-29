@@ -103,7 +103,8 @@ const EVENT= {
 	CLICK_POS: "event_clicked_pos",
 	CHANGE_COLORBY: "event_change_colorby",
 	CLUSTER: "event_cluster",
-	DRAW_GROUPS_ENVELOPES: "event_draw_groups_envelopes"
+	DRAW_GROUPS_ENVELOPES: "event_draw_groups_envelopes",
+	TOGGLE_TABLE: "event_toggle_table"
 }
 
 var global = {
@@ -708,8 +709,14 @@ function add_symbol_to_chart(symbol, color) {
 	symbol.on_chart = true
 	global.chart_symbols.push(symbol)
 	global.chart_colors.push(color)
+	// update default table
 	symbol.ui_col.style.color = color
 	symbol.ui_col.style.fontWeight = 'bold'
+
+	// update full table
+	symbol.ft_ui_col.style.color = color
+	symbol.ft_ui_col.style.fontWeight = 'bold'
+
 }
 
 function remove_symbol_from_list(symbol, list) {
@@ -725,9 +732,16 @@ function remove_symbol_from_chart(symbol) {
 	  global.chart_symbols.splice(to_remove, 1);
 	  global.chart_colors.splice(to_remove, 1);
 	}
+
 	symbol.on_chart = false
+
+	//update default table
 	symbol.ui_col.style.color = "#6b6f71"
 	symbol.ui_col.style.fontWeight = 'initial'
+
+	// update full table
+	symbol.ft_ui_col.style.color = "#6b6f71"
+	symbol.ft_ui_col.style.fontWeight = 'initial'
 }
 
 //--------------
@@ -916,8 +930,8 @@ function reset_groups() {
 	global.group_count 	   = 0;
 	global.ui.groups_table = undefined;
 
-	document.getElementById('groups_table').remove();
-	document.getElementById('groups_table_div').remove();
+	// document.getElementById('groups_table').remove();
+	// document.getElementById('groups_table_div').remove();
 
 }
 
@@ -959,12 +973,12 @@ function clear_chart() {
 		reset_groups();
 	}
 
-	global.split_cdf     = { breaks:[0], ww:[1], realign:[], split_rank: null,
-							 panel_resize_index: null, panel_resize_side: null, panel_resize_last_x: null,
-							 filters: [[]]};
+	global.split_cdf = { breaks:[0], ww:[1], realign:[], split_rank: null,
+						 panel_resize_index: null, panel_resize_side: null, panel_resize_last_x: null,
+						 filters: [[]] };
 
 	global.ui.draw_groups_envelope_btn.checked = false;
-	global.layout_index = 0;
+	// global.layout_index = 0;
 }
 
 function hashcode(str) {
@@ -1199,6 +1213,24 @@ function set_bubble(range, bubble) {
 
 	// Sorta magic numbers based on size of the native UI thumb
 	// bubble.style.left = `calc(${newVal}% + (${8 - newVal * 0.15}px))`;
+}
+
+function fill_full_table() {
+	let ft = global.ui.full_table;
+	let rows = ft.rows;
+
+	for (let i=0; i<global.symbols.length; i++) {
+		let symbol_summary = global.symbols[i].summary;
+		// if (global.symbols[i].name == 'Kawhi_Leonard')
+		// console.log(rows[i+1].cells[0].innerHTML, global.symbols[i].name, symbol_summary['points'])
+		rows[i+1].cells[1].innerHTML = symbol_summary['points'];
+		rows[i+1].cells[2].innerHTML = symbol_summary['assists'];
+		rows[i+1].cells[3].innerHTML = symbol_summary['rebounds'];
+		rows[i+1].cells[4].innerHTML = symbol_summary['steals'];
+		rows[i+1].cells[5].innerHTML = symbol_summary['blocks'];
+		rows[i+1].cells[6].innerHTML = symbol_summary['turnovers'];
+		rows[i+1].cells[7].innerHTML = symbol_summary['fouls'];
+	}
 }
 
 function get_component(component_name) {
@@ -1527,38 +1559,47 @@ function fill_ui_components()
 		controls.appendChild(create_curve_density_matrix_grid)
 	}
 
-	//-------
-	// table component
-	//-------
+	//----------
+	// default table components
+	//----------
 
-	let filter_input = document.createElement('input')
-	filter_input.setAttribute("type","text")
-	filter_input.id    	   = 'filter_input'
-	filter_input.style 	   = 'position:relative; width:98%; margin-left:3px; margin-bottom:3px; margin-top:3px\
+	let st_filter_input = document.createElement('input')
+	st_filter_input.setAttribute("type","text")
+	st_filter_input.id    	   = 'st_filter_input'
+	st_filter_input.style 	   = 'position:relative; width:98%; margin-left:3px; margin-bottom:3px; margin-top:3px\
 	 						  overflow:auto; border-radius:2px; background-color:#FFFFFF;font-family:Courier; font-size:14pt;'
 
-	global.ui.filter_input = filter_input
-	install_event_listener(filter_input, 'change', filter_input, EVENT.FILTER)
+	global.ui.st_filter_input = st_filter_input
+	install_event_listener(st_filter_input, 'change', st_filter_input, EVENT.FILTER)
 
-	let add_table_symbols_btn = document.createElement('button')
-	global.ui.add_table_symbols_btn   = add_table_symbols_btn
-	add_table_symbols_btn.id 		  = "add_table_symbols_btn"
-	add_table_symbols_btn.textContent = 'add curves on table'
-	add_table_symbols_btn.style 	  = "position:relative; width:98%; margin-left:3px; margin-bottom:3px;\
+	let st_add_table_symbols_btn = document.createElement('button')
+	global.ui.st_add_table_symbols_btn   = st_add_table_symbols_btn
+	st_add_table_symbols_btn.id 		  = "st_add_table_symbols_btn"
+	st_add_table_symbols_btn.textContent = 'add curves on table'
+	st_add_table_symbols_btn.style 	  = "position:relative; width:98%; margin-left:3px; margin-bottom:3px;\
 	 								   	 border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
-	install_event_listener(add_table_symbols_btn, 'click', add_table_symbols_btn, EVENT.ADD_TABLE_SYMBOLS)
+	install_event_listener(st_add_table_symbols_btn, 'click', st_add_table_symbols_btn, EVENT.ADD_TABLE_SYMBOLS)
+
+	let st_toggle_table_btn = document.createElement('button')
+	global.ui.st_toggle_table_btn    = st_toggle_table_btn
+	st_toggle_table_btn.id 		  = "st_toggle_table_btn"
+	st_toggle_table_btn.textContent  = 'toggle full table'
+	st_toggle_table_btn.style 	  	  = "position:relative; width:98%; margin-top:3px; margin-left:3px; margin-bottom:3px;\
+	 								   	 border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
+	install_event_listener(st_toggle_table_btn, 'click', st_toggle_table_btn, EVENT.TOGGLE_TABLE)
 
 	let symbols_table_div = document.createElement('div')
 	global.ui.symbols_table_div = symbols_table_div
 	symbols_table_div.id 		= 'symbols_table_div'
-	symbols_table_div.style 	= 'position:relative; width:98%; height:87.5%; margin:auto;\
+	symbols_table_div.style 	= 'position:relative; width:98%; height:80%; margin:auto;\
 	 							   overflow:auto; border-radius:2px; background-color:#FFFFFF'
 
-	let table = get_component("table");
-	if (table) {
-		table.appendChild(filter_input);
-		table.appendChild(add_table_symbols_btn);
-		table.appendChild(symbols_table_div);
+	let table_component = get_component("table");
+	if (table_component) {
+		table_component.appendChild(st_filter_input);
+		table_component.appendChild(st_add_table_symbols_btn);
+		table_component.appendChild(symbols_table_div);
+		table_component.appendChild(st_toggle_table_btn);
 	}
 
 	//----------
@@ -1576,12 +1617,105 @@ function fill_ui_components()
 		col.style 			 = "cursor: pointer"
 		col.style.fontFamily = 'Courier'
 		col.style.fontSize 	 = '14pt'
-		col.style.color 	 ="#6b6f71"
+		col.style.color 	 = "#6b6f71"
 
 		symbol.ui_row = row
 		symbol.ui_col = col
 		install_event_listener(symbol.ui_col, 'click', symbol, EVENT.TOGGLE_SYMBOL)
 	}
+
+	//----------
+	// full table components
+	//----------
+
+	let ft_filter_input = document.createElement('input')
+	ft_filter_input.setAttribute("type","text")
+	ft_filter_input.id    	   = 'ft_filter_input'
+	ft_filter_input.style 	   = 'position:relative; width:98%; margin-left:3px; margin-bottom:3px; margin-top:3px\
+	 						  overflow:auto; border-radius:2px; background-color:#FFFFFF;font-family:Courier; font-size:14pt;'
+
+	global.ui.ft_filter_input = ft_filter_input
+	install_event_listener(ft_filter_input, 'change', ft_filter_input, EVENT.FILTER)
+
+	let ft_add_table_symbols_btn = document.createElement('button')
+	global.ui.ft_add_table_symbols_btn   = ft_add_table_symbols_btn
+	ft_add_table_symbols_btn.id 		  = "ft_add_table_symbols_btn"
+	ft_add_table_symbols_btn.textContent = 'add curves on table'
+	ft_add_table_symbols_btn.style 	  = "position:relative; width:98%; margin-left:3px; margin-bottom:3px;\
+	 								   	 border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
+	install_event_listener(ft_add_table_symbols_btn, 'click', ft_add_table_symbols_btn, EVENT.ADD_TABLE_SYMBOLS)
+
+	let ft_toggle_table_btn = document.createElement('button')
+	global.ui.ft_toggle_table_btn    = ft_toggle_table_btn
+	ft_toggle_table_btn.id 		  = "ft_toggle_table_btn"
+	ft_toggle_table_btn.textContent  = 'toggle full table'
+	ft_toggle_table_btn.style 	  	  = "position:relative; width:98%; margin-top:3px; margin-left:3px; margin-bottom:3px;\
+	 								   	 border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
+	install_event_listener(ft_toggle_table_btn, 'click', ft_toggle_table_btn, EVENT.TOGGLE_TABLE)
+
+	let full_table_div 		 = document.createElement('div')
+	global.ui.full_table_div = full_table_div
+	full_table_div.id 	     = 'full_table_div'
+	full_table_div.style 	 = 'position:relative; width:98%; height:80%; margin:auto;\
+	 							overflow:auto; border-radius:2px; background-color:#FFFFFF'
+
+	let full_table_component = get_component("full_table");
+	if (full_table_component) {
+		full_table_component.appendChild(ft_filter_input);
+		full_table_component.appendChild(ft_add_table_symbols_btn);
+		full_table_component.appendChild(full_table_div);
+		full_table_component.appendChild(ft_toggle_table_btn);
+	}
+
+	//----------
+	// creating full table for players (symbols)
+	//----------
+	let full_table 		 = full_table_div.appendChild(document.createElement('table'))
+	global.ui.full_table = full_table
+	// full_table.border	 = ''
+	full_table.style 	 = 'position:block; width:100%; heigth: 100% !important;\
+							border:1px solid black; border-collapse:collapse'
+
+	let headers = ['name','points','assists','rebounds','steals','blocks','turnovers','fouls'];
+	let header_row = full_table.insertRow(-1);
+	for (let i=0;i<headers.length; i++) {
+		let header_cell = header_row.appendChild(document.createElement('th'));
+		header_cell.innerHTML = headers[i];
+		header_cell.style.fontFamily = 'Courier'
+		header_cell.style.fontSize 	 = '14pt'
+		header_cell.style.color 	 = "#6b6f71"
+        header_cell.style.border	 = "1px solid black"
+	}
+
+	for (let i=0;i<global.symbols.length;i++) {
+		let symbol = global.symbols[i]
+		let row    = full_table.appendChild(document.createElement('tr'))
+		let col    = row.appendChild(document.createElement('td'))
+
+		col.innerText 		 = symbol.name
+		col.style 			 = "cursor: pointer"
+		col.style.fontFamily = 'Courier'
+		col.style.fontSize 	 = '14pt'
+		col.style.color 	 = "#6b6f71"
+		col.style.border	 = "1px solid black"
+
+		for (let j=1; j<headers.length; j++) {
+			let stat_col = row.appendChild(document.createElement('td'));
+
+			stat_col.innerText 			 = '-'
+			stat_col.style.fontFamily 	 = 'Courier'
+			stat_col.style.fontSize 	 = '14pt'
+			stat_col.style.color 	 	 = "#6b6f71"
+			stat_col.style.border	 	 = "1px solid black"
+		}
+
+		symbol.ft_ui_row = row
+		symbol.ft_ui_col = col
+		install_event_listener(symbol.ft_ui_col, 'click', symbol, EVENT.TOGGLE_SYMBOL)
+	}
+
+	global.full_table_filled = false;
+
 
 	// -------
 	// VIEWS
@@ -3238,9 +3372,11 @@ function process_event_queue()
 				let found = symbol.name.search(re) >= 0
 				if (found && !symbol.on_table) {
 					global.ui.symbols_table.appendChild(symbol.ui_row)
+					global.ui.full_table.appendChild(symbol.ft_ui_row)
 					symbol.on_table = true
 				} else if (!found && symbol.on_table) {
 					global.ui.symbols_table.removeChild(symbol.ui_row)
+					global.ui.full_table.removeChild(symbol.ft_ui_row)
 					symbol.on_table = false
 				}
 			}
@@ -3578,14 +3714,17 @@ function process_event_queue()
 				// create_and_update_groups_table();
 			}
 		}
-		// else if (e.event_type == EVENT.DRAW_GROUPS_ENVELOPES) {
-		// 	let groups = global.groups
-		// 	if (groups.length > 0) {
-		// 		for (let i=0; i<groups.length; i++) {
-		// 			find_group_proto(groups[i], 1);
-		// 		}
-		// 	}
-		// }
+		else if (e.event_type == EVENT.TOGGLE_TABLE) {
+			if (global.layout_index == 0) {
+				if (!global.full_table_filled) {
+					fill_full_table();
+					global.full_table_filled = true;
+				}
+				global.layout_index = 2;
+			} else if (global.layout_index == 2) {
+				global.layout_index = 0;
+			}
+		}
 	}
 	global.events.length = 0
 }
@@ -4250,7 +4389,7 @@ function update_ts()
 					lc_ctx.lineTo(p[0],p[1])
 				}
 				for (let j=num_timesteps-1;j>=0;j--) {
-					p = map(jupdate_focused_symbol,ymax[j])
+					p = map(j,ymax[j])
 					lc_ctx.lineTo(p[0],p[1])
 				}
 				lc_ctx.closePath()
@@ -4544,32 +4683,32 @@ function update_ts()
 		//--------------
 		// update start, end and norm dates on keyboard controls
 		//--------------
-		if (global.key_update_norm) {
-			let pt_n = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
-			let new_date_norm = date_offset_to_string(Math.floor(date_start+pt_n[0]))
-
-			document.getElementById('norm_date_input').value = new_date_norm
-			global.date_norm = new_date_norm
-			global.key_update_norm = false
-		}
-
-		if (global.key_update_start) {
-			let pt_s = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
-			let new_date_start = date_offset_to_string(Math.floor(date_start+pt_s[0]))
-
-			document.getElementById('start_date_input').value = new_date_start
-			global.date_start = new_date_start
-			global.key_update_start = false
-		}
-
-		if (global.key_update_end) {
-			let pt_e = inverse_map(local_mouse_pos[0],local_mouse_pos[1])
-			let new_date_end = date_offset_to_string(Math.floor(date_start+pt_e[0]))
-
-			document.getElementById('end_date_input').value = new_date_end
-			global.date_end = new_date_end
-			global.key_update_end = false
-		}
+		// if (global.key_update_norm) {
+		// 	let pt_n = inverse_map(lc_local_mouse_pos[0],lc_local_mouse_pos[1])
+		// 	let new_date_norm = date_offset_to_string(Math.floor(date_start+pt_n[0]))
+		//
+		// 	document.getElementById('norm_date_input').value = new_date_norm
+		// 	global.date_norm = new_date_norm
+		// 	global.key_update_norm = false
+		// }
+		//
+		// if (global.key_update_start) {
+		// 	let pt_s = inverse_map(lc_local_mouse_pos[0],lc_local_mouse_pos[1])
+		// 	let new_date_start = date_offset_to_string(Math.floor(date_start+pt_s[0]))
+		//
+		// 	document.getElementById('start_date_input').value = new_date_start
+		// 	global.date_start = new_date_start
+		// 	global.key_update_start = false
+		// }
+		//
+		// if (global.key_update_end) {
+		// 	let pt_e = inverse_map(lc_local_mouse_pos[0],lc_local_mouse_pos[1])
+		// 	let new_date_end = date_offset_to_string(Math.floor(date_start+pt_e[0]))
+		//
+		// 	document.getElementById('end_date_input').value = new_date_end
+		// 	global.date_end = new_date_end
+		// 	global.key_update_end = false
+		// }
 	} // time series drawings
 
 	let av_canvas = global.ui.av_canvas;
@@ -5786,7 +5925,7 @@ function update_ts()
 			p_ctx.font = '14px Monospace';
 			p_ctx.fillStyle = "#FFFFFF"
 
-			p_ctx.fillText(proj_text, p_canvas.width-proj_rect[2]/2, proj_rect[1]+proj_rect[3]+15);
+			p_ctx.fillText(proj_text, proj_rect_margins[1], proj_rect[1]+proj_rect[3]+15);
 		}
 
 
@@ -5867,7 +6006,36 @@ function set_ui_components()
 		global.layout_modes.push(c_0)
 	}
 
-	global.layout_index = 0
+	{
+		// -------
+		// default layout w/ full table
+		// -------
+		let c_0     = new Node('root', 1, NODE_ORIENTATION_HORIZONTAL)
+		let c_l     = new Node('l', 1, NODE_ORIENTATION_VERTICAL)
+		let c_l_t   = new Node('controls')
+		let c_l_b   = new Node('full_table')
+		let c_r     = new Node('r', 3, NODE_ORIENTATION_VERTICAL)
+		let c_r_t   = new Node('line_chart')
+		let c_r_b   = new Node('rb', 1, NODE_ORIENTATION_HORIZONTAL)
+		let c_r_b_l = new Node('aux_view')
+		let c_r_b_r = new Node('projection')
+
+		c_0.add_child(c_l)
+		c_0.add_child(c_r)
+
+		c_l.add_child(c_l_t)
+		c_l.add_child(c_l_b)
+
+		c_r.add_child(c_r_t)
+		c_r.add_child(c_r_b)
+
+		c_r_b.add_child(c_r_b_l)
+		c_r_b.add_child(c_r_b_r)
+
+		global.layout_modes.push(c_0)
+	}
+
+	global.layout_index = 0;
 
 	//target color: #6b6f71 (with margins to see each component)
 	let controls = document.createElement('div');
@@ -5875,6 +6043,9 @@ function set_ui_components()
 
 	let table = document.createElement('div');
 	table.style='background-color:#999999; overflow:auto'
+
+	let full_table = document.createElement('div');
+	full_table.style='background-color:#BBBBBB; overflow:auto'
 
 	let groups_table = document.createElement('div');
 	groups_table.style='background-color:#333333; overflow:auto'
@@ -5891,6 +6062,7 @@ function set_ui_components()
 	global.components = [
 		{ component: controls, position: 'controls' },
 		{ component: table, position: 'table' },
+		{ component: full_table, position: 'full_table' },
 		{ component: groups_table, position: 'groups_table'},
 		{ component: line_chart, position: 'line_chart' },
 		{ component: aux_view, position: 'aux_view' },
@@ -5899,6 +6071,7 @@ function set_ui_components()
 
 	document.body.appendChild(controls)
 	document.body.appendChild(table)
+	document.body.appendChild(full_table)
 	document.body.appendChild(groups_table)
 	document.body.appendChild(line_chart)
 	document.body.appendChild(aux_view)
@@ -5933,7 +6106,7 @@ function update_ui()
 		}
 	}
 
-	setTimeout(update, MSEC_PER_FRAME)
+	// setTimeout(update, MSEC_PER_FRAME)
 }
 
 function update()
