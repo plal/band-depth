@@ -104,7 +104,8 @@ const EVENT= {
 	CHANGE_COLORBY: "event_change_colorby",
 	CLUSTER: "event_cluster",
 	DRAW_GROUPS_ENVELOPES: "event_draw_groups_envelopes",
-	TOGGLE_TABLE: "event_toggle_table"
+	TOGGLE_TABLE: "event_toggle_table",
+	SORT_TABLE_BY_COL: "event_sort_table_by_col"
 }
 
 var global = {
@@ -260,6 +261,79 @@ function map_align_nodes(node, rect, output)
 			}
 		}
 	}
+}
+
+//UPDATE 2021-04-30: order full table by column
+function sortTable(n) {
+  var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+  table = global.ui.full_table;
+  switching = true;
+  // Set the sorting direction to ascending:
+  dir = "desc";
+  /* Make a loop that will continue until
+  no switching has been done: */
+  while (switching) {
+    // Start by saying: no switching is done:
+    switching = false;
+    rows = table.rows;
+    /* Loop through all table rows (except the
+    first, which contains table headers): */
+    for (i = 1; i < (rows.length - 1); i++) {
+      // Start by saying there should be no switching:
+      shouldSwitch = false;
+      /* Get the two elements you want to compare,
+      one from current row and one from the next: */
+      x = rows[i].getElementsByTagName("TD")[n];
+      y = rows[i + 1].getElementsByTagName("TD")[n];
+      /* Check if the two rows should switch place,
+      based on the direction, asc or desc: */
+	  if (n>0) {
+		  if (dir == "asc") {
+	        if (parseInt(x.innerHTML) > parseInt(y.innerHTML)) {
+	          // If so, mark as a switch and break the loop:
+	          shouldSwitch = true;
+	          break;
+	        }
+	      } else if (dir == "desc") {
+	        if (parseInt(x.innerHTML) < parseInt(y.innerHTML)) {
+	          // If so, mark as a switch and break the loop:
+	          shouldSwitch = true;
+	          break;
+	        }
+	      }
+	  } else {
+		  if (dir == "asc") {
+            if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+              // If so, mark as a switch and break the loop:
+              shouldSwitch = true;
+              break;
+            }
+          } else if (dir == "desc") {
+            if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+              // If so, mark as a switch and break the loop:
+              shouldSwitch = true;
+              break;
+            }
+          }
+	  }
+
+    }
+    if (shouldSwitch) {
+      /* If a switch has been marked, make the switch
+      and mark that a switch has been done: */
+      rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+      switching = true;
+      // Each time a switch is done, increase this count by 1:
+      switchcount ++;
+    } else {
+      /* If no switching has been done AND the direction is "asc",
+      set the direction to "desc" and run the while loop again. */
+      if (switchcount == 0 && dir == "desc") {
+        dir = "asc";
+        switching = true;
+      }
+    }
+  }
 }
 
 // -------
@@ -535,39 +609,31 @@ function create_groups_from_response(groups_obj) {
 	// create table with groups to toggle
 	if (global.ui.groups_table !== undefined) {
 		document.getElementById('groups_table').remove()
-		document.getElementById('groups_table_div').remove()
 	}
 
-	let groups_table_div = document.createElement('div');
-	global.ui.groups_table_div = groups_table_div;
-	groups_table_div.id = 'groups_table_div';
-	groups_table_div.style = 'position:relative; width:100%; height:100%; margin:2px; overflow:auto; border-radius:2px; background-color:#FFFFFF';
-
-	let groups_table = groups_table_div.appendChild(document.createElement('table'));
+	let groups_table = global.ui.groups_table_div.appendChild(document.createElement('table'));
 	global.ui.groups_table = groups_table;
 	groups_table.id = 'groups_table';
 	groups_table.style = 'position:block; width:100%; heigth: 100% !important;';
 
-	let groups_table_component = get_component('groups_table')
-	if (groups_table_component) {
-		groups_table_component.appendChild(groups_table_div);
-	}
-
+	let row = global.ui.groups_table.appendChild(document.createElement('tr'))
 	for (let i=0; i<global.groups.length; i++) {
 		let group = global.groups[i]
-		let row   = global.ui.groups_table.appendChild(document.createElement('tr'))
 		let col   = row.appendChild(document.createElement('td'))
 		col.innerText = group.name
 		col.style = "cursor: pointer"
+		col.style.backgroundColor = group.color
 		col.style.fontFamily = 'Courier'
 		col.style.fontSize = '14pt'
+		col.style.textAlign = 'center'
 		col.style.fontWeight = 'bold'
-		col.style.color = group.color
+		// col.style.color = group.color
 		group.ui_row = row
 		group.ui_col = col
 		install_event_listener(group.ui_col, 'click', group, EVENT.TOGGLE_GROUP)
 	}
 
+	create_and_fill_full_table_cluster()
 	global.layout_index = 1;
 }
 
@@ -709,13 +775,18 @@ function add_symbol_to_chart(symbol, color) {
 	symbol.on_chart = true
 	global.chart_symbols.push(symbol)
 	global.chart_colors.push(color)
+
 	// update default table
 	symbol.ui_col.style.color = color
 	symbol.ui_col.style.fontWeight = 'bold'
 
 	// update full table
-	symbol.ft_ui_col.style.color = color
-	symbol.ft_ui_col.style.fontWeight = 'bold'
+	if (symbol.ft_ui_col && symbol.ft_ui_row) {
+		if (symbol.group) {
+			symbol.ft_ui_row.style.backgroundColor = symbol.group.color
+		}
+		symbol.ft_ui_col.style.fontWeight = 'bold'
+	}
 
 }
 
@@ -736,12 +807,14 @@ function remove_symbol_from_chart(symbol) {
 	symbol.on_chart = false
 
 	//update default table
-	symbol.ui_col.style.color = "#6b6f71"
+	symbol.ui_col.style.color = "#000000"
 	symbol.ui_col.style.fontWeight = 'initial'
 
 	// update full table
-	symbol.ft_ui_col.style.color = "#6b6f71"
-	symbol.ft_ui_col.style.fontWeight = 'initial'
+	if (symbol.ft_ui_col && symbol.ft_ui_row) {
+		symbol.ft_ui_row.style.backgroundColor = "#FFFFFF"
+		symbol.ft_ui_col.style.fontWeight = 'initial'
+	}
 }
 
 //--------------
@@ -821,8 +894,9 @@ function add_group_to_chart(group) {
 	group.on_chart = true
 	global.chart_groups.push(group)
 	global.chart_colors.push(group.color)
-	group.ui_col.style.color = group.color
-	group.ui_col.style.fontWeight = 'bold'
+	// group.ui_col.style.color = group.color
+	// group.ui_col.style.fontWeight = 'bold'
+	group.ui_col.style.backgroundColor = group.color
 
 	//--------------
 	// add every group member to chart
@@ -853,8 +927,9 @@ function remove_group_from_chart(group) {
 	  global.chart_groups.splice(to_remove, 1);
 	}
 	group.on_chart = false
-	group.ui_col.style.color = "#6b6f71"
-	group.ui_col.style.fontWeight = 'initial'
+	// group.ui_col.style.color = "#6b6f71"
+	// group.ui_col.style.fontWeight = 'initial'
+	group.ui_col.style.backgroundColor = '#FFFFFF'
 }
 
 function remove_group(group) {
@@ -928,11 +1003,6 @@ function reset_groups() {
 
 	global.groups 		   = [];
 	global.group_count 	   = 0;
-	global.ui.groups_table = undefined;
-
-	// document.getElementById('groups_table').remove();
-	// document.getElementById('groups_table_div').remove();
-
 }
 
 
@@ -1215,21 +1285,116 @@ function set_bubble(range, bubble) {
 	// bubble.style.left = `calc(${newVal}% + (${8 - newVal * 0.15}px))`;
 }
 
+function create_and_fill_full_table_cluster() {
+
+	if (global.ui.full_table !== undefined) {
+		document.getElementById('full_table').remove()
+	}
+
+	let full_table 		 = global.ui.full_table_div.appendChild(document.createElement('table'))
+	full_table.id = 'full_table'
+	global.ui.full_table = full_table
+	full_table.style 	 = 'position:block; width:100%; heigth: 100% !important;\
+							border:1px solid black; border-collapse:collapse'
+
+	let headers = ['name','points','assists','rebounds','steals','blocks','turnovers','fouls'];
+	let header_row = full_table.insertRow(-1);
+	for (let i=0;i<headers.length; i++) {
+		let header_cell = header_row.appendChild(document.createElement('th'));
+		header_cell.innerHTML 		 = headers[i];
+		header_cell.style 			 = "cursor: pointer"
+		header_cell.style.fontFamily = 'Courier'
+		header_cell.style.fontSize 	 = '14pt'
+		header_cell.style.color 	 = "#6b6f71"
+        header_cell.style.border	 = "1px solid black"
+		install_event_listener(header_cell, 'click', header_cell, EVENT.SORT_TABLE_BY_COL)
+
+	}
+
+	for (let i=0;i<global.chart_symbols.length;i++) {
+		let symbol = global.chart_symbols[i]
+		let row    = full_table.appendChild(document.createElement('tr'))
+		let col    = row.appendChild(document.createElement('td'))
+
+		row.style.backgroundColor = symbol.group.color
+		col.innerText 		 = symbol.name
+		col.style 			 = "cursor: pointer"
+		col.style.fontFamily = 'Courier'
+		col.style.fontSize 	 = '14pt'
+		col.style.color 	 = "#000000"
+		col.style.border	 = "1px solid black"
+
+		for (let j=1; j<headers.length; j++) {
+			let stat_col = row.appendChild(document.createElement('td'));
+
+			stat_col.innerText 			 = symbol.summary[headers[j]]
+			stat_col.style.fontFamily 	 = 'Courier'
+			stat_col.style.fontSize 	 = '14pt'
+			stat_col.style.color 	 	 = "#000000"
+			stat_col.style.border	 	 = "1px solid black"
+		}
+
+		symbol.ft_ui_row = row
+		symbol.ft_ui_col = col
+		install_event_listener(symbol.ft_ui_col, 'click', symbol, EVENT.TOGGLE_SYMBOL)
+	}
+
+	// global.full_table_filled = false;
+
+
+	// let ft = global.ui.full_table;
+	// let rows = ft.rows;
+	//
+	// for (let i=0; i<global.symbols.length; i++) {
+	// 	let symbol = global.symbols[i]
+	// 	let symbol_summary = symbol.summary;
+	// 	let row = rows[i+1];
+	// 	if (symbol.group) {
+	// 		row.style.backgroundColor = symbol.group.color
+	// 	}
+	// 	row.cells[1].innerHTML = symbol_summary['points'];
+	// 	row.cells[1].style.color = '#000000'
+	// 	row.cells[2].innerHTML = symbol_summary['assists'];
+	// 	row.cells[2].style.color = '#000000'
+	// 	row.cells[3].innerHTML = symbol_summary['rebounds'];
+	// 	row.cells[3].style.color = '#000000'
+	// 	row.cells[4].innerHTML = symbol_summary['steals'];
+	// 	row.cells[4].style.color = '#000000'
+	// 	row.cells[5].innerHTML = symbol_summary['blocks'];
+	// 	row.cells[5].style.color = '#000000'
+	// 	row.cells[6].innerHTML = symbol_summary['turnovers'];
+	// 	row.cells[6].style.color = '#000000'
+	// 	row.cells[7].innerHTML = symbol_summary['fouls'];
+	// 	row.cells[7].style.color = '#000000'
+	// }
+}
+
+
 function fill_full_table() {
 	let ft = global.ui.full_table;
 	let rows = ft.rows;
 
 	for (let i=0; i<global.symbols.length; i++) {
-		let symbol_summary = global.symbols[i].summary;
-		// if (global.symbols[i].name == 'Kawhi_Leonard')
-		// console.log(rows[i+1].cells[0].innerHTML, global.symbols[i].name, symbol_summary['points'])
-		rows[i+1].cells[1].innerHTML = symbol_summary['points'];
-		rows[i+1].cells[2].innerHTML = symbol_summary['assists'];
-		rows[i+1].cells[3].innerHTML = symbol_summary['rebounds'];
-		rows[i+1].cells[4].innerHTML = symbol_summary['steals'];
-		rows[i+1].cells[5].innerHTML = symbol_summary['blocks'];
-		rows[i+1].cells[6].innerHTML = symbol_summary['turnovers'];
-		rows[i+1].cells[7].innerHTML = symbol_summary['fouls'];
+		let symbol = global.symbols[i]
+		let symbol_summary = symbol.summary;
+		let row = rows[i+1];
+		if (symbol.group) {
+			row.style.backgroundColor = symbol.group.color
+		}
+		row.cells[1].innerHTML = symbol_summary['points'];
+		row.cells[1].style.color = '#000000'
+		row.cells[2].innerHTML = symbol_summary['assists'];
+		row.cells[2].style.color = '#000000'
+		row.cells[3].innerHTML = symbol_summary['rebounds'];
+		row.cells[3].style.color = '#000000'
+		row.cells[4].innerHTML = symbol_summary['steals'];
+		row.cells[4].style.color = '#000000'
+		row.cells[5].innerHTML = symbol_summary['blocks'];
+		row.cells[5].style.color = '#000000'
+		row.cells[6].innerHTML = symbol_summary['turnovers'];
+		row.cells[6].style.color = '#000000'
+		row.cells[7].innerHTML = symbol_summary['fouls'];
+		row.cells[7].style.color = '#000000'
 	}
 }
 
@@ -1379,7 +1544,7 @@ function fill_ui_components()
 	min_gp_sld.type 	 = 'range';
 	min_gp_sld.min 		 = 1;
 	min_gp_sld.max 		 = 82;
-	min_gp_sld.value 	 = 1;
+	min_gp_sld.value 	 = 30;
 	min_gp_sld.className = "slider"
 	min_gp_sld.style	 = 'width:98%;'
 	global.min_gp_sld 	 = min_gp_sld;
@@ -1662,60 +1827,25 @@ function fill_ui_components()
 	let full_table_component = get_component("full_table");
 	if (full_table_component) {
 		full_table_component.appendChild(ft_filter_input);
-		full_table_component.appendChild(ft_add_table_symbols_btn);
+		// full_table_component.appendChild(ft_add_table_symbols_btn);
 		full_table_component.appendChild(full_table_div);
-		full_table_component.appendChild(ft_toggle_table_btn);
+		// full_table_component.appendChild(ft_toggle_table_btn);
 	}
 
-	//----------
-	// creating full table for players (symbols)
-	//----------
-	let full_table 		 = full_table_div.appendChild(document.createElement('table'))
-	global.ui.full_table = full_table
-	// full_table.border	 = ''
-	full_table.style 	 = 'position:block; width:100%; heigth: 100% !important;\
-							border:1px solid black; border-collapse:collapse'
+	// -------
+	// groups table components
+	// -------
 
-	let headers = ['name','points','assists','rebounds','steals','blocks','turnovers','fouls'];
-	let header_row = full_table.insertRow(-1);
-	for (let i=0;i<headers.length; i++) {
-		let header_cell = header_row.appendChild(document.createElement('th'));
-		header_cell.innerHTML = headers[i];
-		header_cell.style.fontFamily = 'Courier'
-		header_cell.style.fontSize 	 = '14pt'
-		header_cell.style.color 	 = "#6b6f71"
-        header_cell.style.border	 = "1px solid black"
+	let groups_table_div 	   = document.createElement('div')
+	global.ui.groups_table_div = groups_table_div
+	groups_table_div.id 	   = 'group_table_div'
+	groups_table_div.style 	   = 'position:relative; width:98%; height:80%; margin:auto;\
+	 							  overflow:auto; border-radius:2px; background-color:#FFFFFF'
+
+	let groups_table_component = get_component("groups_table");
+	if (groups_table_component) {
+		groups_table_component.appendChild(groups_table_div);
 	}
-
-	for (let i=0;i<global.symbols.length;i++) {
-		let symbol = global.symbols[i]
-		let row    = full_table.appendChild(document.createElement('tr'))
-		let col    = row.appendChild(document.createElement('td'))
-
-		col.innerText 		 = symbol.name
-		col.style 			 = "cursor: pointer"
-		col.style.fontFamily = 'Courier'
-		col.style.fontSize 	 = '14pt'
-		col.style.color 	 = "#6b6f71"
-		col.style.border	 = "1px solid black"
-
-		for (let j=1; j<headers.length; j++) {
-			let stat_col = row.appendChild(document.createElement('td'));
-
-			stat_col.innerText 			 = '-'
-			stat_col.style.fontFamily 	 = 'Courier'
-			stat_col.style.fontSize 	 = '14pt'
-			stat_col.style.color 	 	 = "#6b6f71"
-			stat_col.style.border	 	 = "1px solid black"
-		}
-
-		symbol.ft_ui_row = row
-		symbol.ft_ui_col = col
-		install_event_listener(symbol.ft_ui_col, 'click', symbol, EVENT.TOGGLE_SYMBOL)
-	}
-
-	global.full_table_filled = false;
-
 
 	// -------
 	// VIEWS
@@ -3372,11 +3502,15 @@ function process_event_queue()
 				let found = symbol.name.search(re) >= 0
 				if (found && !symbol.on_table) {
 					global.ui.symbols_table.appendChild(symbol.ui_row)
-					global.ui.full_table.appendChild(symbol.ft_ui_row)
+					if (symbol.ft_ui_row) {
+						global.ui.full_table.appendChild(symbol.ft_ui_row)
+					}
 					symbol.on_table = true
 				} else if (!found && symbol.on_table) {
 					global.ui.symbols_table.removeChild(symbol.ui_row)
-					global.ui.full_table.removeChild(symbol.ft_ui_row)
+					if (symbol.ft_ui_row) {
+						global.ui.full_table.removeChild(symbol.ft_ui_row)
+					}
 					symbol.on_table = false
 				}
 			}
@@ -3404,24 +3538,42 @@ function process_event_queue()
 		} else if (e.event_type == EVENT.TOGGLE_GROUP) {
 			let group = e.context
 			if (!group.on_chart) {
-				add_group_to_chart(group)
-				if (e.raw.getModifierState("Shift")) {
-					group.fbed.active = !group.fbed.active
-					if(group.fbed.active) {
-						console.log("ran ed algorithm with group " + group.name)
-						run_depth_algorithm_group(group, "ed")
-					}
-				}
 				if (e.raw.getModifierState("Control")) {
-					group.fbmbd.active = !group.fbmbd.active
-					if(group.fbmbd.active) {
-						run_depth_algorithm_group(group, "mbd")
+					add_group_to_chart(group)
+				} else {
+					for (let i=0; i<global.groups.length; i++) {
+						let group_i = global.groups[i];
+						if (group_i !== group) {
+							remove_group_from_chart(group_i)
+						}
 					}
+					add_group_to_chart(group)
 				}
 			} else {
-				group.fbed.active  = false
-				group.fbmbd.active = false
-				remove_group_from_chart(group)
+				if (e.raw.getModifierState("Control")) {
+					remove_group_from_chart(group)
+					let groups_exist = false;
+					for (let i=0; i<global.groups.length; i++) {
+						let group = global.groups[i];
+						if (group.on_chart) {
+							groups_exist = true;
+						}
+					}
+					if (!groups_exist) {
+						for (let i=0; i<global.groups.length; i++) {
+							let group = global.groups[i];
+							add_group_to_chart(group)
+						}
+					}
+				} else {
+					for (let i=0; i<global.groups.length; i++) {
+						let group_i = global.groups[i];
+						if (group_i !== group) {
+							remove_group_from_chart(group_i)
+						}
+					}
+					add_group_to_chart(group)
+				}
 			}
 		} else if (e.event_type == EVENT.REMOVE_ACTIVE_GROUPS) {
 			reset_groups()
@@ -3718,12 +3870,15 @@ function process_event_queue()
 			if (global.layout_index == 0) {
 				if (!global.full_table_filled) {
 					fill_full_table();
-					global.full_table_filled = true;
+					// global.full_table_filled = true;
 				}
 				global.layout_index = 2;
 			} else if (global.layout_index == 2) {
 				global.layout_index = 0;
 			}
+		} else if (e.event_type == EVENT.SORT_TABLE_BY_COL) {
+			// console.log(e.raw)
+			sortTable(e.context.cellIndex)
 		}
 	}
 	global.events.length = 0
@@ -5977,14 +6132,13 @@ function set_ui_components()
 
 	{
 		// -------
-		// default layout w/ groups table
+		// layout w/ full table (for clusters); groups table
 		// -------
 		let c_0     = new Node('root', 1, NODE_ORIENTATION_HORIZONTAL)
 		let c_l     = new Node('l', 1, NODE_ORIENTATION_VERTICAL)
-		let c_l_t   = new Node('controls')
-		let c_l_m   = new Node('table')
+		let c_l_t   = new Node('full_table', 9)
 		let c_l_b   = new Node('groups_table')
-		let c_r     = new Node('r', 5, NODE_ORIENTATION_VERTICAL)
+		let c_r     = new Node('r', 1, NODE_ORIENTATION_VERTICAL)
 		let c_r_t   = new Node('line_chart')
 		let c_r_b   = new Node('rb', 1, NODE_ORIENTATION_HORIZONTAL)
 		let c_r_b_l = new Node('aux_view')
@@ -5994,7 +6148,6 @@ function set_ui_components()
 		c_0.add_child(c_r)
 
 		c_l.add_child(c_l_t)
-		c_l.add_child(c_l_m)
 		c_l.add_child(c_l_b)
 
 		c_r.add_child(c_r_t)
@@ -6011,9 +6164,9 @@ function set_ui_components()
 		// default layout w/ full table
 		// -------
 		let c_0     = new Node('root', 1, NODE_ORIENTATION_HORIZONTAL)
-		let c_l     = new Node('l', 1, NODE_ORIENTATION_VERTICAL)
-		let c_l_t   = new Node('controls')
-		let c_l_b   = new Node('full_table')
+		// let c_l     = new Node('l', 1, NODE_ORIENTATION_VERTICAL)
+		// let c_l_t   = new Node('controls')
+		let c_l     = new Node('full_table')
 		let c_r     = new Node('r', 3, NODE_ORIENTATION_VERTICAL)
 		let c_r_t   = new Node('line_chart')
 		let c_r_b   = new Node('rb', 1, NODE_ORIENTATION_HORIZONTAL)
@@ -6023,8 +6176,8 @@ function set_ui_components()
 		c_0.add_child(c_l)
 		c_0.add_child(c_r)
 
-		c_l.add_child(c_l_t)
-		c_l.add_child(c_l_b)
+		// c_l.add_child(c_l_t)
+		// c_l.add_child(c_l_b)
 
 		c_r.add_child(c_r_t)
 		c_r.add_child(c_r_b)
@@ -6105,6 +6258,10 @@ function update_ui()
 			component.style.visibility="hidden"
 		}
 	}
+
+	// if (global.layout_index == 1) {
+	//
+	// }
 
 	// setTimeout(update, MSEC_PER_FRAME)
 }
