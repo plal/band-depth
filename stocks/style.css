@@ -95,3 +95,7 @@ html,body,#root{
   top: -1px;
   left: 50%;
 }
+
+th.selected {
+  background-color: #AAAAAA;
+}

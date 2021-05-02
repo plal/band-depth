@@ -265,75 +265,80 @@ function map_align_nodes(node, rect, output)
 
 //UPDATE 2021-04-30: order full table by column
 function sortTable(n) {
-  var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
-  table = global.ui.full_table;
-  switching = true;
-  // Set the sorting direction to ascending:
-  dir = "desc";
-  /* Make a loop that will continue until
-  no switching has been done: */
-  while (switching) {
-    // Start by saying: no switching is done:
-    switching = false;
-    rows = table.rows;
-    /* Loop through all table rows (except the
-    first, which contains table headers): */
-    for (i = 1; i < (rows.length - 1); i++) {
-      // Start by saying there should be no switching:
-      shouldSwitch = false;
-      /* Get the two elements you want to compare,
-      one from current row and one from the next: */
-      x = rows[i].getElementsByTagName("TD")[n];
-      y = rows[i + 1].getElementsByTagName("TD")[n];
-      /* Check if the two rows should switch place,
-      based on the direction, asc or desc: */
-	  if (n>0) {
-		  if (dir == "asc") {
-	        if (parseInt(x.innerHTML) > parseInt(y.innerHTML)) {
-	          // If so, mark as a switch and break the loop:
-	          shouldSwitch = true;
-	          break;
-	        }
-	      } else if (dir == "desc") {
-	        if (parseInt(x.innerHTML) < parseInt(y.innerHTML)) {
-	          // If so, mark as a switch and break the loop:
-	          shouldSwitch = true;
-	          break;
-	        }
-	      }
-	  } else {
-		  if (dir == "asc") {
-            if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
-              // If so, mark as a switch and break the loop:
-              shouldSwitch = true;
-              break;
-            }
-          } else if (dir == "desc") {
-            if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
-              // If so, mark as a switch and break the loop:
-              shouldSwitch = true;
-              break;
-            }
-          }
-	  }
+	var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+	table = global.ui.full_table;
+	switching = true;
+	// Set the sorting direction to ascending:
+	if (n==0) {
+		dir = "asc"
+	} else {
+		dir = "desc";
+	}
+	/* Make a loop that will continue until
+	no switching has been done: */
+	while (switching) {
+		// Start by saying: no switching is done:
+		switching = false;
+		rows = table.rows;
+		/* Loop through all table rows (except the
+		first, which contains table headers): */
+		for (i = 1; i < (rows.length - 1); i++) {
+			// Start by saying there should be no switching:
+			shouldSwitch = false;
+			/* Get the two elements you want to compare,
+			one from current row and one from the next: */
+			x = rows[i].getElementsByTagName("TD")[n];
+			y = rows[i + 1].getElementsByTagName("TD")[n];
+			/* Check if the two rows should switch place,
+			based on the direction, asc or desc: */
+			if (n>0) {
+				if (dir == "asc") {
+					if (parseInt(x.innerHTML) > parseInt(y.innerHTML)) {
+						// If so, mark as a switch and break the loop:
+						shouldSwitch = true;
+						break;
+					}
+				} else if (dir == "desc") {
+					if (parseInt(x.innerHTML) < parseInt(y.innerHTML)) {
+						// If so, mark as a switch and break the loop:
+						shouldSwitch = true;
+						break;
+					}
+				}
+			} else {
+				if (dir == "asc") {
+					if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+						// If so, mark as a switch and break the loop:
+						shouldSwitch = true;
+						break;
+					}
+				} else if (dir == "desc") {
+					if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+						// If so, mark as a switch and break the loop:
+						shouldSwitch = true;
+						break;
+					}
+				}
+			}
+		}
 
-    }
-    if (shouldSwitch) {
-      /* If a switch has been marked, make the switch
-      and mark that a switch has been done: */
-      rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
-      switching = true;
-      // Each time a switch is done, increase this count by 1:
-      switchcount ++;
-    } else {
-      /* If no switching has been done AND the direction is "asc",
-      set the direction to "desc" and run the while loop again. */
-      if (switchcount == 0 && dir == "desc") {
-        dir = "asc";
-        switching = true;
-      }
-    }
-  }
+		if (shouldSwitch) {
+			/* If a switch has been marked, make the switch
+			and mark that a switch has been done: */
+			rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+			switching = true;
+			// Each time a switch is done, increase this count by 1:
+			switchcount ++;
+		}
+		// else {
+		// 	/* If no switching has been done AND the direction is "asc",
+		// 	set the direction to "desc" and run the while loop again. */
+		// 	if (switchcount == 0 && dir == "desc") {
+		// 		dir = "asc";
+		// 		switching = true;
+		// 	}
+		// }
+	}
 }
 
 // -------
@@ -785,7 +790,7 @@ function add_symbol_to_chart(symbol, color) {
 		if (symbol.group) {
 			symbol.ft_ui_row.style.backgroundColor = symbol.group.color
 		}
-		symbol.ft_ui_col.style.fontWeight = 'bold'
+		// symbol.ft_ui_col.style.fontWeight = 'bold'
 	}
 
 }
@@ -1285,6 +1290,22 @@ function set_bubble(range, bubble) {
 	// bubble.style.left = `calc(${newVal}% + (${8 - newVal * 0.15}px))`;
 }
 
+function toggle_class(el, cname) {
+	// clear previous reset_selections
+	let ths = document.getElementsByTagName("th");
+	for (let i=0; i<ths.length; i++) {
+		let th = ths[i];
+		th.className = "";
+	}
+
+	if (el.className.indexOf(cname) >= 0) {
+		el.className = el.className.replace(cname,"");
+	}
+	else {
+		el.className += cname;
+	}
+}
+
 function create_and_fill_full_table_cluster() {
 
 	if (global.ui.full_table !== undefined) {
@@ -1338,35 +1359,6 @@ function create_and_fill_full_table_cluster() {
 		symbol.ft_ui_col = col
 		install_event_listener(symbol.ft_ui_col, 'click', symbol, EVENT.TOGGLE_SYMBOL)
 	}
-
-	// global.full_table_filled = false;
-
-
-	// let ft = global.ui.full_table;
-	// let rows = ft.rows;
-	//
-	// for (let i=0; i<global.symbols.length; i++) {
-	// 	let symbol = global.symbols[i]
-	// 	let symbol_summary = symbol.summary;
-	// 	let row = rows[i+1];
-	// 	if (symbol.group) {
-	// 		row.style.backgroundColor = symbol.group.color
-	// 	}
-	// 	row.cells[1].innerHTML = symbol_summary['points'];
-	// 	row.cells[1].style.color = '#000000'
-	// 	row.cells[2].innerHTML = symbol_summary['assists'];
-	// 	row.cells[2].style.color = '#000000'
-	// 	row.cells[3].innerHTML = symbol_summary['rebounds'];
-	// 	row.cells[3].style.color = '#000000'
-	// 	row.cells[4].innerHTML = symbol_summary['steals'];
-	// 	row.cells[4].style.color = '#000000'
-	// 	row.cells[5].innerHTML = symbol_summary['blocks'];
-	// 	row.cells[5].style.color = '#000000'
-	// 	row.cells[6].innerHTML = symbol_summary['turnovers'];
-	// 	row.cells[6].style.color = '#000000'
-	// 	row.cells[7].innerHTML = symbol_summary['fouls'];
-	// 	row.cells[7].style.color = '#000000'
-	// }
 }
 
 
@@ -1906,7 +1898,7 @@ function fill_ui_components()
 	//----------
 	let rank_depth_select = document.createElement('select')
 	global.ui.rank_depth_select = rank_depth_select
-	rank_depth_select.style 	= 'position:absolute; left:3.5%; top:0%; background-color:#2f3233; \
+	rank_depth_select.style 	= 'position:absolute; left:15; top:0%; background-color:#2f3233; \
 								   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 	install_event_listener(rank_depth_select, 'change', rank_depth_select, EVENT.CHANGE_AUX_VIEW)
 
@@ -1926,41 +1918,17 @@ function fill_ui_components()
 	//----------
 	// option to choose aggregated or separated distributions
 	//----------
-	let draw_aux_view_agg = document.createElement('input')
-	global.ui.draw_aux_view_agg = draw_aux_view_agg
-	draw_aux_view_agg.type 		= 'radio'
-	draw_aux_view_agg.checked 	= true
-	draw_aux_view_agg.name 		= 'dcdf-vis-choice'
+	let agg_sep_select = document.createElement('select');
+	global.ui.agg_sep_select = agg_sep_select;
+	agg_sep_select.style 	 = 'position:absolute; left:265; top:0%; background-color:#2f3233; \
+								font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 
-	let draw_aux_view_agg_lbl = document.createElement('label')
-	draw_aux_view_agg_lbl.setAttribute("for", draw_aux_view_agg)
-	global.ui.draw_aux_view_lbl 	= draw_aux_view_agg_lbl
-	draw_aux_view_agg_lbl.style 	= 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
-	draw_aux_view_agg_lbl.innerHTML = 'Aggregated'
+	let agg_option = create_option('agg', 'aggregated');
+	agg_option.selected = 'selected';
+	let sep_option = create_option('sep', 'separated');
 
-	let draw_aux_view_sep = document.createElement('input')
-	global.ui.draw_aux_view_sep = draw_aux_view_sep
-	draw_aux_view_sep.type 		= 'radio'
-	draw_aux_view_sep.name 		= 'dcdf-vis-choice'
-	draw_aux_view_sep.style 	= 'margin-top:4px'
-
-	let draw_aux_view_sep_lbl = document.createElement('label')
-	draw_aux_view_sep_lbl.setAttribute("for", draw_aux_view_sep)
-	global.ui.draw_aux_view_lbl 	= draw_aux_view_sep_lbl
-	draw_aux_view_sep_lbl.style 	= 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
-	draw_aux_view_sep_lbl.innerHTML = 'Separated'
-
-	let draw_aux_view_type_grid = document.createElement('div')
-	global.ui.draw_aux_view_type_grid = draw_aux_view_type_grid
-	draw_aux_view_type_grid.id 		  = draw_aux_view_type_grid
-	draw_aux_view_type_grid.style 	  = 'position:absolute; left:40%; top:1%; display:grid;\
-										 align-items:baseline; justify-items:baseline;\
-										 grid-template-rows: 10px; grid-template-columns:repeat(4, 110px); z-index:2'
-
-	draw_aux_view_type_grid.appendChild(draw_aux_view_agg_lbl)
-	draw_aux_view_type_grid.appendChild(draw_aux_view_agg)
-	draw_aux_view_type_grid.appendChild(draw_aux_view_sep_lbl)
-	draw_aux_view_type_grid.appendChild(draw_aux_view_sep)
+	agg_sep_select.appendChild(agg_option);
+	agg_sep_select.appendChild(sep_option);
 
 	//----------
 	// checkbox to draw group envelopes
@@ -1968,13 +1936,13 @@ function fill_ui_components()
 	let draw_groups_envelope_btn = create_checkbox();
 	global.ui.draw_groups_envelope_btn = draw_groups_envelope_btn;
 
-	let draw_groups_envelope_lbl = create_checkbox_label(draw_groups_envelope_btn, 'Draw groups envelopes');
+	let draw_groups_envelope_lbl = create_checkbox_label(draw_groups_envelope_btn, 'envelopes');
 	global.ui.draw_groups_envelope_lbl = draw_groups_envelope_lbl
 
 	let draw_groups_envelope_grid = document.createElement('div')
 	global.ui.draw_groups_envelope_grid = draw_groups_envelope_grid
 	draw_groups_envelope_grid.id 		= draw_groups_envelope_grid
-	draw_groups_envelope_grid.style 	= 'position:absolute; left:3.5%; top:94%; \
+	draw_groups_envelope_grid.style 	= 'position:absolute; left:15; top:94%; \
 										   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 	draw_groups_envelope_grid.appendChild(draw_groups_envelope_lbl)
 	draw_groups_envelope_grid.appendChild(draw_groups_envelope_btn)
@@ -1984,7 +1952,7 @@ function fill_ui_components()
 	//----------
 	let n_protos_select = document.createElement('select');
 	global.ui.n_protos_select = n_protos_select;
-	n_protos_select.style 	  = 'position:absolute; left:40%; top:94%; width:110px; background-color:#2f3233; \
+	n_protos_select.style 	  = 'position:absolute; left:140; top:94%; width:110px; background-color:#2f3233; \
 								 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 
 	let n_protos_info_option = create_option(1, 'n_protos');
@@ -2005,7 +1973,7 @@ function fill_ui_components()
 	//----------
 	let step_select = document.createElement('select');
 	global.ui.step_select = step_select;
-	step_select.style 	  = 'position:absolute; left:60%; top:94%; width:140px; background-color:#2f3233; \
+	step_select.style 	  = 'position:absolute; left:260; top:94%; width:140px; background-color:#2f3233; \
 							 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 
 	let step_default_option = create_option(1,'default(1)');
@@ -2023,7 +1991,7 @@ function fill_ui_components()
 	let aux_view = get_component('aux_view');
 	if (aux_view) {
 		aux_view.appendChild(rank_depth_select)
-		aux_view.appendChild(draw_aux_view_type_grid)
+		aux_view.appendChild(agg_sep_select)
 		aux_view.appendChild(draw_groups_envelope_grid)
 		aux_view.appendChild(n_protos_select)
 		aux_view.appendChild(step_select)
@@ -3863,21 +3831,19 @@ function process_event_queue()
 		} else if (e.event_type == EVENT.CLUSTER) {
 			if (global.ui.n_clusters_select.value !== 0) {
 				cluster_chart_data();
-				// create_and_update_groups_table();
 			}
 		}
 		else if (e.event_type == EVENT.TOGGLE_TABLE) {
 			if (global.layout_index == 0) {
 				if (!global.full_table_filled) {
 					fill_full_table();
-					// global.full_table_filled = true;
 				}
 				global.layout_index = 2;
 			} else if (global.layout_index == 2) {
 				global.layout_index = 0;
 			}
 		} else if (e.event_type == EVENT.SORT_TABLE_BY_COL) {
-			// console.log(e.raw)
+			toggle_class(e.context, 'selected')
 			sortTable(e.context.cellIndex)
 		}
 	}
@@ -4939,7 +4905,7 @@ function update_ts()
 				// if drawing separated values for pointwise depths cdfs
 				// dissipate them
 				//--------------
-				if(global.ui.draw_aux_view_sep.checked) {
+				if(global.ui.agg_sep_select.value === 'sep') {
 					if (j>0) {
 						value = values[j] - values[j-1]
 					}
@@ -4963,7 +4929,7 @@ function update_ts()
 			aux_x_max = global.chart_symbols[0].cdf_matrix_row.length - 1
 		} else if (global.aux_view == 'rcdf') {
 
-			if (global.ui.draw_aux_view_agg.checked) {
+			if (global.ui.agg_sep_select.value === 'agg') {
 				let last_rank = 0
 
 				for (let i=0; i<global.chart_symbols.length; i++) {
@@ -4981,7 +4947,7 @@ function update_ts()
 
 				aux_x_max = last_rank + 1
 
-			} else if (global.ui.draw_aux_view_sep.checked) {
+			} else if (global.ui.agg_sep_select.value === 'sep') {
 				aux_x_max = global.chart_symbols.length -1
 			}
 		}
@@ -6260,7 +6226,9 @@ function update_ui()
 	}
 
 	// if (global.layout_index == 1) {
-	//
+	// 	global.ui.draw_aux_view_type_grid.style.visibility="hidden"
+	// } else {
+	// 	global.ui.draw_aux_view_type_grid.style.visibility="visible"
 	// }
 
 	// setTimeout(update, MSEC_PER_FRAME)
