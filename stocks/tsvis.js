@@ -1392,17 +1392,14 @@ function create_checkbox_grid(checkbox_id, label_text, evt) {
 }
 
 function toggle_class(el, cname) {
-	// clear previous reset_selections
-	let ths = document.getElementsByTagName("th");
-	for (let i=0; i<ths.length; i++) {
-		let th = ths[i];
-		th.className = "";
-	}
-
 	if (el.className.indexOf(cname) >= 0) {
 		el.className = el.className.replace(cname,"");
-	}
-	else {
+	} else {
+		let ths = document.getElementsByTagName("th");
+		for (let i=0; i<ths.length; i++) {
+			let th = ths[i];
+			th.className = "";
+		}
 		el.className += cname;
 	}
 }
@@ -3962,7 +3959,12 @@ function process_event_queue()
 			}
 		} else if (e.event_type == EVENT.SORT_TABLE_BY_COL) {
 			toggle_class(e.context, 'selected')
-			sortTable(e.context.cellIndex)
+			if (e.context.className == 'selected') {
+				sortTable(e.context.cellIndex)
+			} else {
+				create_and_fill_full_table_cluster(-1)
+			}
+
 		} else if (e.event_type == EVENT.FULL_TABLE_PROTOS_ONLY) {
 			create_and_fill_full_table_cluster(-1)
 		}
