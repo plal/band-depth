@@ -105,7 +105,8 @@ const EVENT= {
 	CLUSTER: "event_cluster",
 	DRAW_GROUPS_ENVELOPES: "event_draw_groups_envelopes",
 	TOGGLE_TABLE: "event_toggle_table",
-	SORT_TABLE_BY_COL: "event_sort_table_by_col"
+	SORT_TABLE_BY_COL: "event_sort_table_by_col",
+	FULL_TABLE_PROTOS_ONLY: "event_full_table_protos_only"
 }
 
 var global = {
@@ -153,7 +154,7 @@ var global = {
 	brush_mode_active: false,
 	select_mode_active:false,
 	aux_view:'none',
-	split_cdf: { breaks:[0], ww:[1], realign:[], split_rank: null, panel_resize_index: null, panel_resize_side: null, panel_resize_last_x: null, filters: [[]]}
+	split_cdf: { breaks:[0], ww:[1], realign:[], split_rank: null, panel_resize_index: null, panel_resize_side: null, panel_resize_last_x: null, filters: [[]]},
 }
 
 // -------
@@ -305,6 +306,20 @@ function sortTable(n) {
 						break;
 					}
 				}
+			} else if (n<0) {
+				if (dir == "asc") {
+					if (parseInt(x.innerHTML) > parseInt(y.innerHTML)) {
+						// If so, mark as a switch and break the loop:
+						shouldSwitch = true;
+						break;
+					}
+				} else if (dir == "desc") {
+					if (parseInt(x.innerHTML) < parseInt(y.innerHTML)) {
+						// If so, mark as a switch and break the loop:
+						shouldSwitch = true;
+						break;
+					}
+				}
 			} else {
 				if (dir == "asc") {
 					if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
@@ -413,6 +428,65 @@ function reset_group_protos(group) {
 		let member = members[j];
 		member.proto = false;
 	}
+}
+
+function get_max_cdf() {
+	let chart_symbols = global.chart_symbols;
+
+	let max_cdf = [];
+
+	for (let l=0; l<global.n_ranks; l++) {
+		let max_on_rank_l = 0.0;
+
+		for (let j=0; j<chart_symbols.length; j++) {
+			let symbol = chart_symbols[j];
+			let symbol_values = symbol.ranks_current_values;
+
+			max_on_rank_l = Math.max(max_on_rank_l, symbol_values[l]);
+		}
+
+		max_cdf.push(max_on_rank_l);
+	}
+
+	return max_cdf;
+}
+
+function prepare_group_envelope(group, panel_x_min, panel_x_max, panel_rank) {
+	let members = group.members;
+
+	let upper_bound = [];
+	let lower_bound = [];
+
+	let n_members = members.length;
+
+	for (let l=0; l<global.n_ranks; l++) {
+		let max_on_rank_l = 0.0;
+		let min_on_rank_l = 1.0;
+
+		for (let j=0; j<n_members; j++) {
+			let member = members[j];
+			let member_values = member.ranks_current_values;
+
+			if (panel_rank == 0) {
+				max_on_rank_l = Math.max(max_on_rank_l, member_values[l]);
+				min_on_rank_l = Math.min(min_on_rank_l, member_values[l]);
+			} else {
+				max_on_rank_l = Math.max(max_on_rank_l, (member_values[l] - member_values[panel_x_min-1]));
+				min_on_rank_l = Math.min(min_on_rank_l, (member_values[l] - member_values[panel_x_min-1]));
+			}
+		}
+
+		upper_bound.push(max_on_rank_l);
+		lower_bound.push(min_on_rank_l);
+	}
+
+	let envelope = [];
+	envelope.upper = upper_bound;
+	envelope.lower = lower_bound;
+
+	group.envelope = envelope;
+
+	return envelope;
 }
 
 function find_group_proto(group, n_protos) {
@@ -606,6 +680,10 @@ function create_groups_from_response(groups_obj) {
 			}
 		}
 
+		let envelope = prepare_group_envelope(group, 0, 0, 0);
+		let n_protos = global.ui.n_protos_select.value
+		find_group_proto(group, n_protos);
+
 		global.groups.push(group)
 		global.group_count = global.group_count + 1
 
@@ -621,9 +699,14 @@ function create_groups_from_response(groups_obj) {
 	groups_table.id = 'groups_table';
 	groups_table.style = 'position:block; width:100%; heigth: 100% !important;';
 
+	//UPDATE 2021-05-03: sort groups table to distance of its first member to max_cdf
+	let max_cdf = get_max_cdf();
+	let groups = global.groups;
+	groups.sort((a,b) => parseFloat(earth_movers_distance(max_cdf, a.members[0])) - parseFloat(earth_movers_distance(max_cdf, b.members[0])))
+
 	let row = global.ui.groups_table.appendChild(document.createElement('tr'))
-	for (let i=0; i<global.groups.length; i++) {
-		let group = global.groups[i]
+	for (let i=0; i<groups.length; i++) {
+		let group = groups[i]
 		let col   = row.appendChild(document.createElement('td'))
 		col.innerText = group.name
 		col.style = "cursor: pointer"
@@ -632,13 +715,12 @@ function create_groups_from_response(groups_obj) {
 		col.style.fontSize = '14pt'
 		col.style.textAlign = 'center'
 		col.style.fontWeight = 'bold'
-		// col.style.color = group.color
 		group.ui_row = row
 		group.ui_col = col
 		install_event_listener(group.ui_col, 'click', group, EVENT.TOGGLE_GROUP)
 	}
 
-	create_and_fill_full_table_cluster()
+	create_and_fill_full_table_cluster(-1)
 	global.layout_index = 1;
 }
 
@@ -1053,7 +1135,7 @@ function clear_chart() {
 						 filters: [[]] };
 
 	global.ui.draw_groups_envelope_btn.checked = false;
-	// global.layout_index = 0;
+	global.layout_index = 0;
 }
 
 function hashcode(str) {
@@ -1290,6 +1372,25 @@ function set_bubble(range, bubble) {
 	// bubble.style.left = `calc(${newVal}% + (${8 - newVal * 0.15}px))`;
 }
 
+function create_checkbox_grid(checkbox_id, label_text, evt) {
+	let checkbox = document.createElement('input');
+	checkbox.type = "checkbox";
+	checkbox.id	  = checkbox_id;
+	install_event_listener(checkbox, 'change', checkbox, evt)
+
+	let checkbox_lbl = document.createElement('label')
+	checkbox_lbl.setAttribute("for", checkbox)
+	checkbox_lbl.style 	   = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
+	checkbox_lbl.innerHTML = label_text
+
+	let checkbox_grid = document.createElement('div')
+	checkbox_grid.style = 'display:flex; flex-direction:row; align-content:space-around; width:98%; margin:auto' //justify-content:flex-end'
+	checkbox_grid.appendChild(checkbox_lbl)
+	checkbox_grid.appendChild(checkbox)
+
+	return checkbox_grid
+}
+
 function toggle_class(el, cname) {
 	// clear previous reset_selections
 	let ths = document.getElementsByTagName("th");
@@ -1306,7 +1407,7 @@ function toggle_class(el, cname) {
 	}
 }
 
-function create_and_fill_full_table_cluster() {
+function create_and_fill_full_table_cluster(sort_index) {
 
 	if (global.ui.full_table !== undefined) {
 		document.getElementById('full_table').remove()
@@ -1332,8 +1433,22 @@ function create_and_fill_full_table_cluster() {
 
 	}
 
-	for (let i=0;i<global.chart_symbols.length;i++) {
-		let symbol = global.chart_symbols[i]
+	let chart_symbols = global.chart_symbols;
+	let max_cdf = get_max_cdf();
+
+	//UPDATE 2021-05-03: sort table according to different parameters (default: earth movers distance to max cdf)
+	if (sort_index>0) {
+		chart_symbols.sort((a,b) => b.data[headers[sort_index]] - a.data[headers[sort_index]])
+	} else if (sort_index<0) {
+		chart_symbols.sort((a,b) => parseFloat(earth_movers_distance(max_cdf, a)) - parseFloat(earth_movers_distance(max_cdf, b)))
+	} else {
+		chart_symbols.sort((a,b) => a.name.localeCompare(b.name))
+	}
+	for (let i=0;i<chart_symbols.length;i++) {
+		let symbol = chart_symbols[i]
+		if (document.getElementById('protos_only_checkbox').checked) {
+			if (!symbol.proto) { continue; }
+		}
 		let row    = full_table.appendChild(document.createElement('tr'))
 		let col    = row.appendChild(document.createElement('td'))
 
@@ -1794,21 +1909,21 @@ function fill_ui_components()
 	global.ui.ft_filter_input = ft_filter_input
 	install_event_listener(ft_filter_input, 'change', ft_filter_input, EVENT.FILTER)
 
-	let ft_add_table_symbols_btn = document.createElement('button')
-	global.ui.ft_add_table_symbols_btn   = ft_add_table_symbols_btn
-	ft_add_table_symbols_btn.id 		  = "ft_add_table_symbols_btn"
-	ft_add_table_symbols_btn.textContent = 'add curves on table'
-	ft_add_table_symbols_btn.style 	  = "position:relative; width:98%; margin-left:3px; margin-bottom:3px;\
-	 								   	 border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
-	install_event_listener(ft_add_table_symbols_btn, 'click', ft_add_table_symbols_btn, EVENT.ADD_TABLE_SYMBOLS)
+	// let ft_add_table_symbols_btn = document.createElement('button')
+	// global.ui.ft_add_table_symbols_btn   = ft_add_table_symbols_btn
+	// ft_add_table_symbols_btn.id 		  = "ft_add_table_symbols_btn"
+	// ft_add_table_symbols_btn.textContent = 'add curves on table'
+	// ft_add_table_symbols_btn.style 	  = "position:relative; width:98%; margin-left:3px; margin-bottom:3px;\
+	//  								   	 border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
+	// install_event_listener(ft_add_table_symbols_btn, 'click', ft_add_table_symbols_btn, EVENT.ADD_TABLE_SYMBOLS)
 
-	let ft_toggle_table_btn = document.createElement('button')
-	global.ui.ft_toggle_table_btn    = ft_toggle_table_btn
-	ft_toggle_table_btn.id 		  = "ft_toggle_table_btn"
-	ft_toggle_table_btn.textContent  = 'toggle full table'
-	ft_toggle_table_btn.style 	  	  = "position:relative; width:98%; margin-top:3px; margin-left:3px; margin-bottom:3px;\
-	 								   	 border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
-	install_event_listener(ft_toggle_table_btn, 'click', ft_toggle_table_btn, EVENT.TOGGLE_TABLE)
+	// let ft_toggle_table_btn = document.createElement('button')
+	// global.ui.ft_toggle_table_btn    = ft_toggle_table_btn
+	// ft_toggle_table_btn.id 		  = "ft_toggle_table_btn"
+	// ft_toggle_table_btn.textContent  = 'toggle full table'
+	// ft_toggle_table_btn.style 	  	  = "position:relative; width:98%; margin-top:3px; margin-left:3px; margin-bottom:3px;\
+	//  								   	 border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
+	// install_event_listener(ft_toggle_table_btn, 'click', ft_toggle_table_btn, EVENT.TOGGLE_TABLE)
 
 	let full_table_div 		 = document.createElement('div')
 	global.ui.full_table_div = full_table_div
@@ -1816,11 +1931,14 @@ function fill_ui_components()
 	full_table_div.style 	 = 'position:relative; width:98%; height:80%; margin:auto;\
 	 							overflow:auto; border-radius:2px; background-color:#FFFFFF'
 
+	let protos_only_grid = create_checkbox_grid('protos_only_checkbox', 'prototypes only', EVENT.FULL_TABLE_PROTOS_ONLY);
+
 	let full_table_component = get_component("full_table");
 	if (full_table_component) {
 		full_table_component.appendChild(ft_filter_input);
 		// full_table_component.appendChild(ft_add_table_symbols_btn);
 		full_table_component.appendChild(full_table_div);
+		full_table_component.appendChild(protos_only_grid);
 		// full_table_component.appendChild(ft_toggle_table_btn);
 	}
 
@@ -3845,6 +3963,8 @@ function process_event_queue()
 		} else if (e.event_type == EVENT.SORT_TABLE_BY_COL) {
 			toggle_class(e.context, 'selected')
 			sortTable(e.context.cellIndex)
+		} else if (e.event_type == EVENT.FULL_TABLE_PROTOS_ONLY) {
+			create_and_fill_full_table_cluster(-1)
 		}
 	}
 	global.events.length = 0
@@ -4746,18 +4866,36 @@ function update_ts()
 				draw_group_fbplot(group, "ed")
 			}
 			if(group.fbmbd.active) {
-				draw_group_fbplot(group, "mbd")
+				draw_group_fbplot(group, "mbd");
 			}
 		}
 
-		//--------------
-		// highlight on focused time series
-		//--------------
-		if (global.focused_symbol != null) {
-			draw_timeseries(global.focused_symbol, true)
+		// --------------
+		// highlight on focused time series and show game date
+		// --------------
+		let clamp = function(a,b,c) {
+			return Math.max(b,Math.min(c,a));
+		}
 
-			let record = global.focused_symbol
-			let text = `player: ${global.focused_symbol.name} // position: ${global.focused_symbol.position}`
+		let pt = inverse_map(lc_local_mouse_pos[0],lc_local_mouse_pos[1]);
+		pt[0] = clamp(pt[0],x_min,x_max);
+		pt[1] = clamp(pt[1],y_min,y_max);
+
+		if (global.focused_symbol != null) {
+			draw_timeseries(global.focused_symbol, true);
+
+			let record = global.focused_symbol;
+			let text;
+			// if (parseInt(Math.round(pt[0])) in Object.keys(record.data)) {
+			// 	if (record.data[Math.round(pt[0])] === undefined) {
+			// 		console.log(record, Math.round(pt[0]));
+			// 	}
+			// 	let game_date = record.data[Math.round(pt[0])].date;
+			// 	text = `player: ${record.name} // position: ${record.position} // date: ${game_date}`;
+			// } else {
+			text = `player: ${record.name} // position: ${record.position}`
+			// }
+
 
 			if (global.aux_view != 'none') {
 				lc_ctx.font = '14px Monospace';
@@ -4768,38 +4906,28 @@ function update_ts()
 			lc_ctx.fillText(text, lc_rect[2]/2, 40);
 		}
 
-		let clamp = function(a,b,c) {
-			return Math.max(b,Math.min(c,a))
+		// --------------
+		// auxiliar lines on mouse position to track date and value
+		// --------------
+		if (point_inside_rect(lc_local_mouse_pos, lc_rect)) {
+			let y_p0 = map(Math.floor(0.5+pt[0]),y_min)
+			let y_p1 = map(Math.floor(0.5+pt[0]),y_max)
+
+			lc_ctx.strokeStyle = "#555555"
+			lc_ctx.lineWidth = '1'
+
+			let x_p0 = map(x_min, pt[1])
+			let x_p1 = map(x_max, pt[1])
+
+			lc_ctx.beginPath()
+			lc_ctx.moveTo(x_p0[0]-20, x_p0[1])
+			lc_ctx.lineTo(x_p1[0], x_p1[1])
+			lc_ctx.stroke()
+
+			lc_ctx.restore() // LC_RECT CLIP END
+
+			drawTextBG(lc_ctx, Math.round(pt[1]), x_p0[0]-20, x_p0[1])
 		}
-
-		//--------------
-		//auxiliar lines on mouse position to track date and value
-		//--------------
-		let pt = inverse_map(lc_local_mouse_pos[0],lc_local_mouse_pos[1])
-		pt[0] = clamp(pt[0],x_min,x_max)
-		pt[1] = clamp(pt[1],y_min,y_max)
-
-		// let y_p0 = map(Math.floor(0.5+pt[0]),y_min)
-		// let y_p1 = map(Math.floor(0.5+pt[0]),y_max)
-
-		lc_ctx.strokeStyle = "#555555"
-		// ctx.beginPath()
-		// ctx.moveTo(y_p0[0], y_p0[1])
-		// ctx.lineTo(y_p1[0], y_p1[1])
-		// ctx.stroke()
-
-		let x_p0 = map(x_min, pt[1])
-		let x_p1 = map(x_max, pt[1])
-
-		lc_ctx.beginPath()
-		lc_ctx.moveTo(x_p0[0], x_p0[1])
-		lc_ctx.lineTo(x_p1[0], x_p1[1])
-		lc_ctx.stroke()
-
-		lc_ctx.restore() // LC_RECT CLIP END
-
-		// drawTextBG(ctx, date_offset_to_string(date_start+pt[0]), y_p0[0], y_p0[1])
-		drawTextBG(lc_ctx, pt[1].toFixed(2), x_p0[0], x_p0[1])
 
 		//--------------
 		// update start, end and norm dates on keyboard controls
@@ -4998,6 +5126,7 @@ function update_ts()
 		}
 
 		let n_ranks = aux_x_max
+		global.n_ranks = n_ranks;
 
 		function rotate(arr, a, b) {
 			let x = arr[b-1]
@@ -5459,48 +5588,10 @@ function update_ts()
 					av_ctx.restore()
 				}
 
-				function prepare_group_envelope(group, panel_x_min, panel_x_max, panel_rank) {
-					let members = group.members;
-
-					let upper_bound = [];
-					let lower_bound = [];
-
-					let n_members = members.length;
-
-					for (let l=0; l<n_ranks; l++) {
-						let max_on_rank_l = 0.0;
-						let min_on_rank_l = 1.0;
-
-						for (let j=0; j<n_members; j++) {
-							let member = members[j];
-							let member_values = member.ranks_current_values;
-
-							if (panel_rank == 0) {
-								max_on_rank_l = Math.max(max_on_rank_l, member_values[l]);
-								min_on_rank_l = Math.min(min_on_rank_l, member_values[l]);
-							} else {
-								max_on_rank_l = Math.max(max_on_rank_l, (member_values[l] - member_values[panel_x_min-1]));
-								min_on_rank_l = Math.min(min_on_rank_l, (member_values[l] - member_values[panel_x_min-1]));
-							}
-						}
-
-						upper_bound.push(max_on_rank_l);
-						lower_bound.push(min_on_rank_l);
-					}
-
-					let envelope = [];
-					envelope.upper = upper_bound;
-					envelope.lower = lower_bound;
-
-					group.envelope = envelope;
-
-					return envelope;
-				}
-
 				function draw_group_envelope(group, panel_x_min, panel_x_max, panel_rank) {
 					let envelope = prepare_group_envelope(group, panel_x_min, panel_x_max, panel_rank);
-					let n_protos = global.ui.n_protos_select.value
-					find_group_proto(group, n_protos);
+					// let n_protos = global.ui.n_protos_select.value
+					// find_group_proto(group, n_protos);
 
 					let upper_bound = envelope.upper;
 					let lower_bound = envelope.lower;
