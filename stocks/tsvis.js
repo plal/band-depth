@@ -1967,7 +1967,7 @@ function fill_ui_components()
 	//----------
 	let chosen_stats_select = document.createElement('select')
 	global.ui.chosen_stats_select = chosen_stats_select
-	chosen_stats_select.style 	  = 'background-color:#2f3233; position:absolute; left:3.5%; top:0.5%; width:125px; height:25px;\
+	chosen_stats_select.style 	  = 'background-color:#2f3233; position:relative; left:55; top:0.5%; width:125px; height:25px;\
 									 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 
 	//----------
@@ -1977,19 +1977,32 @@ function fill_ui_components()
 	global.ui.clear_chart_btn 	= clear_chart_btn
 	clear_chart_btn.id 			= "clear_chart_btn"
 	clear_chart_btn.textContent = 'clear chart'
-	clear_chart_btn.style 		= "position:absolute; left:91%; top:0.5%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+	clear_chart_btn.style 		= "position:relative; left:calc( 100% - 270px ); top:0.5%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
 								   font-family:Courier; font-size:12pt; z-index:2;"
 	install_event_listener(clear_chart_btn, 'click', clear_chart_btn, EVENT.CLEAR_CHART)
 
+	let line_chart_controls_div = document.createElement('div');
+	line_chart_controls_div.appendChild(chosen_stats_select);
+	line_chart_controls_div.appendChild(clear_chart_btn);
+
+	// -------
+	// div for lc_canvas
+	// -------
+	let line_chart_canvas_div = document.createElement('div');
+	global.ui.line_chart_canvas_div = line_chart_canvas_div;
+	line_chart_canvas_div.id = 'line_chart_canvas_div';
+	line_chart_canvas_div.style = 'height:calc( 100% - 29px );'
+
+
 	let line_chart = get_component("line_chart");
 	if (line_chart) {
-		line_chart.appendChild(chosen_stats_select)
-		line_chart.appendChild(clear_chart_btn)
+		line_chart.appendChild(line_chart_controls_div)
+		line_chart.appendChild(line_chart_canvas_div)
 
 		//----------
 		// canvas to capture events on line chart
 		//----------
-		let lc_canvas = line_chart.appendChild(document.createElement('canvas'));
+		let lc_canvas = line_chart_canvas_div.appendChild(document.createElement('canvas'));
 		global.ui.lc_canvas = lc_canvas;
 		lc_canvas.style		= 'position:relative; left:0px; top:0px; z-index:1;';
 		lc_canvas.id 		= 'lc_canvas';
@@ -2013,7 +2026,7 @@ function fill_ui_components()
 	//----------
 	let rank_depth_select = document.createElement('select')
 	global.ui.rank_depth_select = rank_depth_select
-	rank_depth_select.style 	= 'position:absolute; left:15; top:0%; background-color:#2f3233; \
+	rank_depth_select.style 	= 'position:relative; left:15; top:0%; background-color:#2f3233; \
 								   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 	install_event_listener(rank_depth_select, 'change', rank_depth_select, EVENT.CHANGE_AUX_VIEW)
 
@@ -2035,7 +2048,7 @@ function fill_ui_components()
 	//----------
 	let agg_sep_select = document.createElement('select');
 	global.ui.agg_sep_select = agg_sep_select;
-	agg_sep_select.style 	 = 'position:absolute; left:265; top:0%; background-color:#2f3233; \
+	agg_sep_select.style 	 = 'position:relative; left:265; top:0%; background-color:#2f3233; \
 								font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 
 	let agg_option = create_option('agg', 'aggregated');
@@ -2045,29 +2058,37 @@ function fill_ui_components()
 	agg_sep_select.appendChild(agg_option);
 	agg_sep_select.appendChild(sep_option);
 
+	let aux_view_controls_topdiv = document.createElement('div')
+	aux_view_controls_topdiv.appendChild(rank_depth_select);
+	aux_view_controls_topdiv.appendChild(agg_sep_select);
+
+	// -------
+	// div for ac_canvas
+	// -------
+	let aux_view_canvas_div = document.createElement('div');
+	global.ui.aux_view_canvas_div = aux_view_canvas_div;
+	aux_view_canvas_div.id = 'aux_view_canvas_div';
+	aux_view_canvas_div.style = 'height: calc( 100% - 58px )'
+
 	//----------
 	// checkbox to draw group envelopes
 	//----------
 	let draw_groups_envelope_btn = create_checkbox();
+	draw_groups_envelope_btn.style = 'position:relative; left:15; top:calc ( 100% - 29px ); vertical-align:middle;'
 	global.ui.draw_groups_envelope_btn = draw_groups_envelope_btn;
 
 	let draw_groups_envelope_lbl = create_checkbox_label(draw_groups_envelope_btn, 'envelopes');
+	draw_groups_envelope_lbl.style.setProperty('position','relative')
+	draw_groups_envelope_lbl.style.setProperty('left','15')
+	draw_groups_envelope_lbl.style.setProperty('top','calc ( 100% - 29px )')
 	global.ui.draw_groups_envelope_lbl = draw_groups_envelope_lbl
-
-	let draw_groups_envelope_grid = document.createElement('div')
-	global.ui.draw_groups_envelope_grid = draw_groups_envelope_grid
-	draw_groups_envelope_grid.id 		= draw_groups_envelope_grid
-	draw_groups_envelope_grid.style 	= 'position:absolute; left:15; top:94%; \
-										   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
-	draw_groups_envelope_grid.appendChild(draw_groups_envelope_lbl)
-	draw_groups_envelope_grid.appendChild(draw_groups_envelope_btn)
 
 	//----------
 	// select number of group prototypes to be shown in envelope (besides top and bottom ones)
 	//----------
 	let n_protos_select = document.createElement('select');
 	global.ui.n_protos_select = n_protos_select;
-	n_protos_select.style 	  = 'position:absolute; left:140; top:94%; width:110px; background-color:#2f3233; \
+	n_protos_select.style 	  = 'position:relative; left:20; top:calc ( 100% - 29px ); width:110px; background-color:#2f3233; \
 								 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 
 	let n_protos_info_option = create_option(1, 'n_protos');
@@ -2088,7 +2109,7 @@ function fill_ui_components()
 	//----------
 	let step_select = document.createElement('select');
 	global.ui.step_select = step_select;
-	step_select.style 	  = 'position:absolute; left:260; top:94%; width:140px; background-color:#2f3233; \
+	step_select.style 	  = 'position:relative; left:40; top:calc ( 100% - 29px ); width:140px; background-color:#2f3233; \
 							 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 
 	let step_default_option = create_option(1,'default(1)');
@@ -2103,18 +2124,23 @@ function fill_ui_components()
 	step_select.appendChild(step_5_option);
 	step_select.appendChild(step_10_option);
 
+	let aux_view_controls_botdiv = document.createElement('div')
+	aux_view_controls_botdiv.appendChild(draw_groups_envelope_lbl);
+	aux_view_controls_botdiv.appendChild(draw_groups_envelope_btn);
+	aux_view_controls_botdiv.appendChild(n_protos_select);
+	aux_view_controls_botdiv.appendChild(step_select);
+
 	let aux_view = get_component('aux_view');
 	if (aux_view) {
-		aux_view.appendChild(rank_depth_select)
-		aux_view.appendChild(agg_sep_select)
-		aux_view.appendChild(draw_groups_envelope_grid)
-		aux_view.appendChild(n_protos_select)
-		aux_view.appendChild(step_select)
+		aux_view.appendChild(aux_view_controls_topdiv)
+		aux_view.appendChild(aux_view_canvas_div)
+		aux_view.appendChild(aux_view_controls_botdiv)
+		// aux_view.appendChild(step_select)
 
 		//----------
 		// canvas to capture events on aux view
 		//----------
-		let av_canvas = aux_view.appendChild(document.createElement('canvas'));
+		let av_canvas = aux_view_canvas_div.appendChild(document.createElement('canvas'));
 		global.ui.av_canvas = av_canvas;
 		av_canvas.style		= 'position:relative; left:0px; top:0px; z-index:1;';
 		av_canvas.id 		= 'av_canvas';
@@ -2134,7 +2160,7 @@ function fill_ui_components()
 	//----------
 	let proj_colorby_select = document.createElement('select')
 	global.ui.proj_colorby_select = proj_colorby_select
-	proj_colorby_select.style 	  = 'position:absolute; left:3.5%; top:0%; background-color:#2f3233; \
+	proj_colorby_select.style 	  = 'position:absolute; left:15; top:0%; width:145px; background-color:#2f3233; \
 									 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 	install_event_listener(proj_colorby_select, 'change', proj_colorby_select, EVENT.CHANGE_COLORBY)
 
@@ -2157,7 +2183,7 @@ function fill_ui_components()
 	let n_clusters_select = document.createElement('select')
 
 	global.ui.n_clusters_select = n_clusters_select
-	n_clusters_select.style 	= 'position:absolute; left:27%; top:0%; width:130px; background-color:#2f3233; \
+	n_clusters_select.style 	= 'position:relative; left:175; top:0%; width:130px; background-color:#2f3233; \
 								   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 
 	let df_option = create_option(0, 'n_clusters');
@@ -2179,7 +2205,7 @@ function fill_ui_components()
 	global.ui.cluster_btn 	= cluster_btn
 	cluster_btn.id 			= "cluster_btn"
 	cluster_btn.textContent = 'cluster'
-	cluster_btn.style 		= "position:absolute; left:45%; top:0%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+	cluster_btn.style 		= "position:relative; left:175; top:0%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
 							   font-family:Courier; font-size:12pt; z-index:2;"
 	install_event_listener(cluster_btn, 'click', cluster_btn, EVENT.CLUSTER)
 
@@ -2190,7 +2216,7 @@ function fill_ui_components()
 	global.ui.create_group_btn 	 = create_group_btn
 	create_group_btn.id 		 = "create_group_btn"
 	create_group_btn.textContent = 'create group'
-	create_group_btn.style 		 = "position:absolute; left:61%; top:0%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+	create_group_btn.style 		 = "position:relative; left:250; top:0%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
 									font-family:Courier; font-size:12pt; z-index:2;"
 	install_event_listener(create_group_btn, 'click', create_group_btn, EVENT.CREATE_GROUP)
 
@@ -2201,23 +2227,38 @@ function fill_ui_components()
 	global.ui.reset_groups_btn   = reset_groups_btn
 	reset_groups_btn.id 	   	 = "reset_groups_btn"
 	reset_groups_btn.textContent = 'reset groups'
-	reset_groups_btn.style 		 = "position:absolute; left:80%; top:0%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+	reset_groups_btn.style 		 = "position:relative; left:250; top:0%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
 									font-family:Courier; font-size:12pt; z-index:2;"
 	install_event_listener(reset_groups_btn, 'click', reset_groups_btn, EVENT.REMOVE_ACTIVE_GROUPS)
 
+	let projection_controls_div = document.createElement('div')
+	projection_controls_div.style.setProperty('display','inline-block')
+	projection_controls_div.appendChild(proj_colorby_select)
+	projection_controls_div.appendChild(n_clusters_select)
+	projection_controls_div.appendChild(cluster_btn)
+	projection_controls_div.appendChild(create_group_btn)
+	projection_controls_div.appendChild(reset_groups_btn)
+
+	// -------
+	// div for p_canvas
+	// -------
+	let projection_canvas_div = document.createElement('div')
+	global.ui.projection_canvas_div = projection_canvas_div;
+	projection_canvas_div.id = 'projection_canvas_div';
+	projection_canvas_div.style = 'height: calc( 100% - 29px )'
 
 	let projection = get_component("projection");
 	if (projection) {
-		projection.appendChild(proj_colorby_select)
-		projection.appendChild(n_clusters_select)
-		projection.appendChild(cluster_btn)
-		projection.appendChild(create_group_btn)
-		projection.appendChild(reset_groups_btn)
+		projection.appendChild(projection_controls_div)
+		projection.appendChild(projection_canvas_div)
+		// projection.appendChild(cluster_btn)
+		// projection.appendChild(create_group_btn)
+		// projection.appendChild(reset_groups_btn)
 
 		//----------
 		// canvas to capture events on visualizations
 		//----------
-		let p_canvas = projection.appendChild(document.createElement('canvas'));
+		let p_canvas = projection_canvas_div.appendChild(document.createElement('canvas'));
 		global.ui.p_canvas  = p_canvas;
 		p_canvas.style		= 'position:relative; left:0px; top:0px; z-index:1;';
 		p_canvas.id 		= 'p_canvas';
@@ -4007,9 +4048,8 @@ function update_ts()
 	// -------
 	let lc_canvas = global.ui.lc_canvas
 	let lc_ctx = lc_canvas.getContext('2d')
-	let line_chart = get_component('line_chart')
-	lc_canvas.width  = line_chart.clientWidth;
-	lc_canvas.height = line_chart.clientHeight;
+	lc_canvas.width  = document.getElementById('line_chart_canvas_div').clientWidth;
+	lc_canvas.height = document.getElementById('line_chart_canvas_div').clientHeight;
 
 	let lc_local_mouse_pos = get_local_position(global.mouse.position, lc_canvas)
 
@@ -4221,7 +4261,7 @@ function update_ts()
 
 		function map(x, y) {
 			let px = (lc_rect[RECT.LEFT]+TSVIEW_MARGINS.X) + (1.0 * (x - x_min) / (x_max - x_min)) * (lc_rect[RECT.WIDTH]-2*TSVIEW_MARGINS.X)
-			let py = (lc_rect[RECT.TOP]+TSVIEW_MARGINS.Y) + ((lc_rect[RECT.HEIGHT]-TSVIEW_MARGINS.Y) - 1 - (1.0 * (y - y_min) / (y_max - y_min)) * (lc_rect[RECT.HEIGHT]-TSVIEW_MARGINS.Y))
+			let py = (lc_rect[RECT.TOP]) + ((lc_rect[RECT.HEIGHT]) - 1 - (1.0 * (y - y_min) / (y_max - y_min)) * (lc_rect[RECT.HEIGHT]))
 			return [px,py]
 		}
 
@@ -4964,16 +5004,16 @@ function update_ts()
 
 	let av_canvas = global.ui.av_canvas;
 	let av_ctx = av_canvas.getContext('2d');
-	let aux_view = get_component('aux_view');
-	av_canvas.width  = aux_view.clientWidth;
-	av_canvas.height = aux_view.clientHeight;
+	// let aux_view = get_component('aux_view');
+	av_canvas.width  = document.getElementById('aux_view_canvas_div').clientWidth;
+	av_canvas.height = document.getElementById('aux_view_canvas_div').clientHeight;
 
 	let av_local_mouse_pos = get_local_position(global.mouse.position, av_canvas)
 
 	av_ctx.clearRect(0, 0, av_canvas.width, av_canvas.height)
 
 	let aux_rect_inf = [0,0, av_canvas.width, av_canvas.height]
-	let aux_rect_margins = [ 30, 15, 20, 15 ]
+	let aux_rect_margins = [ 5, 15, 5, 5 ]
 	let aux_rect = [ aux_rect_inf[0] + aux_rect_margins[SIDE.LEFT],
 					 aux_rect_inf[1] + aux_rect_margins[SIDE.TOP],
 					 aux_rect_inf[2] - aux_rect_margins[SIDE.LEFT] - aux_rect_margins[SIDE.RIGHT],
@@ -5774,15 +5814,15 @@ function update_ts()
 	let p_canvas = global.ui.p_canvas;
 	let p_ctx = p_canvas.getContext('2d');
 	let projection = get_component('projection');
-	p_canvas.width  = projection.clientWidth;
-	p_canvas.height = projection.clientHeight;
+	p_canvas.width  = document.getElementById('projection_canvas_div').clientWidth;
+	p_canvas.height = document.getElementById('projection_canvas_div').clientHeight;
 
 	let p_local_mouse_pos = get_local_position(global.mouse.position, p_canvas)
 
 	p_ctx.clearRect(0, 0, p_canvas.width, p_canvas.height)
 
 	let proj_rect_inf 	  = [0, 0, p_canvas.width, p_canvas.height]
-	let proj_rect_margins = [30, 15, 20, 15] //[ 40, 20, 15, 10 ]
+	let proj_rect_margins = [ 5, 15, 5, 5 ]
 	let proj_rect 		  = [ proj_rect_inf[0] + proj_rect_margins[SIDE.LEFT],
 				  	  		  proj_rect_inf[1] + proj_rect_margins[SIDE.TOP],
 				  	  		  proj_rect_inf[2] - proj_rect_margins[SIDE.LEFT] - proj_rect_margins[SIDE.RIGHT],
@@ -6263,10 +6303,10 @@ function set_ui_components()
 	groups_table.style='background-color:#333333; overflow:auto'
 
 	let line_chart = document.createElement('div');
-	line_chart.style='background-color:#555555; overflow:auto'
+	line_chart.style='background-color:#555555; overflow:auto; display:flex; flex-direction:column;'
 
 	let aux_view = document.createElement('div');
-	aux_view.style='background-color:#AAAAAA; overflow:auto'
+	aux_view.style='background-color:#AAAAAA; overflow:auto; display:flex; flex-direction:column;'
 
 	let projection = document.createElement('div');
 	projection.style='background-color:#000000; overflow:auto'
