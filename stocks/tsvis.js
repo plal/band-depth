@@ -6309,7 +6309,7 @@ function set_ui_components()
 	aux_view.style='background-color:#AAAAAA; overflow:auto; display:flex; flex-direction:column;'
 
 	let projection = document.createElement('div');
-	projection.style='background-color:#000000; overflow:auto'
+	projection.style='background-color:#000000; overflow:auto; display:flex; flex-direction:column;'
 
 	global.components = [
 		{ component: controls, position: 'controls' },
