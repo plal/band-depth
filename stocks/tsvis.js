@@ -106,7 +106,8 @@ const EVENT= {
 	DRAW_GROUPS_ENVELOPES: "event_draw_groups_envelopes",
 	TOGGLE_TABLE: "event_toggle_table",
 	SORT_TABLE_BY_COL: "event_sort_table_by_col",
-	FULL_TABLE_PROTOS_ONLY: "event_full_table_protos_only"
+	FULL_TABLE_PROTOS_ONLY: "event_full_table_protos_only",
+	FITLER_FT_BY_POS: "event_filter_ft_by_pos"
 }
 
 var global = {
@@ -1088,6 +1089,7 @@ function reset_groups() {
 		reset_group_protos(group);
 	}
 
+	document.getElementById('protos_only_checkbox').checked = false;
 	global.groups 		   = [];
 	global.group_count 	   = 0;
 }
@@ -1372,25 +1374,6 @@ function set_bubble(range, bubble) {
 	// bubble.style.left = `calc(${newVal}% + (${8 - newVal * 0.15}px))`;
 }
 
-function create_checkbox_grid(checkbox_id, label_text, evt) {
-	let checkbox = document.createElement('input');
-	checkbox.type = "checkbox";
-	checkbox.id	  = checkbox_id;
-	install_event_listener(checkbox, 'change', checkbox, evt)
-
-	let checkbox_lbl = document.createElement('label')
-	checkbox_lbl.setAttribute("for", checkbox)
-	checkbox_lbl.style 	   = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
-	checkbox_lbl.innerHTML = label_text
-
-	let checkbox_grid = document.createElement('div')
-	checkbox_grid.style = 'display:flex; flex-direction:row; align-content:space-around; width:98%; margin:auto' //justify-content:flex-end'
-	checkbox_grid.appendChild(checkbox_lbl)
-	checkbox_grid.appendChild(checkbox)
-
-	return checkbox_grid
-}
-
 function toggle_class(el, cname) {
 	if (el.className.indexOf(cname) >= 0) {
 		el.className = el.className.replace(cname,"");
@@ -1402,6 +1385,26 @@ function toggle_class(el, cname) {
 		}
 		el.className += cname;
 	}
+}
+
+function check_ft_pos_filters(symbol) {
+	// console.log('here');
+	let pos_filters = document.getElementsByClassName('ft-pos-filter');
+	let symbol_pos  = symbol.position;
+
+	let all_unchecked = true;
+	let matched_pos   = false;
+
+	for (let i=0; i<pos_filters.length; i++) {
+		if (pos_filters[i].checked) {
+			all_unchecked = false;
+			if (symbol.position.includes(pos_filters[i].value)) {
+				matched_pos = true;
+			}
+		}
+	}
+
+	return (all_unchecked || matched_pos)
 }
 
 function create_and_fill_full_table_cluster(sort_index) {
@@ -1443,6 +1446,7 @@ function create_and_fill_full_table_cluster(sort_index) {
 	}
 	for (let i=0;i<chart_symbols.length;i++) {
 		let symbol = chart_symbols[i]
+		// if (!check_ft_pos_filters(symbol)) { continue; }
 		if (document.getElementById('protos_only_checkbox').checked) {
 			if (!symbol.proto) { continue; }
 		}
@@ -1829,7 +1833,7 @@ function fill_ui_components()
 	}
 
 	//----------
-	// default table components
+	// default table componentsft_g_btn
 	//----------
 
 	let st_filter_input = document.createElement('input')
@@ -1897,11 +1901,48 @@ function fill_ui_components()
 	// full table components
 	//----------
 
+	let ft_position_section_label = create_section_label('Positions');
+
+	let ft_g_btn = create_checkbox(undefined, 'G');
+	ft_g_btn.id = 'ft_g_btn';
+	ft_g_btn.style = 'position:relative; vertical-align:middle;';
+	ft_g_btn.className = 'ft-pos-filter'
+	install_event_listener(ft_g_btn, 'click', ft_g_btn, EVENT.FILTER_FT_BY_POS)
+	let ft_g_lbl = create_checkbox_label(ft_g_btn, 'Guard');
+	ft_g_lbl.style.setProperty('position','relative')
+
+	let ft_f_btn = create_checkbox(undefined, 'F');
+	ft_f_btn.id = 'ft_f_btn';
+	ft_f_btn.style = 'position:relative; vertical-align:middle; left:25';
+	ft_f_btn.className = 'ft-pos-filter'
+	install_event_listener(ft_f_btn, 'click', ft_f_btn, EVENT.FILTER_FT_BY_POS)
+	let ft_f_lbl = create_checkbox_label(ft_f_btn, 'Forward');
+	ft_f_lbl.style.setProperty('position','relative')
+	ft_f_lbl.style.setProperty('left','25')
+
+	let ft_c_btn = create_checkbox(undefined, 'C');
+	ft_c_btn.id = 'ft_c_btn';
+	ft_c_btn.style = 'position:relative; vertical-align:middle; left:50';
+	ft_f_btn.className = 'ft-pos-filter'
+	install_event_listener(ft_c_btn, 'click', ft_c_btn, EVENT.FILTER_FT_BY_POS)
+	let ft_c_lbl = create_checkbox_label(ft_c_btn, 'Center');
+	ft_c_lbl.style.setProperty('position','relative')
+	ft_c_lbl.style.setProperty('left','50')
+
+	let ft_position_filters_div = document.createElement('div');
+	ft_position_filters_div.style = 'position:relative;'
+	ft_position_filters_div.appendChild(ft_g_lbl);
+	ft_position_filters_div.appendChild(ft_g_btn);
+	ft_position_filters_div.appendChild(ft_f_lbl);
+	ft_position_filters_div.appendChild(ft_f_btn);
+	ft_position_filters_div.appendChild(ft_c_lbl);
+	ft_position_filters_div.appendChild(ft_c_btn);
+
 	let ft_filter_input = document.createElement('input')
 	ft_filter_input.setAttribute("type","text")
-	ft_filter_input.id    	   = 'ft_filter_input'
-	ft_filter_input.style 	   = 'position:relative; width:98%; margin-left:3px; margin-bottom:3px; margin-top:3px\
-	 						  overflow:auto; border-radius:2px; background-color:#FFFFFF;font-family:Courier; font-size:14pt;'
+	ft_filter_input.id    = 'ft_filter_input'
+	ft_filter_input.style = 'position:relative; width:98%;\
+	 						 overflow:auto; border-radius:2px; background-color:#FFFFFF;font-family:Courier; font-size:14pt;'
 
 	global.ui.ft_filter_input = ft_filter_input
 	install_event_listener(ft_filter_input, 'change', ft_filter_input, EVENT.FILTER)
@@ -1925,17 +1966,29 @@ function fill_ui_components()
 	let full_table_div 		 = document.createElement('div')
 	global.ui.full_table_div = full_table_div
 	full_table_div.id 	     = 'full_table_div'
-	full_table_div.style 	 = 'position:relative; width:98%; height:80%; margin:auto;\
+	full_table_div.style 	 = 'position:relative; width:98%; height:80%;\
 	 							overflow:auto; border-radius:2px; background-color:#FFFFFF'
 
-	let protos_only_grid = create_checkbox_grid('protos_only_checkbox', 'prototypes only', EVENT.FULL_TABLE_PROTOS_ONLY);
+	let protos_only_btn = create_checkbox();
+	protos_only_btn.id = 'protos_only_checkbox';
+	protos_only_btn.style = 'vertical-align:middle;';
+	install_event_listener(protos_only_btn, 'click', protos_only_btn, EVENT.FULL_TABLE_PROTOS_ONLY)
+
+	let protos_only_lbl = create_checkbox_label(protos_only_btn, 'prototypes');
+
+	let protos_only_controls_div = document.createElement('div');
+	protos_only_controls_div.style = 'position:relative;'
+	protos_only_controls_div.appendChild(protos_only_lbl);
+	protos_only_controls_div.appendChild(protos_only_btn);
 
 	let full_table_component = get_component("full_table");
 	if (full_table_component) {
+		full_table_component.appendChild(ft_position_section_label);
+		full_table_component.appendChild(ft_position_filters_div);
 		full_table_component.appendChild(ft_filter_input);
 		// full_table_component.appendChild(ft_add_table_symbols_btn);
 		full_table_component.appendChild(full_table_div);
-		full_table_component.appendChild(protos_only_grid);
+		full_table_component.appendChild(protos_only_controls_div);
 		// full_table_component.appendChild(ft_toggle_table_btn);
 	}
 
@@ -2026,7 +2079,7 @@ function fill_ui_components()
 	//----------
 	let rank_depth_select = document.createElement('select')
 	global.ui.rank_depth_select = rank_depth_select
-	rank_depth_select.style 	= 'position:relative; left:15; top:0%; background-color:#2f3233; \
+	rank_depth_select.style 	= 'position:relative; left:20; top:0%; background-color:#2f3233; \
 								   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 	install_event_listener(rank_depth_select, 'change', rank_depth_select, EVENT.CHANGE_AUX_VIEW)
 
@@ -2048,7 +2101,7 @@ function fill_ui_components()
 	//----------
 	let agg_sep_select = document.createElement('select');
 	global.ui.agg_sep_select = agg_sep_select;
-	agg_sep_select.style 	 = 'position:relative; left:265; top:0%; background-color:#2f3233; \
+	agg_sep_select.style 	 = 'position:relative; left:25; top:0%; background-color:#2f3233; \
 								font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 
 	let agg_option = create_option('agg', 'aggregated');
@@ -2074,7 +2127,7 @@ function fill_ui_components()
 	// checkbox to draw group envelopes
 	//----------
 	let draw_groups_envelope_btn = create_checkbox();
-	draw_groups_envelope_btn.style = 'position:relative; left:15; top:calc ( 100% - 29px ); vertical-align:middle;'
+	draw_groups_envelope_btn.style = 'position:relative; left:20; top:calc ( 100% - 29px ); vertical-align:middle;'
 	global.ui.draw_groups_envelope_btn = draw_groups_envelope_btn;
 
 	let draw_groups_envelope_lbl = create_checkbox_label(draw_groups_envelope_btn, 'envelopes');
@@ -2209,6 +2262,20 @@ function fill_ui_components()
 							   font-family:Courier; font-size:12pt; z-index:2;"
 	install_event_listener(cluster_btn, 'click', cluster_btn, EVENT.CLUSTER)
 
+	let projection_controls_topdiv = document.createElement('div')
+	projection_controls_topdiv.style.setProperty('display','inline-block')
+	projection_controls_topdiv.appendChild(proj_colorby_select)
+	projection_controls_topdiv.appendChild(n_clusters_select)
+	projection_controls_topdiv.appendChild(cluster_btn)
+
+	// -------
+	// div for p_canvas
+	// -------
+	let projection_canvas_div = document.createElement('div')
+	global.ui.projection_canvas_div = projection_canvas_div;
+	projection_canvas_div.id = 'projection_canvas_div';
+	projection_canvas_div.style = 'height: calc( 100% - 29px )'
+
 	//----------
 	// button to create group with current selection
 	//----------
@@ -2216,7 +2283,7 @@ function fill_ui_components()
 	global.ui.create_group_btn 	 = create_group_btn
 	create_group_btn.id 		 = "create_group_btn"
 	create_group_btn.textContent = 'create group'
-	create_group_btn.style 		 = "position:relative; left:250; top:0%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+	create_group_btn.style 		 = "position:relative; left:15; top:0%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
 									font-family:Courier; font-size:12pt; z-index:2;"
 	install_event_listener(create_group_btn, 'click', create_group_btn, EVENT.CREATE_GROUP)
 
@@ -2227,31 +2294,20 @@ function fill_ui_components()
 	global.ui.reset_groups_btn   = reset_groups_btn
 	reset_groups_btn.id 	   	 = "reset_groups_btn"
 	reset_groups_btn.textContent = 'reset groups'
-	reset_groups_btn.style 		 = "position:relative; left:250; top:0%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+	reset_groups_btn.style 		 = "position:relative; left:20; top:0%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
 									font-family:Courier; font-size:12pt; z-index:2;"
 	install_event_listener(reset_groups_btn, 'click', reset_groups_btn, EVENT.REMOVE_ACTIVE_GROUPS)
 
-	let projection_controls_div = document.createElement('div')
-	projection_controls_div.style.setProperty('display','inline-block')
-	projection_controls_div.appendChild(proj_colorby_select)
-	projection_controls_div.appendChild(n_clusters_select)
-	projection_controls_div.appendChild(cluster_btn)
-	projection_controls_div.appendChild(create_group_btn)
-	projection_controls_div.appendChild(reset_groups_btn)
-
-	// -------
-	// div for p_canvas
-	// -------
-	let projection_canvas_div = document.createElement('div')
-	global.ui.projection_canvas_div = projection_canvas_div;
-	projection_canvas_div.id = 'projection_canvas_div';
-	projection_canvas_div.style = 'height: calc( 100% - 29px )'
+	let projection_controls_botdiv = document.createElement('div')
+	projection_controls_botdiv.style.setProperty('display','inline-block')
+	projection_controls_botdiv.appendChild(create_group_btn)
+	projection_controls_botdiv.appendChild(reset_groups_btn)
 
 	let projection = get_component("projection");
 	if (projection) {
-		projection.appendChild(projection_controls_div)
+		projection.appendChild(projection_controls_topdiv)
 		projection.appendChild(projection_canvas_div)
-		// projection.appendChild(cluster_btn)
+		projection.appendChild(projection_controls_botdiv)
 		// projection.appendChild(create_group_btn)
 		// projection.appendChild(reset_groups_btn)
 
@@ -2289,715 +2345,6 @@ function fill_ui_components()
 
 	install_event_listener(window, "keydown", window, EVENT.KEYDOWN)
 
-}
-
-function prepare_ui()
-{
-
-	let stats_section_lbl = create_section_label('Stats');
-
-	//----------
-	// stats checkboxes
-	//----------
-
-	let pts_btn = create_checkbox('stat','points');
-	global.ui.pts_btn = pts_btn;
-	install_event_listener(pts_btn, 'click', pts_btn, EVENT.CLICKED_STAT);
-
-	let pts_lbl = create_checkbox_label(pts_btn, 'Points');
-	global.ui.pts_lbl = pts_lbl
-
-	let asts_btn = create_checkbox('stat','assists');
-	global.ui.asts_btn = asts_btn;
-	install_event_listener(asts_btn, 'click', asts_btn, EVENT.CLICKED_STAT);
-
-	let asts_lbl = create_checkbox_label(asts_btn, 'Assists');
-	global.ui.asts_lbl = asts_lbl;
-
-	let rbds_btn = create_checkbox('stat','rebounds');
-	global.ui.rbds_btn = rbds_btn;
-	install_event_listener(rbds_btn, 'click', rbds_btn, EVENT.CLICKED_STAT);
-
-	let rbds_lbl = create_checkbox_label(rbds_btn, 'Rebounds');
-	global.ui.rbds_lbl = rbds_lbl;
-
-	let stls_btn = create_checkbox('stat','steals');
-	global.ui.stls_btn = stls_btn;
-	install_event_listener(stls_btn, 'click', stls_btn, EVENT.CLICKED_STAT);
-
-	let stls_lbl = create_checkbox_label(stls_btn, 'Steals');
-	global.ui.stls_lbl = stls_lbl;
-
-	let blcks_btn = create_checkbox('stat','blocks');
-	global.ui.blcks_btn = blcks_btn;
-	install_event_listener(blcks_btn, 'click', blcks_btn, EVENT.CLICKED_STAT);
-
-	let blcks_lbl = create_checkbox_label(blcks_btn, 'Blocks');
-	global.ui.blcks_lbl = blcks_lbl;
-
-	let tos_btn = create_checkbox('stat','turnovers');
-	global.ui.tos_btn = tos_btn;
-	install_event_listener(tos_btn, 'click', tos_btn, EVENT.CLICKED_STAT);
-
-	let tos_lbl = create_checkbox_label(tos_btn, 'Turnovers');
-	global.ui.tos_lbl = tos_lbl;
-
-	let fls_btn = create_checkbox('stat','fouls');
-	global.ui.fls_btn = fls_btn;
-	install_event_listener(fls_btn, 'click', fls_btn, EVENT.CLICKED_STAT);
-
-	let fls_lbl = create_checkbox_label(fls_btn, 'Fouls');
-	global.ui.fls_lbl = fls_lbl;
-
-	let stats_grid = document.createElement('div');
-	stats_grid.id    = stats_grid;
-	stats_grid.style = 'display:grid; background-color:#2f3233; align-content:space-around; grid-template-columns:repeat(2, 50px)';
-	stats_grid.appendChild(pts_btn);
-	stats_grid.appendChild(pts_lbl);
-	stats_grid.appendChild(asts_btn);
-	stats_grid.appendChild(asts_lbl);
-	stats_grid.appendChild(rbds_btn);
-	stats_grid.appendChild(rbds_lbl);
-	stats_grid.appendChild(stls_btn);
-	stats_grid.appendChild(stls_lbl);
-	stats_grid.appendChild(blcks_btn);
-	stats_grid.appendChild(blcks_lbl);
-	stats_grid.appendChild(tos_btn);
-	stats_grid.appendChild(tos_lbl);
-	stats_grid.appendChild(fls_btn);
-	stats_grid.appendChild(fls_lbl);
-	global.ui.stats_grid = stats_grid;
-
-	let get_stats_ranks_btn = document.createElement('button')
-	get_stats_ranks_btn.id 			= "get_stats_ranks_btn"
-	get_stats_ranks_btn.textContent = 'get stats ranks'
-	get_stats_ranks_btn.style 		= "position:relative; width:100%; margin:2px;\
-	 								   border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
-	global.ui.get_stats_ranks_btn = get_stats_ranks_btn
-	install_event_listener(get_stats_ranks_btn, 'click', get_stats_ranks_btn, EVENT.GET_STATS_RANKS)
-
-	let pos_section_lbl = create_section_label('Positions');
-
-	//----------
-	// positions checkboxes
-	//----------
-
-	let g_btn = create_checkbox('position','G');
-	global.ui.g_btn = g_btn;
-	install_event_listener(g_btn, 'click', g_btn, EVENT.CLICKED_POS);
-
-	let g_lbl = create_checkbox_label(g_btn, 'Guard');
-	global.ui.g_lbl = g_lbl
-
-	let f_btn = create_checkbox('position','F');
-	global.ui.f_btn = f_btn;
-	install_event_listener(f_btn, 'click', f_btn, EVENT.CLICKED_POS);
-
-	let f_lbl = create_checkbox_label(f_btn, 'Forward');
-	global.ui.f_lbl = f_lbl
-
-	let c_btn = create_checkbox('position','C');
-	global.ui.c_btn = c_btn;
-	install_event_listener(c_btn, 'click', c_btn, EVENT.CLICKED_POS);
-
-	let c_lbl = create_checkbox_label(c_btn, 'Center');
-	global.ui.c_lbl = c_lbl
-
-	let pos_grid = document.createElement('div');
-	pos_grid.id    = pos_grid;
-	pos_grid.style = 'display:grid; background-color:#2f3233; align-content:space-around; grid-template-columns:repeat(2, 50px)';
-	pos_grid.appendChild(g_btn);
-	pos_grid.appendChild(g_lbl);
-	pos_grid.appendChild(f_btn);
-	pos_grid.appendChild(f_lbl);
-	pos_grid.appendChild(c_btn);
-	pos_grid.appendChild(c_lbl);
-	global.ui.pos_grid = pos_grid;
-
-	//----------
-	// min games played filter
-	//----------
-
-	let min_gp_lbl = create_section_label('Min. Games Played');
-
-	let min_gp_sld = document.createElement('input');
-	min_gp_sld.type 	 = 'range';
-	min_gp_sld.min 		 = 1;
-	min_gp_sld.max 		 = 82;
-	min_gp_sld.value 	 = 1;
-	min_gp_sld.className = "slider"
-	global.min_gp_sld 	 = min_gp_sld;
-
-	let min_gp_val = document.createElement('output');
-	global.min_gp_val = min_gp_val;
-	min_gp_val.style.left = '50px';
-
-	min_gp_sld.addEventListener("input", () => {
-    	set_bubble(min_gp_sld, min_gp_val);
-  	});
-
-	// let start_date_input = document.createElement('input')
-	// global.ui.start_date_input = start_date_input
-	// start_date_input.setAttribute("type","date")
-	// start_date_input.defaultValue = global.date_start
-	// start_date_input.classList.add('date_input')
-	// start_date_input.id = 'start_date_input'
-	// install_event_listener(start_date_input, 'change', start_date_input, EVENT.UPDATE_START_DATE)
-	//
-	// let start_date_label = document.createElement('label')
-	// global.ui.start_date_label = start_date_label
-	// start_date_label.classList.add('date_input_label')
-	// start_date_label.setAttribute("for", start_date_input)
-	// start_date_label.innerHTML = "start"
-	//
-	// let start_date_grid = document.createElement('div')
-	// global.ui.start_date_grid = start_date_grid
-	// start_date_grid.id = start_date_grid
-	// start_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
-	// start_date_grid.appendChild(start_date_label)
-	// start_date_grid.appendChild(start_date_input)
-	//
-	//
-	// let end_date_input = document.createElement('input')
-	// global.ui.end_date_input = end_date_input
-	// end_date_input.setAttribute("type","date")
-	// end_date_input.defaultValue = global.date_end
-	// end_date_input.classList.add('date_input')
-	// end_date_input.id = 'end_date_input'
-	// install_event_listener(end_date_input, 'change', end_date_input, EVENT.UPDATE_END_DATE)
-	//
-	// let end_date_label = document.createElement('label')
-	// global.ui.end_date_label = end_date_label
-	// end_date_label.setAttribute("for", end_date_input)
-	// end_date_label.classList.add('date_input_label')
-	// end_date_label.innerHTML = "end"
-	//
-	// let end_date_grid = document.createElement('div')
-	// global.ui.end_date_grid = end_date_grid
-	// end_date_grid.id = end_date_grid
-	// end_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
-	// end_date_grid.appendChild(end_date_label)
-	// end_date_grid.appendChild(end_date_input)
-	//
-	// let norm_date_input = document.createElement('input')
-	// global.ui.norm_date_input = norm_date_input
-	// norm_date_input.setAttribute("type","date")
-	// norm_date_input.defaultValue = global.date_norm
-	// norm_date_input.classList.add('date_input')
-	// norm_date_input.id = 'norm_date_input'
-	// install_event_listener(norm_date_input, 'change', norm_date_input, EVENT.UPDATE)
-	//
-	// let norm_date_label = document.createElement('label')
-	// global.ui.norm_date_label = norm_date_label
-	// norm_date_label.setAttribute("for", norm_date_input)
-	// norm_date_label.classList.add('date_input_label')
-	// norm_date_label.innerHTML = "norm"
-	//
-	// let norm_date_grid = document.createElement('div')
-	// global.ui.norm_date_grid = norm_date_grid
-	// norm_date_grid.id = norm_date_grid
-	// norm_date_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
-	// norm_date_grid.appendChild(norm_date_label)
-	// norm_date_grid.appendChild(norm_date_input)
-
-	//----------
-	// main view general controls
-	//----------
-
-	let normalize_btn = document.createElement('input')
-	normalize_btn.type 		= "checkbox"
-	global.ui.normalize_btn = normalize_btn
-
-	let normalize_lbl = document.createElement('label')
-	normalize_lbl.setAttribute("for", normalize_btn)
-	normalize_lbl.style 	= 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
-	normalize_lbl.innerHTML = 'Normalize values'
-	global.ui.normalize_lbl = normalize_lbl
-
-	let normalize_grid = document.createElement('div')
-	normalize_grid.id 	 = normalize_grid
-	normalize_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
-	normalize_grid.appendChild(normalize_lbl)
-	normalize_grid.appendChild(normalize_btn)
-	global.ui.normalize_grid = normalize_grid
-
-	let use_diffs_btn = document.createElement('input')
-	use_diffs_btn.type 		= "checkbox"
-	global.ui.use_diffs_btn = use_diffs_btn
-
-	let use_diffs_lbl = document.createElement('label')
-	use_diffs_lbl.setAttribute("for", use_diffs_btn)
-	use_diffs_lbl.style 	= 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:120px'
-	use_diffs_lbl.innerHTML = 'Use diffs on aux view'
-	global.ui.use_diffs_lbl = use_diffs_lbl
-
-	let use_diffs_grid = document.createElement('div')
-	use_diffs_grid.id    = use_diffs_grid
-	use_diffs_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
-	use_diffs_grid.appendChild(use_diffs_lbl)
-	use_diffs_grid.appendChild(use_diffs_btn)
-	global.ui.use_diffs_grid = use_diffs_grid
-
-	let modified_band_depth_btn = document.createElement('input')
-	modified_band_depth_btn.type 	  = "checkbox"
-	global.ui.modified_band_depth_btn = modified_band_depth_btn
-	install_event_listener(modified_band_depth_btn, 'click', modified_band_depth_btn, EVENT.RUN_MODIFIED_BAND_DEPTH_ALGORITHM)
-
-	let modified_band_depth_lbl = document.createElement('label')
-	modified_band_depth_lbl.setAttribute("for", modified_band_depth_btn)
-	modified_band_depth_lbl.style 	  = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
-	modified_band_depth_lbl.innerHTML = 'Functional Boxplot MBD'
-	global.ui.modified_band_depth_lbl = modified_band_depth_lbl
-
-	let modified_band_depth_grid = document.createElement('div')
-	modified_band_depth_grid.id    = modified_band_depth_grid
-	modified_band_depth_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
-	modified_band_depth_grid.appendChild(modified_band_depth_lbl)
-	modified_band_depth_grid.appendChild(modified_band_depth_btn)
-	global.ui.modified_band_depth_grid = modified_band_depth_grid
-
-	let mbd_draw_outliers_btn = document.createElement('input')
-	mbd_draw_outliers_btn.type 		= "checkbox"
-	global.ui.mbd_draw_outliers_btn = mbd_draw_outliers_btn
-
-	let mbd_draw_outliers_lbl = document.createElement('label')
-	mbd_draw_outliers_lbl.setAttribute("for", mbd_draw_outliers_btn)
-	mbd_draw_outliers_lbl.style 	= 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
-	mbd_draw_outliers_lbl.innerHTML = '- Draw outliers'
-	global.ui.mbd_draw_outliers_lbl = mbd_draw_outliers_lbl
-
-	let mbd_draw_outliers_grid = document.createElement('div')
-	mbd_draw_outliers_grid.id    = mbd_draw_outliers_grid
-	mbd_draw_outliers_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around;' //justify-content:flex-end'
-	mbd_draw_outliers_grid.appendChild(mbd_draw_outliers_lbl)
-	mbd_draw_outliers_grid.appendChild(mbd_draw_outliers_btn)
-	global.ui.mbd_draw_outliers_grid = mbd_draw_outliers_grid
-
-	let extremal_depth_btn = document.createElement('input')
-	extremal_depth_btn.type 	 = "checkbox"
-	global.ui.extremal_depth_btn = extremal_depth_btn
-	install_event_listener(extremal_depth_btn, 'click', extremal_depth_btn, EVENT.RUN_EXTREMAL_DEPTH_ALGORITHM)
-
-	let extremal_depth_lbl = document.createElement('label')
-	extremal_depth_lbl.setAttribute("for", extremal_depth_btn)
-	extremal_depth_lbl.style 	 = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:230px'
-	extremal_depth_lbl.innerHTML = 'Functional Boxplot ED'
-	global.ui.extremal_depth_lbl = extremal_depth_lbl
-
-	let extremal_depth_grid = document.createElement('div')
-	extremal_depth_grid.id    = extremal_depth_grid
-	extremal_depth_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
-	extremal_depth_grid.appendChild(extremal_depth_lbl)
-	extremal_depth_grid.appendChild(extremal_depth_btn)
-	global.ui.extremal_depth_grid = extremal_depth_grid
-
-	let draw_curves_btn = document.createElement('input')
-	draw_curves_btn.checked   = 'true'
-	draw_curves_btn.type 	  = "checkbox"
-	global.ui.draw_curves_btn = draw_curves_btn
-
-	let draw_curves_lbl = document.createElement('label')
-	draw_curves_lbl.setAttribute("for", draw_curves_btn)
-	draw_curves_lbl.style 	  = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:120px'
-	draw_curves_lbl.innerHTML = 'Draw curves'
-	global.ui.draw_curves_lbl = draw_curves_lbl
-
-	let draw_curves_grid = document.createElement('div')
-	draw_curves_grid.id    = draw_curves_grid
-	draw_curves_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around'
-	draw_curves_grid.appendChild(draw_curves_lbl)
-	draw_curves_grid.appendChild(draw_curves_btn)
-	global.ui.draw_curves_grid = draw_curves_grid
-
-	let ed_draw_outliers_btn = document.createElement('input')
-	ed_draw_outliers_btn.type 	   = "checkbox"
-	global.ui.ed_draw_outliers_btn = ed_draw_outliers_btn
-
-	let ed_draw_outliers_lbl = document.createElement('label')
-	ed_draw_outliers_lbl.setAttribute("for", ed_draw_outliers_btn)
-	ed_draw_outliers_lbl.style 	   = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
-	ed_draw_outliers_lbl.innerHTML = '- Draw outliers'
-	global.ui.ed_draw_outliers_lbl = ed_draw_outliers_lbl
-
-	let ed_draw_outliers_grid = document.createElement('div')
-	ed_draw_outliers_grid.id    = ed_draw_outliers_grid
-	ed_draw_outliers_grid.style = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around;' //justify-content:flex-end'
-	ed_draw_outliers_grid.appendChild(ed_draw_outliers_lbl)
-	ed_draw_outliers_grid.appendChild(ed_draw_outliers_btn)
-	global.ui.ed_draw_outliers_grid = ed_draw_outliers_grid
-
-	//----------
-	// input for searching players on table and table itself
-	//----------
-	let filter_input = document.createElement('input')
-	filter_input.setAttribute("type","text")
-	filter_input.id    	   = 'filter_input'
-	filter_input.style 	   = 'position:relative; width:100%; margin:2px; border-radius:2px; background-color:#FFFFFF; font-family:Courier; font-size:14pt;'
-	global.ui.filter_input = filter_input
-	install_event_listener(filter_input, 'change', filter_input, EVENT.FILTER)
-
-	let add_table_symbols_btn = document.createElement('button')
-	global.ui.add_table_symbols_btn   = add_table_symbols_btn
-	add_table_symbols_btn.id 		  = "add_table_symbols_btn"
-	add_table_symbols_btn.textContent = 'add curves on table'
-	add_table_symbols_btn.style 	  = "position:relative; width:100%; margin:2px; border-radius:13px;\
-										 background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
-	install_event_listener(add_table_symbols_btn, 'click', add_table_symbols_btn, EVENT.ADD_TABLE_SYMBOLS)
-
-	let symbols_table_div = document.createElement('div')
-	global.ui.symbols_table_div = symbols_table_div
-	symbols_table_div.id 		= 'symbols_table_div'
-	symbols_table_div.style 	= 'position:relative; width:100%; height:100%; margin:2px; overflow:auto; border-radius:2px; background-color:#FFFFFF'
-
-	//----------
-	// density matrix controls
-	//----------
-	let create_curve_density_matrix_btn = document.createElement('input')
-	global.ui.create_curve_density_matrix_btn = create_curve_density_matrix_btn
-	create_curve_density_matrix_btn.type 	  = "checkbox"
-	install_event_listener(create_curve_density_matrix_btn, 'click', create_curve_density_matrix_btn, EVENT.BUILD_CURVES_DENSITY_MATRIX)
-
-	let create_curve_density_matrix_lbl = document.createElement('label')
-	create_curve_density_matrix_lbl.setAttribute("for", create_curve_density_matrix_btn)
-	global.ui.create_curve_density_matrix_lbl = create_curve_density_matrix_lbl
-	create_curve_density_matrix_lbl.style 	  = 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:120px'
-	create_curve_density_matrix_lbl.innerHTML = 'DenseLines'
-
-	let create_curve_density_matrix_resolution = document.createElement('input')
-	global.ui.create_curve_density_matrix_resolution = create_curve_density_matrix_resolution
-	create_curve_density_matrix_resolution.value 	 = "32"
-	create_curve_density_matrix_resolution.style 	 = "position:relative; width:35; margin:2px"
-
-	let create_curve_density_matrix_grid = document.createElement('div')
-	global.ui.create_curve_density_matrix_grid = create_curve_density_matrix_grid
-	create_curve_density_matrix_grid.id 	   = create_curve_density_matrix_grid
-	create_curve_density_matrix_grid.style 	   = 'display:flex; flex-direction:row; background-color:#2f3233; align-content:space-around;' //justify-content:flex-end'
-	create_curve_density_matrix_grid.appendChild(create_curve_density_matrix_lbl)
-	create_curve_density_matrix_grid.appendChild(create_curve_density_matrix_btn)
-	create_curve_density_matrix_grid.appendChild(create_curve_density_matrix_resolution)
-
-	let left_panel = document.createElement('div')
-   	global.ui.left_panel = left_panel
-   	left_panel.id 	 	 = 'left_panel'
-   	left_panel.style 	 = 'display:flex; flex-direction:column; background-color:#2f3233; align-content:space-around;'
-	left_panel.appendChild(stats_section_lbl)
-	left_panel.appendChild(stats_grid)
-	left_panel.appendChild(get_stats_ranks_btn)
-	left_panel.appendChild(pos_section_lbl)
-	left_panel.appendChild(pos_grid)
-	left_panel.appendChild(min_gp_lbl)
-	left_panel.appendChild(min_gp_sld)
-	left_panel.appendChild(min_gp_val)
-	// left_panel.appendChild(start_date_grid)
-	// left_panel.appendChild(end_date_grid)
-	// left_panel.appendChild(norm_date_grid)
-	// left_panel.appendChild(normalize_grid)
-	left_panel.appendChild(modified_band_depth_grid)
-	left_panel.appendChild(mbd_draw_outliers_grid)
-	left_panel.appendChild(extremal_depth_grid)
-	left_panel.appendChild(ed_draw_outliers_grid)
-	left_panel.appendChild(draw_curves_grid)
-	left_panel.appendChild(create_curve_density_matrix_grid)
-	left_panel.appendChild(filter_input)
-	left_panel.appendChild(add_table_symbols_btn)
-   	left_panel.appendChild(symbols_table_div)
-
-	//----------
-	// creating table for players (symbols)
-	//----------
-	let symbols_table = symbols_table_div.appendChild(document.createElement('table'))
-	global.ui.symbols_table = symbols_table
-	symbols_table.style 	= 'position:block; width:100%; heigth: 100% !important;'
-	for (let i=0;i<global.symbols.length;i++) {
-		let symbol = global.symbols[i]
-		let row    = symbols_table.appendChild(document.createElement('tr'))
-		let col    = row.appendChild(document.createElement('td'))
-
-		col.innerText 		 = symbol.name
-		col.style 			 = "cursor: pointer"
-		col.style.fontFamily = 'Courier'
-		col.style.fontSize 	 = '14pt'
-		col.style.color 	 ="#6b6f71"
-
-		symbol.ui_row = row
-		symbol.ui_col = col
-		install_event_listener(symbol.ui_col, 'click', symbol, EVENT.TOGGLE_SYMBOL)
-	}
-
-	//----------
-	// main div with visualizations
-	//----------
-	let ts_div = document.createElement('div')
-	global.ui.ts_div = ts_div
-	ts_div.id 		 = 'ts_div'
-	ts_div.style 	 = 'background-color:#6b6f71'
-
-	// ****** main view components ******
-
-	//----------
-	// select to control which stat appears on main view
-	//----------
-	let chosen_stats_select = document.createElement('select')
-	global.ui.chosen_stats_select = chosen_stats_select
-	chosen_stats_select.style 	  = 'background-color:#2f3233; position:absolute; left:17.1%; top:0.5%; width:125px;\
-	 							 	 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
-
-    //----------
-	// button to reset all views
-	//----------
-	let clear_chart_btn = document.createElement('button')
-	global.ui.clear_chart_btn 	= clear_chart_btn
-	clear_chart_btn.id 			= "clear_chart_btn"
-	clear_chart_btn.textContent = 'clear chart'
-	clear_chart_btn.style 		= "position:absolute; left:92%; top:0.5%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
-							 	   font-family:Courier; font-size:12pt; z-index:2;"
-	install_event_listener(clear_chart_btn, 'click', clear_chart_btn, EVENT.CLEAR_CHART)
-
-	// ****** aux view components ******
-
-	//----------
-	// select between rank cdf and extremal depth cdf
-	//----------
-	let rank_depth_select = document.createElement('select')
-	global.ui.rank_depth_select = rank_depth_select
-	rank_depth_select.style 	= 'position:absolute; left:17.1%; top:48.7%; background-color:#2f3233; \
-							   	   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
-	install_event_listener(rank_depth_select, 'change', rank_depth_select, EVENT.CHANGE_AUX_VIEW)
-
-	let hidden_option = create_option('none','aux view')
-	hidden_option.selected = 'selected'
-	hidden_option.hidden   = 'hidden'
-
-	let dcdf_option = create_option('dcdf', 'pw depth distribution')
-	let rcdf_option = create_option('rcdf','rank distribution')
-	let none_option = create_option('none', 'none')
-
-	rank_depth_select.appendChild(hidden_option)
-	rank_depth_select.appendChild(dcdf_option)
-	rank_depth_select.appendChild(rcdf_option)
-	rank_depth_select.appendChild(none_option)
-
-	//----------
-	// option to choose aggregated or separated distributions
-	//----------
-	let draw_aux_view_agg = document.createElement('input')
-	global.ui.draw_aux_view_agg = draw_aux_view_agg
-	draw_aux_view_agg.type 		= 'radio'
-	draw_aux_view_agg.checked 	= true
-	draw_aux_view_agg.name 		= 'dcdf-vis-choice'
-
-	let draw_aux_view_agg_lbl = document.createElement('label')
-	draw_aux_view_agg_lbl.setAttribute("for", draw_aux_view_agg)
-	global.ui.draw_aux_view_lbl 	= draw_aux_view_agg_lbl
-	draw_aux_view_agg_lbl.style 	= 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
-	draw_aux_view_agg_lbl.innerHTML = 'Aggregated'
-
-	let draw_aux_view_sep = document.createElement('input')
-	global.ui.draw_aux_view_sep = draw_aux_view_sep
-	draw_aux_view_sep.type 		= 'radio'
-	draw_aux_view_sep.name 		= 'dcdf-vis-choice'
-	draw_aux_view_sep.style 	= 'margin-top:4px'
-
-	let draw_aux_view_sep_lbl = document.createElement('label')
-	draw_aux_view_sep_lbl.setAttribute("for", draw_aux_view_sep)
-	global.ui.draw_aux_view_lbl 	= draw_aux_view_sep_lbl
-	draw_aux_view_sep_lbl.style 	= 'font-family:Courier; font-size:13pt; color: #FFFFFF; width:160px;'
-	draw_aux_view_sep_lbl.innerHTML = 'Separated'
-
-	let draw_aux_view_type_grid = document.createElement('div')
-	global.ui.draw_aux_view_type_grid = draw_aux_view_type_grid
-	draw_aux_view_type_grid.id 		  = draw_aux_view_type_grid
-	draw_aux_view_type_grid.style 	  = 'position:absolute; left:33.5%; top:48.7%; display:grid; background-color:#6b6f71;\
-									 	 align-items:baseline; justify-items:baseline;\
-									 	 grid-template-rows: 10px; grid-template-columns:repeat(4, 110px); z-index:2'
-
-	draw_aux_view_type_grid.appendChild(draw_aux_view_agg_lbl)
-	draw_aux_view_type_grid.appendChild(draw_aux_view_agg)
- 	draw_aux_view_type_grid.appendChild(draw_aux_view_sep_lbl)
-	draw_aux_view_type_grid.appendChild(draw_aux_view_sep)
-
-	//----------
-	// checkbox to draw group envelopes
-	//----------
-	let draw_groups_envelope_btn = create_checkbox();
-	global.ui.draw_groups_envelope_btn = draw_groups_envelope_btn;
-
-	let draw_groups_envelope_lbl = create_checkbox_label(draw_groups_envelope_btn, 'Draw groups envelopes');
-	global.ui.draw_groups_envelope_lbl = draw_groups_envelope_lbl
-
-	let draw_groups_envelope_grid = document.createElement('div')
-	global.ui.draw_groups_envelope_grid = draw_groups_envelope_grid
-	draw_groups_envelope_grid.id 		= draw_groups_envelope_grid
-	draw_groups_envelope_grid.style 	= 'position:absolute; left:17.1%; top:97%; background-color:#6b6f71; \
-							   		   	   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
-	draw_groups_envelope_grid.appendChild(draw_groups_envelope_lbl)
-	draw_groups_envelope_grid.appendChild(draw_groups_envelope_btn)
-
-	//----------
-	// select number of group prototypes to be shown in envelope (besides top and bottom ones)
-	//----------
-	let n_protos_select = document.createElement('select');
-	global.ui.n_protos_select = n_protos_select;
-	n_protos_select.style 	  = 'position:absolute; left:30.5%; top:97%; width:110px; background-color:#2f3233; \
-								 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
-
-	let n_protos_info_option = create_option(1, 'n_protos');
-	n_protos_info_option.selected = 'selected';
-	n_protos_info_option.hidden   = 'hidden';
-
-	let n_protos_1_option = create_option(1,'1');
-	let n_protos_2_option = create_option(2,'2');
-	let n_protos_3_option = create_option(3,'3');
-
-	n_protos_select.appendChild(n_protos_info_option);
-	n_protos_select.appendChild(n_protos_1_option);
-	n_protos_select.appendChild(n_protos_2_option);
-	n_protos_select.appendChild(n_protos_3_option);
-
-	//----------
-	// select step size
-	//----------
-	let step_select = document.createElement('select');
-	global.ui.step_select = step_select;
-	step_select.style 	  = 'position:absolute; left:37.5%; top:97%; width:140px; background-color:#2f3233; \
-							 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
-
-	let step_default_option = create_option(1,'default(1)');
-	step_default_option.selected = 'selected';
-
-	let step_3_option  = create_option(3,'3');
-	let step_5_option  = create_option(5,'5');
-	let step_10_option = create_option(10,'10');
-
-	step_select.appendChild(step_default_option);
-	step_select.appendChild(step_3_option);
-	step_select.appendChild(step_5_option);
-	step_select.appendChild(step_10_option);
-
-	// ***** projection view components *****
-
-	//----------
-	// select colorby
-	//----------
-	let proj_colorby_select = document.createElement('select')
-	global.ui.proj_colorby_select = proj_colorby_select
-	proj_colorby_select.style 	  = 'position:absolute; left:58.1%; top:48.7%; background-color:#2f3233; \
-							   		 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
-	install_event_listener(proj_colorby_select, 'change', proj_colorby_select, EVENT.CHANGE_COLORBY)
-
-	let proj_colorby_info_option = create_option('default', 'color by');
-	proj_colorby_info_option.selected = 'selected';
-	proj_colorby_info_option.hidden   = 'hidden';
-
-	let proj_colorby_default_option 	= create_option('default', 'default')
-	let proj_colorby_position_option 	= create_option('position','position')
-	let proj_colorby_gamesplayed_option = create_option('games_played', 'games played')
-
-	proj_colorby_select.appendChild(proj_colorby_info_option)
-	proj_colorby_select.appendChild(proj_colorby_default_option)
-	proj_colorby_select.appendChild(proj_colorby_position_option)
-	proj_colorby_select.appendChild(proj_colorby_gamesplayed_option)
-
-	//----------
-	// select number of clusters and cluster button
-	//----------
-	let n_clusters_select = document.createElement('select')
-
-	global.ui.n_clusters_select = n_clusters_select
-	n_clusters_select.style 	= 'position:absolute; left:67.7%; top:48.7%; width:130px; background-color:#2f3233; \
-							   	   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
-
-	let df_option = create_option(0, 'n_clusters');
-	df_option.selected = 'selected';
-	df_option.hidden   = 'hidden';
-
-	let five_option   = create_option(5, '5');
-	let seven_option  = create_option(7, '7');
-	let ten_option    = create_option(10, '10');
-	let twelve_option = create_option(12, '12');
-
-	n_clusters_select.appendChild(df_option);
-	n_clusters_select.appendChild(five_option);
-	n_clusters_select.appendChild(seven_option);
-	n_clusters_select.appendChild(ten_option);
-	n_clusters_select.appendChild(twelve_option);
-
-	let cluster_btn = document.createElement('button')
-	global.ui.cluster_btn 	= cluster_btn
-	cluster_btn.id 			= "cluster_btn"
-	cluster_btn.textContent = 'cluster'
-	cluster_btn.style 		= "position:absolute; left:75%; top:48.7%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
-							   font-family:Courier; font-size:12pt; z-index:2;"
-	install_event_listener(cluster_btn, 'click', cluster_btn, EVENT.CLUSTER)
-
-	//----------
-	// button to create group with current selection
-	//----------
-	let create_group_btn = document.createElement('button')
-	global.ui.create_group_btn 	 = create_group_btn
-	create_group_btn.id 		 = "create_group_btn"
-	create_group_btn.textContent = 'create group'
-	create_group_btn.style 		 = "position:absolute; left:83%; top:48.7%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
-							  		font-family:Courier; font-size:12pt; z-index:2;"
-	install_event_listener(create_group_btn, 'click', create_group_btn, EVENT.CREATE_GROUP)
-
-	//----------
-	// button to reset all current groups
-	//----------
-	let reset_groups_btn = document.createElement('button')
-	global.ui.reset_groups_btn   = reset_groups_btn
-	reset_groups_btn.id 	   	 = "reset_groups_btn"
-	reset_groups_btn.textContent = 'reset groups'
-	reset_groups_btn.style 		 = "position:absolute; left:92%; top:48.7%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
-							  		font-family:Courier; font-size:12pt; z-index:2;"
-	install_event_listener(reset_groups_btn, 'click', reset_groups_btn, EVENT.REMOVE_ACTIVE_GROUPS)
-
-
-	ts_div.appendChild(chosen_stats_select)
-	ts_div.appendChild(clear_chart_btn)
-	ts_div.appendChild(rank_depth_select)
-	ts_div.appendChild(draw_aux_view_type_grid)
-	ts_div.appendChild(draw_groups_envelope_grid)
-	ts_div.appendChild(n_protos_select)
-	ts_div.appendChild(step_select)
-	ts_div.appendChild(proj_colorby_select)
-	ts_div.appendChild(n_clusters_select)
-	ts_div.appendChild(cluster_btn)
-	ts_div.appendChild(create_group_btn)
-	ts_div.appendChild(reset_groups_btn)
-
-	//----------
-	// canvas to capture events on visualizations
-	//----------
-	let ts_canvas = ts_div.appendChild(document.createElement('canvas'));
-	global.ui.ts_canvas = ts_canvas;
-	ts_canvas.style		= 'position:relative; left:0px; top:0px; z-index:1;';
-	ts_canvas.id 		= 'ts_canvas';
-	ts_canvas.tabindex 	= '1';
-	install_event_listener(ts_canvas, "mousemove", ts_canvas, EVENT.MOUSEMOVE)
-	install_event_listener(ts_canvas, "wheel", ts_canvas, EVENT.MOUSEWHEEL)
-	install_event_listener(ts_canvas, "mousedown", ts_canvas, EVENT.MOUSEDOWN)
-	install_event_listener(ts_canvas, "mouseup", ts_canvas, EVENT.MOUSEUP)
-	install_event_listener(ts_canvas, "dblclick", ts_canvas, EVENT.DBCLICK)
-	install_event_listener(ts_canvas, "click", ts_canvas, EVENT.CLICK)
-
-	//----------
-	// general div and body
-	//----------
-	let main_div = document.createElement('div')
-	global.ui.main_div = main_div
-	main_div.id 	   = 'main_div'
-	main_div.style 	   = 'position:absolute; width:100%; height:100%; display:grid;\
-						  grid-template-columns:250px auto; grid-template-rows:100%; grid-column-gap:10px;'
-	main_div.appendChild(left_panel)
-	main_div.appendChild(ts_div)
-
-	var body = document.getElementsByTagName('body')[0]
-	global.ui.body = body
-	body.style 	   = 'margin:0px 2px 2px 0px; background-color:#2f3233'
-	body.appendChild(main_div)
-
-	install_event_listener(window, "keydown", window, EVENT.KEYDOWN)
 }
 
 function grow_heap() {
@@ -3981,7 +3328,6 @@ function process_event_queue()
 				  global.chosen_pos.splice(to_remove, 1);
 				}
 			}
-
 		} else if (e.event_type == EVENT.CHANGE_COLORBY) {
 			global.colorby = global.ui.proj_colorby_select.value
 		} else if (e.event_type == EVENT.CLUSTER) {
@@ -4006,7 +3352,8 @@ function process_event_queue()
 				create_and_fill_full_table_cluster(-1)
 			}
 
-		} else if (e.event_type == EVENT.FULL_TABLE_PROTOS_ONLY) {
+		} else if (e.event_type == EVENT.FULL_TABLE_PROTOS_ONLY || e.event_type == EVENT.FILTER_FT_BY_POS) {
+			console.log('here2');
 			create_and_fill_full_table_cluster(-1)
 		}
 	}
@@ -4072,8 +3419,8 @@ function update_ts()
 		lc_ctx.fill()
 
 		// {
-		// 	ctx.moveTo(aux_rect_inf[0], aux_rect_inf[1])
-		// 	ctx.rect(aux_rect[RECT.LEFT], aux_rect[RECT.TOP], aux_rect[RECT.WIDTH], aux_rect[RECT.HEIGHT])
+		// 	ctx.moveTo(av_rect_inf[0], av_rect_inf[1])
+		// 	ctx.rect(av_rect[RECT.LEFT], av_rect[RECT.TOP], av_rect[RECT.WIDTH], av_rect[RECT.HEIGHT])
 		// 	ctx.fill()
 		// }
 		//
@@ -4498,7 +3845,7 @@ function update_ts()
 				return;
 			}
 
-			if (global.ui.draw_groups_envelope_btn.checked) {
+			if (global.ui.draw_groups_envelope_btn.checked || document.getElementById('protos_only_checkbox').checked) {
 				if (symbol.proto == false && symbol != global.focused_symbol) {
 					return;
 				}
@@ -5012,12 +4359,12 @@ function update_ts()
 
 	av_ctx.clearRect(0, 0, av_canvas.width, av_canvas.height)
 
-	let aux_rect_inf = [0,0, av_canvas.width, av_canvas.height]
-	let aux_rect_margins = [ 5, 15, 5, 5 ]
-	let aux_rect = [ aux_rect_inf[0] + aux_rect_margins[SIDE.LEFT],
-					 aux_rect_inf[1] + aux_rect_margins[SIDE.TOP],
-					 aux_rect_inf[2] - aux_rect_margins[SIDE.LEFT] - aux_rect_margins[SIDE.RIGHT],
-					 aux_rect_inf[3] - aux_rect_margins[SIDE.BOTTOM] - aux_rect_margins[SIDE.TOP] ]
+	let av_rect_inf = [0,0, av_canvas.width, av_canvas.height]
+	let av_rect_margins = [ 15, 20, 5, 5 ]
+	let av_rect = [ av_rect_inf[0] + av_rect_margins[SIDE.LEFT],
+					av_rect_inf[1] + av_rect_margins[SIDE.TOP],
+					av_rect_inf[2] - av_rect_margins[SIDE.LEFT] - av_rect_margins[SIDE.RIGHT],
+					av_rect_inf[3] - av_rect_margins[SIDE.BOTTOM] - av_rect_margins[SIDE.TOP] ]
 
 	let aux_view_closest_symbol = null
 
@@ -5025,8 +4372,8 @@ function update_ts()
 
 		av_ctx.fillStyle="#2f3233"
 
-		av_ctx.moveTo(aux_rect_inf[0], aux_rect_inf[1])
-		av_ctx.rect(aux_rect[RECT.LEFT], aux_rect[RECT.TOP], aux_rect[RECT.WIDTH], aux_rect[RECT.HEIGHT])
+		av_ctx.moveTo(av_rect_inf[0], av_rect_inf[1])
+		av_ctx.rect(av_rect[RECT.LEFT], av_rect[RECT.TOP], av_rect[RECT.WIDTH], av_rect[RECT.HEIGHT])
 		av_ctx.fill()
 
 		av_ctx.font = "bold 14pt Courier"
@@ -5228,7 +4575,7 @@ function update_ts()
 			global.split_cdf.panel_resize_last_x = av_local_mouse_pos[0]
 
 			let panel_idx 		   = global.split_cdf.panel_resize_index
-			let panel_resize_width = global.split_cdf.ww[panel_idx] * aux_rect[RECT.WIDTH]
+			let panel_resize_width = global.split_cdf.ww[panel_idx] * av_rect[RECT.WIDTH]
 			let panel_resize_side  = global.split_cdf.panel_resize_side
 
 			let delta = dx / panel_resize_width
@@ -5256,16 +4603,16 @@ function update_ts()
 			let sorted_wws 	  = global.split_cdf.ww
 			let sorted_breaks = global.split_cdf.breaks
 
-			let offset = aux_rect[RECT.LEFT]
+			let offset = av_rect[RECT.LEFT]
 			for (let i=0; i<sorted_wws.length; i++) {
 				av_ctx.fillStyle = "#555555"
 
 				let panel_rect = null
-				let panel_width = aux_rect[RECT.WIDTH]*sorted_wws[i]
+				let panel_width = av_rect[RECT.WIDTH]*sorted_wws[i]
 				panel_rect = [ offset,
-							   aux_rect[RECT.TOP]+5,
+							   av_rect[RECT.TOP]+5,
 							   panel_width,
-							   aux_rect[RECT.HEIGHT]-10 ]
+							   av_rect[RECT.HEIGHT]-10 ]
 
 				offset += panel_width
 				av_ctx.beginPath()
@@ -5498,6 +4845,12 @@ function update_ts()
 					if (global.ui.draw_groups_envelope_btn.checked) {
 						if (symbol.group !== null && symbol !== global.focused_symbol && symbol.proto == false && !symbol.selected) {
 							return
+						}
+					}
+
+					if (document.getElementById('protos_only_checkbox').checked) {
+						if (symbol.proto == false && symbol != global.focused_symbol) {
+							return;
 						}
 					}
 
@@ -6297,7 +5650,7 @@ function set_ui_components()
 	table.style='background-color:#999999; overflow:auto'
 
 	let full_table = document.createElement('div');
-	full_table.style='background-color:#BBBBBB; overflow:auto'
+	full_table.style='background-color:#BBBBBB; overflow:auto; padding:10'
 
 	let groups_table = document.createElement('div');
 	groups_table.style='background-color:#333333; overflow:auto'
@@ -6402,7 +5755,6 @@ async function main()
 		global.symbols = symbols
 		global.toggle_state = 0
 
-		// prepare_ui();
 		install_event_listener(window, "keydown", window, EVENT.KEYDOWN)
 		install_event_listener(window, "mousedown", window, EVENT.MOUSEDOWN)
 		install_event_listener(window, "mousemove", window, EVENT.MOUSEMOVE)
