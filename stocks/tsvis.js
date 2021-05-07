@@ -107,7 +107,8 @@ const EVENT= {
 	TOGGLE_TABLE: "event_toggle_table",
 	SORT_TABLE_BY_COL: "event_sort_table_by_col",
 	FULL_TABLE_PROTOS_ONLY: "event_full_table_protos_only",
-	FILTER_FT_BY_POS: "event_filter_ft_by_pos"
+	FILTER_FT_BY_POS: "event_filter_ft_by_pos",
+	SWITCH_FT_STAT_TYPE: "event_switch_ft_stat_type"
 }
 
 var global = {
@@ -530,6 +531,7 @@ function find_group_proto(group, n_protos) {
 
 	members.sort((a, b) => parseFloat(a.dist_to_upper) - parseFloat(b.dist_to_upper));
 	members[0].proto = true;
+	group.upper_proto = members[0];
 
 	// find envelope lower proto
 	let reference_curve_lower = group.envelope.lower;
@@ -703,7 +705,7 @@ function create_groups_from_response(groups_obj) {
 	//UPDATE 2021-05-03: sort groups table to distance of its first member to max_cdf
 	let max_cdf = get_max_cdf();
 	let groups = global.groups;
-	groups.sort((a,b) => parseFloat(earth_movers_distance(max_cdf, a.members[0])) - parseFloat(earth_movers_distance(max_cdf, b.members[0])))
+	groups.sort((a,b) => parseFloat(earth_movers_distance(max_cdf, a.upper_proto)) - parseFloat(earth_movers_distance(max_cdf, b.upper_proto)))
 
 	let row = global.ui.groups_table.appendChild(document.createElement('tr'))
 	for (let i=0; i<groups.length; i++) {
@@ -1405,6 +1407,16 @@ function check_ft_pos_filters(symbol) {
 	return (all_unchecked || matched_pos)
 }
 
+function get_ft_stat_type() {
+	let stats_radios = document.getElementsByName('stats_type');
+
+	for (let i=0; i<stats_radios.length; i++) {
+		if (stats_radios[i].checked) {
+			return stats_radios[i].value;
+		}
+	}
+}
+
 function create_and_fill_full_table_cluster(sort_index) {
 
 	if (global.ui.full_table !== undefined) {
@@ -1436,10 +1448,16 @@ function create_and_fill_full_table_cluster(sort_index) {
 
 	let chart_symbols = global.chart_symbols;
 	let max_cdf = get_max_cdf();
+	let stat_type = get_ft_stat_type();
+	// console.log(stat_type)
 
 	//UPDATE 2021-05-03: sort table according to different parameters (default: earth movers distance to max cdf)
 	if (sort_index>0) {
-		chart_symbols.sort((a,b) => parseInt(b.summary[headers[sort_index]]) - parseInt(a.summary[headers[sort_index]]))
+		if (stat_type === 'totals') {
+			chart_symbols.sort((a,b) => parseInt(b.summary[headers[sort_index]]) - parseInt(a.summary[headers[sort_index]]))
+		} else if (stat_type === 'pg') {
+			chart_symbols.sort((a,b) => (parseInt(b.summary[headers[sort_index]])/Object.keys(b.data).length) - (parseInt(a.summary[headers[sort_index]])/Object.keys(a.data).length))
+		}
 	} else if (sort_index<0) {
 		chart_symbols.sort((a,b) => parseFloat(earth_movers_distance(max_cdf, a)) - parseFloat(earth_movers_distance(max_cdf, b)))
 	} else {
@@ -1447,34 +1465,40 @@ function create_and_fill_full_table_cluster(sort_index) {
 	}
 	for (let i=0;i<chart_symbols.length;i++) {
 		let symbol = chart_symbols[i]
+		let symbol_gp = get_gp(symbol);
+
 		if (!check_ft_pos_filters(symbol)) { continue; }
 		if (document.getElementById('protos_only_checkbox').checked) {
 			if (!symbol.proto) { continue; }
 		}
-		let row    = full_table.appendChild(document.createElement('tr'))
-		let col    = row.appendChild(document.createElement('td'))
+		let row    = full_table.appendChild(document.createElement('tr'));
+		let col    = row.appendChild(document.createElement('td'));
 
-		row.style.backgroundColor = symbol.group.color
-		col.innerText 		 = symbol.name
-		col.style 			 = "cursor: pointer"
-		col.style.fontFamily = 'Courier'
-		col.style.fontSize 	 = '14pt'
-		col.style.color 	 = "#000000"
-		col.style.border	 = "1px solid black"
+		row.style.backgroundColor = symbol.group.color;
+		col.innerText 		 = symbol.name;
+		col.style 			 = "cursor: pointer";
+		col.style.fontFamily = 'Courier';
+		col.style.fontSize 	 = '14pt';
+		col.style.color 	 = "#000000";
+		col.style.border	 = "1px solid black";
 
 		for (let j=1; j<headers.length; j++) {
 			let stat_col = row.appendChild(document.createElement('td'));
 
-			stat_col.innerText 			 = symbol.summary[headers[j]]
-			stat_col.style.fontFamily 	 = 'Courier'
-			stat_col.style.fontSize 	 = '14pt'
-			stat_col.style.color 	 	 = "#000000"
-			stat_col.style.border	 	 = "1px solid black"
+			if (stat_type === 'totals') {
+				stat_col.innerText 			 = symbol.summary[headers[j]];
+			} else if (stat_type === 'pg') {
+				stat_col.innerText 			 = (symbol.summary[headers[j]]/symbol_gp).toFixed(2);
+			}
+			stat_col.style.fontFamily 	 = 'Courier';
+			stat_col.style.fontSize 	 = '14pt';
+			stat_col.style.color 	 	 = "#000000";
+			stat_col.style.border	 	 = "1px solid black";
 		}
 
-		symbol.ft_ui_row = row
-		symbol.ft_ui_col = col
-		install_event_listener(symbol.ft_ui_col, 'click', symbol, EVENT.TOGGLE_SYMBOL)
+		symbol.ft_ui_row = row;
+		symbol.ft_ui_col = col;
+		install_event_listener(symbol.ft_ui_col, 'click', symbol, EVENT.TOGGLE_SYMBOL);
 	}
 }
 
@@ -1939,6 +1963,38 @@ function fill_ui_components()
 	ft_position_filters_div.appendChild(ft_c_lbl);
 	ft_position_filters_div.appendChild(ft_c_btn);
 
+	let ft_stats_section_lbl = create_section_label('Stats');
+
+	let stats_radio_totals = document.createElement('input');
+	stats_radio_totals.name = "stats_type";
+	stats_radio_totals.type = "radio";
+	stats_radio_totals.value = "totals";
+	stats_radio_totals.checked = true;
+	stats_radio_totals.style.setProperty("vertical-align","middle");
+	install_event_listener(stats_radio_totals, 'click', stats_radio_totals, EVENT.SWITCH_FT_STAT_TYPE);
+
+	let stats_radio_totals_lbl = create_checkbox_label(stats_radio_totals, 'Totals');
+
+	let stats_radio_pg = document.createElement('input');
+	stats_radio_pg.name = "stats_type";
+	stats_radio_pg.type = "radio";
+	stats_radio_pg.value = "pg";
+	stats_radio_pg.style.setProperty("vertical-align","middle");
+	stats_radio_pg.style.setProperty("position","relative");
+	stats_radio_pg.style.setProperty("left","25");
+	install_event_listener(stats_radio_pg, 'click', stats_radio_pg, EVENT.SWITCH_FT_STAT_TYPE);
+
+	let stats_radio_pg_lbl = create_checkbox_label(stats_radio_pg, 'Per Game');
+	stats_radio_pg_lbl.style.setProperty("position","relative");
+	stats_radio_pg_lbl.style.setProperty("left","25");
+
+	let stats_radio_div = document.createElement('div');
+	stats_radio_div.style = "position:relative";
+	stats_radio_div.append(stats_radio_totals_lbl)
+	stats_radio_div.append(stats_radio_totals)
+	stats_radio_div.append(stats_radio_pg_lbl)
+	stats_radio_div.append(stats_radio_pg)
+
 	let ft_filter_input = document.createElement('input')
 	ft_filter_input.setAttribute("type","text")
 	ft_filter_input.id    = 'ft_filter_input'
@@ -1947,22 +2003,6 @@ function fill_ui_components()
 
 	global.ui.ft_filter_input = ft_filter_input
 	install_event_listener(ft_filter_input, 'change', ft_filter_input, EVENT.FILTER)
-
-	// let ft_add_table_symbols_btn = document.createElement('button')
-	// global.ui.ft_add_table_symbols_btn   = ft_add_table_symbols_btn
-	// ft_add_table_symbols_btn.id 		  = "ft_add_table_symbols_btn"
-	// ft_add_table_symbols_btn.textContent = 'add curves on table'
-	// ft_add_table_symbols_btn.style 	  = "position:relative; width:98%; margin-left:3px; margin-bottom:3px;\
-	//  								   	 border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
-	// install_event_listener(ft_add_table_symbols_btn, 'click', ft_add_table_symbols_btn, EVENT.ADD_TABLE_SYMBOLS)
-
-	// let ft_toggle_table_btn = document.createElement('button')
-	// global.ui.ft_toggle_table_btn    = ft_toggle_table_btn
-	// ft_toggle_table_btn.id 		  = "ft_toggle_table_btn"
-	// ft_toggle_table_btn.textContent  = 'toggle full table'
-	// ft_toggle_table_btn.style 	  	  = "position:relative; width:98%; margin-top:3px; margin-left:3px; margin-bottom:3px;\
-	//  								   	 border-radius:13px; background-color:#AAAAAA; font-family:Courier; font-size:12pt;"
-	// install_event_listener(ft_toggle_table_btn, 'click', ft_toggle_table_btn, EVENT.TOGGLE_TABLE)
 
 	let full_table_div 		 = document.createElement('div')
 	global.ui.full_table_div = full_table_div
@@ -1986,6 +2026,8 @@ function fill_ui_components()
 	if (full_table_component) {
 		full_table_component.appendChild(ft_position_section_label);
 		full_table_component.appendChild(ft_position_filters_div);
+		full_table_component.appendChild(ft_stats_section_lbl);
+		full_table_component.appendChild(stats_radio_div);
 		full_table_component.appendChild(ft_filter_input);
 		// full_table_component.appendChild(ft_add_table_symbols_btn);
 		full_table_component.appendChild(full_table_div);
@@ -3009,7 +3051,7 @@ function process_event_queue()
 			add_table_symbols()
 		} else if (e.event_type == EVENT.CREATE_GROUP) {
 			create_group()
-		} else if (e.event_type == EVENT.TOGGLE_GROUP) {
+		} else if (e.event_type == EVENT.TOGGLE_GROUP) {process_even
 			let group = e.context
 			if (!group.on_chart) {
 				if (e.raw.getModifierState("Control")) {
@@ -3024,7 +3066,7 @@ function process_event_queue()
 					add_group_to_chart(group)
 				}
 			} else {
-				if (e.raw.getModifierState("Control")) {
+				if (e.raw.getModifierState("Control")) {process_even
 					remove_group_from_chart(group)
 					let groups_exist = false;
 					for (let i=0; i<global.groups.length; i++) {
@@ -3232,7 +3274,7 @@ function process_event_queue()
 								resize_target = new ResizeTarget(node, closest_side[CLOSEST_SIDE_SIDE], closest_side[CLOSEST_SIDE_DIST], x, y)
 							}
 						}
-					}
+					}process_even
 				}
 
 				global.resize_target = resize_target
@@ -3346,15 +3388,19 @@ function process_event_queue()
 		} else if (e.event_type == EVENT.SORT_TABLE_BY_COL) {
 			toggle_class(e.context, 'selected')
 			if (e.context.className == 'selected') {
-				create_and_fill_full_table_cluster(e.context.cellIndex)
+				create_and_fill_full_table_cluster(e.context.cellIndex);
 			} else {
-				create_and_fill_full_table_cluster(-1)
+				create_and_fill_full_table_cluster(-1);
 			}
 
 		} else if (e.event_type == EVENT.FULL_TABLE_PROTOS_ONLY) {
-			create_and_fill_full_table_cluster(-1)
+			create_and_fill_full_table_cluster(-1);
 		} else if (e.event_type == EVENT.FILTER_FT_BY_POS) {
-			create_and_fill_full_table_cluster(-1)
+			create_and_fill_full_table_cluster(-1);
+		} else if (e.event_type == EVENT.SWITCH_FT_STAT_TYPE) {
+			console.log('here2');
+			console.log(get_ft_stat_type());
+			create_and_fill_full_table_cluster(-1);
 		}
 	}
 	global.events.length = 0
