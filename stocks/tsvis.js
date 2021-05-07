@@ -5381,6 +5381,15 @@ function update_ts()
 				return
 			}
 
+			if (document.getElementById('protos_only_checkbox').checked) {
+				if (symbol.proto == false && symbol != global.focused_symbol) {
+					return;
+				}
+			}
+
+			if (!check_ft_pos_filters(symbol)) { return; }
+
+
 			if (global.brush !== undefined) {
 				if (symbol.selected == false) {
 					if (check_symbol_on_brush(symbol)) {
