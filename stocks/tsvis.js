@@ -107,7 +107,7 @@ const EVENT= {
 	TOGGLE_TABLE: "event_toggle_table",
 	SORT_TABLE_BY_COL: "event_sort_table_by_col",
 	FULL_TABLE_PROTOS_ONLY: "event_full_table_protos_only",
-	FITLER_FT_BY_POS: "event_filter_ft_by_pos"
+	FILTER_FT_BY_POS: "event_filter_ft_by_pos"
 }
 
 var global = {
@@ -737,7 +737,6 @@ async function cluster_chart_data() {
 	}
 
 	let str_to_send = btoa(encodeURI(JSON.stringify(data_to_send)));
-	// console.log(data_to_send)
 
 	var xhttp = new XMLHttpRequest();
 	xhttp.open("POST", "http://localhost:8888/cluster", true);
@@ -1388,7 +1387,6 @@ function toggle_class(el, cname) {
 }
 
 function check_ft_pos_filters(symbol) {
-	// console.log('here');
 	let pos_filters = document.getElementsByClassName('ft-pos-filter');
 	let symbol_pos  = symbol.position;
 
@@ -1425,10 +1423,13 @@ function create_and_fill_full_table_cluster(sort_index) {
 		let header_cell = header_row.appendChild(document.createElement('th'));
 		header_cell.innerHTML 		 = headers[i];
 		header_cell.style 			 = "cursor: pointer"
-		header_cell.style.fontFamily = 'Courier'
-		header_cell.style.fontSize 	 = '14pt'
+		header_cell.style.fontFamily = "Courier"
+		header_cell.style.fontSize 	 = "14pt"
 		header_cell.style.color 	 = "#6b6f71"
         header_cell.style.border	 = "1px solid black"
+		if (i==sort_index) {
+			toggle_class(header_cell, "selected")
+		}
 		install_event_listener(header_cell, 'click', header_cell, EVENT.SORT_TABLE_BY_COL)
 
 	}
@@ -1438,7 +1439,7 @@ function create_and_fill_full_table_cluster(sort_index) {
 
 	//UPDATE 2021-05-03: sort table according to different parameters (default: earth movers distance to max cdf)
 	if (sort_index>0) {
-		chart_symbols.sort((a,b) => b.data[headers[sort_index]] - a.data[headers[sort_index]])
+		chart_symbols.sort((a,b) => parseInt(b.summary[headers[sort_index]]) - parseInt(a.summary[headers[sort_index]]))
 	} else if (sort_index<0) {
 		chart_symbols.sort((a,b) => parseFloat(earth_movers_distance(max_cdf, a)) - parseFloat(earth_movers_distance(max_cdf, b)))
 	} else {
@@ -1446,7 +1447,7 @@ function create_and_fill_full_table_cluster(sort_index) {
 	}
 	for (let i=0;i<chart_symbols.length;i++) {
 		let symbol = chart_symbols[i]
-		// if (!check_ft_pos_filters(symbol)) { continue; }
+		if (!check_ft_pos_filters(symbol)) { continue; }
 		if (document.getElementById('protos_only_checkbox').checked) {
 			if (!symbol.proto) { continue; }
 		}
@@ -1833,7 +1834,7 @@ function fill_ui_components()
 	}
 
 	//----------
-	// default table componentsft_g_btn
+	// default table components
 	//----------
 
 	let st_filter_input = document.createElement('input')
@@ -1923,7 +1924,7 @@ function fill_ui_components()
 	let ft_c_btn = create_checkbox(undefined, 'C');
 	ft_c_btn.id = 'ft_c_btn';
 	ft_c_btn.style = 'position:relative; vertical-align:middle; left:50';
-	ft_f_btn.className = 'ft-pos-filter'
+	ft_c_btn.className = 'ft-pos-filter'
 	install_event_listener(ft_c_btn, 'click', ft_c_btn, EVENT.FILTER_FT_BY_POS)
 	let ft_c_lbl = create_checkbox_label(ft_c_btn, 'Center');
 	ft_c_lbl.style.setProperty('position','relative')
@@ -2674,8 +2675,6 @@ function run_extremal_depth_algorithm()
 			lt_ranks.push(lt_rank)
 			gt_ranks.push(gt_rank)
 		}
-		// console.log(symbol_i.name)
-		// console.log(gt_ranks)
 
 		let lt_ranks_dist = []
 		let gt_ranks_dist = []
@@ -2931,7 +2930,6 @@ function check_gp_filter(symbol) {
 	} else {
 		let gp = Object.keys(symbol.data).length;
 		let thres = parseInt(global.min_gp_sld.value);
-		// console.log(gp, thres)
 		if (gp >= thres) {
 			return true
 		} else {
@@ -2983,6 +2981,11 @@ function process_event_queue()
 						global.ui.full_table.removeChild(symbol.ft_ui_row)
 					}
 					symbol.on_table = false
+				}
+			}
+			if (filter_input.value === '') {
+				if (global.ui.full_table) {
+					create_and_fill_full_table_cluster(-1)
 				}
 			}
 			console.log(pattern)
@@ -3137,7 +3140,6 @@ function process_event_queue()
 				if (e.raw.keyCode == KEY_N) {
 					global.key_update_norm = true
 				} else if (e.raw.keyCode == KEY_S) {
-					// console.log("activated select mode")
 					global.select_mode_active = true
 				} else if (e.raw.keyCode == KEY_E) {
 					global.key_update_end = true
@@ -3158,12 +3160,9 @@ function process_event_queue()
 						global.split_cdf.realign = []
 					}
 				} else if (e.raw.keyCode == KEY_F) {
-					// console.log("pressed F")
 					global.brush_mode_active = true
-					// console.log("brush mode active")
 				} else if (e.raw.keyCode == KEY_R) {
 					global.resize_mode_active = true
-					// console.log("resize mode toggled", global.resize_mode_active);
 				}
 			}
 		} else if (e.event_type == EVENT.MOUSEWHEEL) {
@@ -3347,13 +3346,14 @@ function process_event_queue()
 		} else if (e.event_type == EVENT.SORT_TABLE_BY_COL) {
 			toggle_class(e.context, 'selected')
 			if (e.context.className == 'selected') {
-				sortTable(e.context.cellIndex)
+				create_and_fill_full_table_cluster(e.context.cellIndex)
 			} else {
 				create_and_fill_full_table_cluster(-1)
 			}
 
-		} else if (e.event_type == EVENT.FULL_TABLE_PROTOS_ONLY || e.event_type == EVENT.FILTER_FT_BY_POS) {
-			console.log('here2');
+		} else if (e.event_type == EVENT.FULL_TABLE_PROTOS_ONLY) {
+			create_and_fill_full_table_cluster(-1)
+		} else if (e.event_type == EVENT.FILTER_FT_BY_POS) {
 			create_and_fill_full_table_cluster(-1)
 		}
 	}
@@ -3461,19 +3461,14 @@ function update_ts()
 		//
 		// for (let i=0; i<global.chart_symbols.length; i++) {
 		// 	let symbol = global.chart_symbols[i]
-		// 	console.log(symbol.data)
 		// 	let games  = Object.keys(symbol.data)
 		//
-		// 	console.log(games)
-		//
 		// 	games.forEach((game, i) => {
-		// 		console.log(game)
 		// 		x_max = Math.max(game, x_max)
 		// 	});
 		//
 		// }
 		//
-		// console.log(x_max)
 		// let x_min = 0
 		// let x_max = date_end - date_start
 		//--------------
@@ -3836,7 +3831,6 @@ function update_ts()
 
 			let ts_current_values = symbol.ts_current_values
 			if (ts_current_values == null) {
-				// console.log("Not drawing ts for symbol ", symbol.name);
 				return;
 			}
 
@@ -3850,6 +3844,8 @@ function update_ts()
 					return;
 				}
 			}
+
+			if (!check_ft_pos_filters(symbol)) { return; }
 
 			let first_point_drawn   = false
 			let curve_color 		= null
@@ -4765,7 +4761,6 @@ function update_ts()
 						current_values = symbol.ranks_current_values
 					}
 					if (current_values == null) {
-						// console.log("Not drawing cdf for symbol ", symbol.name);
 						return;
 					}
 
@@ -4833,7 +4828,6 @@ function update_ts()
 						current_values = symbol.ranks_current_values
 					}
 					if (current_values == null) {
-						// console.log("Not drawing cdf for symbol ", symbol.name);
 						return;
 					}
 
@@ -4853,6 +4847,8 @@ function update_ts()
 							return;
 						}
 					}
+
+					if (!check_ft_pos_filters(symbol)) { return; }
 
 					let curve_color = "#FFFFFF44"
 
@@ -5487,7 +5483,6 @@ function update_ts()
 
 		if ((global.brush !== undefined)) {
 			if (global.brush.width !== 0 && global.brush.height !== 0 && global.brush_state !== BRUSH_STATE.INACTIVE) {
-				// console.log(global.brush)
 				let cv_brush_startpos = proj_rect_map(global.brush.left, global.brush.top);
 				let cv_brush_endpos   = proj_rect_map(global.brush.left + global.brush.width, global.brush.top + global.brush.height);
 
@@ -5532,7 +5527,7 @@ function update_ts()
 			p_ctx.font = '14px Monospace';
 			p_ctx.fillStyle = "#FFFFFF"
 
-			p_ctx.fillText(proj_text, proj_rect_margins[1], proj_rect[1]+proj_rect[3]+15);
+			p_ctx.fillText(proj_text, proj_rect_margins[1], proj_rect[1]+15);
 		}
 
 
@@ -5650,7 +5645,7 @@ function set_ui_components()
 	table.style='background-color:#999999; overflow:auto'
 
 	let full_table = document.createElement('div');
-	full_table.style='background-color:#BBBBBB; overflow:auto; padding:10'
+	full_table.style='background-color:#999999; overflow:auto; padding:10'
 
 	let groups_table = document.createElement('div');
 	groups_table.style='background-color:#333333; overflow:auto'
