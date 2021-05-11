@@ -4085,7 +4085,11 @@ function update_ts()
 			symbol.ui_col.style.color = symbol_color
 
 			if ((symbol == global.focused_symbol) || symbol.selected) {
-				lc_ctx.lineWidth = 4
+				if (symbol.selected && document.getElementById('selected_only_checkbox').checked) {
+					lc_ctx.lineWidth = 2
+				} else {
+					lc_ctx.lineWidth = 4
+				}
 				lc_ctx.strokeStyle = curve_focused_color
 			} else {
 				lc_ctx.lineWidth = 2
@@ -5011,7 +5015,11 @@ function update_ts()
 
 					av_ctx.save()
 					if ((symbol == global.focused_symbol) || symbol.selected) {
-						av_ctx.lineWidth = 4;
+						if (symbol.selected && document.getElementById('selected_only_checkbox').checked) {
+							av_ctx.lineWidth = 2
+						} else {
+							av_ctx.lineWidth = 4
+						}
 						let seq_scale_idx;
 
 						switch (global.colorby) {
