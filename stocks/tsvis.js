@@ -107,8 +107,10 @@ const EVENT= {
 	TOGGLE_TABLE: "event_toggle_table",
 	SORT_TABLE_BY_COL: "event_sort_table_by_col",
 	FULL_TABLE_PROTOS_ONLY: "event_full_table_protos_only",
+	FULL_TABLE_SELECTED_ONLY : "event_full_table_selected_only",
 	FILTER_FT_BY_POS: "event_filter_ft_by_pos",
-	SWITCH_FT_STAT_TYPE: "event_switch_ft_stat_type"
+	SWITCH_FT_STAT_TYPE: "event_switch_ft_stat_type",
+	CHANGE_FT_DEFAULT_SORT: "event_change_ft_default_sort"
 }
 
 var global = {
@@ -365,7 +367,9 @@ function reset_selections() {
 	for (let i=0; i<global.chart_symbols.length; i++) {
 		let symbol = global.chart_symbols[i]
 		symbol.selected = false;
+		if (symbol.ft_ui_col) { symbol.ft_ui_col.style.fontWeight = 'initial' }
 	}
+	global.selected_symbols = [];
 }
 
 function hex_to_rgb(hexstr) {
@@ -413,7 +417,7 @@ function interpolate_envelope_bounds(envelope, alpha) {
 }
 
 function earth_movers_distance(ref, sym) {
-	let cdf_sym = sym.ranks_current_values;
+	let cdf_sym = sym.gt_ranks_dist;
 	let sz		= ref.length;
 
 	let dist = 0.0;
@@ -432,6 +436,23 @@ function reset_group_protos(group) {
 	}
 }
 
+function get_perfect_cdf() {
+	let perfect_cdf = [];
+
+	let bound;
+	if (global.n_ranks !== undefined) {
+		bound = global.n_ranks;
+	} else {
+		bound = global.chart_symbols.length;
+	}
+
+	for (let l=0; l<bound; l++) {
+		perfect_cdf.push(1.0);
+	}
+
+	return perfect_cdf;
+}
+
 function get_max_cdf() {
 	let chart_symbols = global.chart_symbols;
 
@@ -442,7 +463,7 @@ function get_max_cdf() {
 
 		for (let j=0; j<chart_symbols.length; j++) {
 			let symbol = chart_symbols[j];
-			let symbol_values = symbol.ranks_current_values;
+			let symbol_values = symbol.gt_ranks_dist;
 
 			max_on_rank_l = Math.max(max_on_rank_l, symbol_values[l]);
 		}
@@ -467,7 +488,7 @@ function prepare_group_envelope(group, panel_x_min, panel_x_max, panel_rank) {
 
 		for (let j=0; j<n_members; j++) {
 			let member = members[j];
-			let member_values = member.ranks_current_values;
+			let member_values = member.gt_ranks_dist;
 
 			if (panel_rank == 0) {
 				max_on_rank_l = Math.max(max_on_rank_l, member_values[l]);
@@ -703,7 +724,7 @@ function create_groups_from_response(groups_obj) {
 	groups_table.style = 'position:block; width:100%; heigth: 100% !important;';
 
 	//UPDATE 2021-05-03: sort groups table to distance of its first member to max_cdf
-	let max_cdf = get_max_cdf();
+	let max_cdf = get_perfect_cdf();
 	let groups = global.groups;
 	groups.sort((a,b) => parseFloat(earth_movers_distance(max_cdf, a.upper_proto)) - parseFloat(earth_movers_distance(max_cdf, b.upper_proto)))
 
@@ -820,6 +841,7 @@ async function download_symbol_data(symbol)
 		let data   = await result.json()
 
 		let dict = {}
+		let summ = {'points':0, 'assists':0, 'rebounds':0, 'steals':0, 'blocks':0, 'turnovers':0, 'fouls':0}
 		for (let i=0;i<data.data[0].game_ids.length;i++) {
 			let game_data = {}
 			let game_id = parseInt(data.data[0].game_ids[i])
@@ -827,12 +849,19 @@ async function download_symbol_data(symbol)
 			game_data.team  	= data.data[0].teams[i]
 			game_data.date  	= data.data[0].dates[i]
 			game_data.points    = parseInt(data.data[0].points[i])
+			summ.points   		+= game_data.points;
 			game_data.assists   = parseInt(data.data[0].assists[i])
+			summ.assists  		+= game_data.assists;
 			game_data.rebounds  = parseInt(data.data[0].rebounds[i])
+			summ.rebounds  		+= game_data.rebounds;
 			game_data.steals    = parseInt(data.data[0].steals[i])
+			summ.steals  		+= game_data.steals;
 			game_data.blocks    = parseInt(data.data[0].blocks[i])
+			summ.blocks  		+= game_data.blocks;
 			game_data.turnovers = parseInt(data.data[0].turnovers[i])
+			summ.turnovers  	+= game_data.turnovers;
 			game_data.fouls 	= parseInt(data.data[0].fouls[i])
+			summ.fouls  		+= game_data.fouls;
 
 			dict[game_id] = game_data
 		}
@@ -840,14 +869,14 @@ async function download_symbol_data(symbol)
 		symbol.position = data.data[0].position
 		symbol.data = dict
 
-		let summ = {}
-		summ.points = data.data[0].points.reduce((a, b) => a + b, 0)
-		summ.assists = data.data[0].assists.reduce((a, b) => a + b, 0)
-		summ.rebounds = data.data[0].rebounds.reduce((a, b) => a + b, 0)
-		summ.steals = data.data[0].steals.reduce((a, b) => a + b, 0)
-		summ.blocks = data.data[0].blocks.reduce((a, b) => a + b, 0)
-		summ.turnovers = data.data[0].turnovers.reduce((a, b) => a + b, 0)
-		summ.fouls = data.data[0].fouls.reduce((a, b) => a + b, 0)
+		// let summ = {}
+		// summ.points = data.data[0].points.reduce((a, b) => a + b, 0)
+		// summ.assists = data.data[0].assists.reduce((a, b) => a + b, 0)
+		// summ.rebounds = data.data[0].rebounds.reduce((a, b) => a + b, 0)
+		// summ.steals = data.data[0].steals.reduce((a, b) => a + b, 0)
+		// summ.blocks = data.data[0].blocks.reduce((a, b) => a + b, 0)
+		// summ.turnovers = data.data[0].turnovers.reduce((a, b) => a + b, 0)
+		// summ.fouls = data.data[0].fouls.reduce((a, b) => a + b, 0)
 
 		// start_stats_ranges(summ);
 
@@ -867,7 +896,7 @@ function add_symbol_to_chart(symbol, color) {
 
 	// update default table
 	symbol.ui_col.style.color = color
-	symbol.ui_col.style.fontWeight = 'bold'
+	// symbol.ui_col.style.fontWeight = 'bold'
 
 	// update full table
 	if (symbol.ft_ui_col && symbol.ft_ui_row) {
@@ -897,7 +926,7 @@ function remove_symbol_from_chart(symbol) {
 
 	//update default table
 	symbol.ui_col.style.color = "#000000"
-	symbol.ui_col.style.fontWeight = 'initial'
+	// symbol.ui_col.style.fontWeight = 'initial'
 
 	// update full table
 	if (symbol.ft_ui_col && symbol.ft_ui_row) {
@@ -1128,6 +1157,7 @@ function clear_chart() {
 	global.chart_symbols = [];
 	global.chart_colors  = [];
 	global.chart_groups	 = [];
+	global.selected_symbols = [];
 
 	if (groups.length > 0) {
 		reset_groups();
@@ -1417,6 +1447,16 @@ function get_ft_stat_type() {
 	}
 }
 
+function compareArrays(a, b) {
+  var elA, elB, i, len;
+  for (i = 0, len = Math.min(a.length, b.length); i < len; i++) {
+    elA = a[i], elB = b[i];
+    if (elA > elB) return 1;
+    if (elA < elB) return -1;
+  }
+  return b.length - a.length;
+};
+
 function create_and_fill_full_table_cluster(sort_index) {
 
 	if (global.ui.full_table !== undefined) {
@@ -1447,8 +1487,9 @@ function create_and_fill_full_table_cluster(sort_index) {
 	}
 
 	let chart_symbols = global.chart_symbols;
-	let max_cdf = get_max_cdf();
+	let max_cdf = get_perfect_cdf();
 	let stat_type = get_ft_stat_type();
+	let default_sort = document.getElementById('ft_default_sort_select').value
 	// console.log(stat_type)
 
 	//UPDATE 2021-05-03: sort table according to different parameters (default: earth movers distance to max cdf)
@@ -1459,7 +1500,11 @@ function create_and_fill_full_table_cluster(sort_index) {
 			chart_symbols.sort((a,b) => (parseInt(b.summary[headers[sort_index]])/Object.keys(b.data).length) - (parseInt(a.summary[headers[sort_index]])/Object.keys(a.data).length))
 		}
 	} else if (sort_index<0) {
-		chart_symbols.sort((a,b) => parseFloat(earth_movers_distance(max_cdf, a)) - parseFloat(earth_movers_distance(max_cdf, b)))
+		if (default_sort === 'mcdf') {
+			chart_symbols.sort((a,b) => parseFloat(earth_movers_distance(max_cdf, a)) - parseFloat(earth_movers_distance(max_cdf, b)))
+		} else if (default_sort === 'lex') {
+			chart_symbols.sort((a,b) => -compareArrays(a.gt_ranks_dist,b.gt_ranks_dist))
+		}
 	} else {
 		chart_symbols.sort((a,b) => a.name.localeCompare(b.name))
 	}
@@ -1470,6 +1515,9 @@ function create_and_fill_full_table_cluster(sort_index) {
 		if (!check_ft_pos_filters(symbol)) { continue; }
 		if (document.getElementById('protos_only_checkbox').checked) {
 			if (!symbol.proto) { continue; }
+		}
+		if (document.getElementById('selected_only_checkbox').checked) {
+			if (!symbol.selected) { continue; }
 		}
 		let row    = full_table.appendChild(document.createElement('tr'));
 		let col    = row.appendChild(document.createElement('td'));
@@ -1938,21 +1986,21 @@ function fill_ui_components()
 
 	let ft_f_btn = create_checkbox(undefined, 'F');
 	ft_f_btn.id = 'ft_f_btn';
-	ft_f_btn.style = 'position:relative; vertical-align:middle; left:25';
+	ft_f_btn.style = 'position:relative; vertical-align:middle; left:15';
 	ft_f_btn.className = 'ft-pos-filter'
 	install_event_listener(ft_f_btn, 'click', ft_f_btn, EVENT.FILTER_FT_BY_POS)
 	let ft_f_lbl = create_checkbox_label(ft_f_btn, 'Forward');
 	ft_f_lbl.style.setProperty('position','relative')
-	ft_f_lbl.style.setProperty('left','25')
+	ft_f_lbl.style.setProperty('left','15')
 
 	let ft_c_btn = create_checkbox(undefined, 'C');
 	ft_c_btn.id = 'ft_c_btn';
-	ft_c_btn.style = 'position:relative; vertical-align:middle; left:50';
+	ft_c_btn.style = 'position:relative; vertical-align:middle; left:30';
 	ft_c_btn.className = 'ft-pos-filter'
 	install_event_listener(ft_c_btn, 'click', ft_c_btn, EVENT.FILTER_FT_BY_POS)
 	let ft_c_lbl = create_checkbox_label(ft_c_btn, 'Center');
 	ft_c_lbl.style.setProperty('position','relative')
-	ft_c_lbl.style.setProperty('left','50')
+	ft_c_lbl.style.setProperty('left','30')
 
 	let ft_position_filters_div = document.createElement('div');
 	ft_position_filters_div.style = 'position:relative;'
@@ -1962,6 +2010,11 @@ function fill_ui_components()
 	ft_position_filters_div.appendChild(ft_f_btn);
 	ft_position_filters_div.appendChild(ft_c_lbl);
 	ft_position_filters_div.appendChild(ft_c_btn);
+
+	let ft_position_section_div = document.createElement('div')
+	ft_position_section_div.style = 'position:relative; width:30%'
+	ft_position_section_div.appendChild(ft_position_section_label);
+	ft_position_section_div.appendChild(ft_position_filters_div);
 
 	let ft_stats_section_lbl = create_section_label('Stats');
 
@@ -1981,19 +2034,60 @@ function fill_ui_components()
 	stats_radio_pg.value = "pg";
 	stats_radio_pg.style.setProperty("vertical-align","middle");
 	stats_radio_pg.style.setProperty("position","relative");
-	stats_radio_pg.style.setProperty("left","25");
+	stats_radio_pg.style.setProperty("left","15");
 	install_event_listener(stats_radio_pg, 'click', stats_radio_pg, EVENT.SWITCH_FT_STAT_TYPE);
 
 	let stats_radio_pg_lbl = create_checkbox_label(stats_radio_pg, 'Per Game');
 	stats_radio_pg_lbl.style.setProperty("position","relative");
-	stats_radio_pg_lbl.style.setProperty("left","25");
+	stats_radio_pg_lbl.style.setProperty("left","15");
 
 	let stats_radio_div = document.createElement('div');
-	stats_radio_div.style = "position:relative";
+	stats_radio_div.style = "position:relative;";
 	stats_radio_div.append(stats_radio_totals_lbl)
 	stats_radio_div.append(stats_radio_totals)
 	stats_radio_div.append(stats_radio_pg_lbl)
 	stats_radio_div.append(stats_radio_pg)
+
+	let ft_stats_section_div = document.createElement('div');
+	ft_stats_section_div.style = 'position:relative; width:22%; margin-left:20';
+	ft_stats_section_div.appendChild(ft_stats_section_lbl);
+	ft_stats_section_div.appendChild(stats_radio_div);
+
+	let ft_others_filters_lbl = create_section_label('Other filters');
+
+	let protos_only_btn = create_checkbox();
+	protos_only_btn.id = 'protos_only_checkbox';
+	protos_only_btn.style = 'vertical-align:middle;';
+	install_event_listener(protos_only_btn, 'click', protos_only_btn, EVENT.FULL_TABLE_PROTOS_ONLY)
+
+	let protos_only_lbl = create_checkbox_label(protos_only_btn, 'prototypes');
+
+	let selected_only_btn = create_checkbox();
+	selected_only_btn.id = 'selected_only_checkbox';
+	selected_only_btn.style = 'position:relative; left:15; vertical-align:middle;';
+	install_event_listener(selected_only_btn, 'click', selected_only_btn, EVENT.FULL_TABLE_SELECTED_ONLY)
+
+	let selected_only_lbl = create_checkbox_label(selected_only_btn, 'selected');
+	selected_only_lbl.style.setProperty("position","relative");
+	selected_only_lbl.style.setProperty("left","15");
+
+	let ft_others_filters_div = document.createElement('div');
+	ft_others_filters_div.style = 'position;relative'
+	ft_others_filters_div.appendChild(protos_only_lbl);
+	ft_others_filters_div.appendChild(protos_only_btn);
+	ft_others_filters_div.appendChild(selected_only_lbl);
+	ft_others_filters_div.appendChild(selected_only_btn);
+
+	let ft_others_section_div = document.createElement('div');
+	ft_others_section_div.style = 'position:relative; width:30%; margin-left:20'
+	ft_others_section_div.appendChild(ft_others_filters_lbl);
+	ft_others_section_div.appendChild(ft_others_filters_div);
+
+	let ft_controls_div = document.createElement('div');
+	ft_controls_div.style = 'position:relative; display:flex; flex-direction:row; margin-bottom:5'
+	ft_controls_div.appendChild(ft_position_section_div);
+	ft_controls_div.appendChild(ft_stats_section_div);
+	ft_controls_div.appendChild(ft_others_section_div);
 
 	let ft_filter_input = document.createElement('input')
 	ft_filter_input.setAttribute("type","text")
@@ -2010,29 +2104,32 @@ function fill_ui_components()
 	full_table_div.style 	 = 'position:relative; width:98%; height:80%;\
 	 							overflow:auto; border-radius:2px; background-color:#FFFFFF'
 
-	let protos_only_btn = create_checkbox();
-	protos_only_btn.id = 'protos_only_checkbox';
-	protos_only_btn.style = 'vertical-align:middle;';
-	install_event_listener(protos_only_btn, 'click', protos_only_btn, EVENT.FULL_TABLE_PROTOS_ONLY)
+	let ft_default_sort_select = document.createElement('select');
+	ft_default_sort_select.id = 'ft_default_sort_select';
+	ft_default_sort_select.style = 'position:relative; background-color:#2f3233; width:225px; \
+								    font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
+	install_event_listener(ft_default_sort_select, 'change', ft_default_sort_select, EVENT.CHANGE_FT_DEFAULT_SORT);
 
-	let protos_only_lbl = create_checkbox_label(protos_only_btn, 'prototypes');
+	let ft_default_sort_lbl = create_checkbox_label(ft_default_sort_select, 'Default sorting method:');
 
-	let protos_only_controls_div = document.createElement('div');
-	protos_only_controls_div.style = 'position:relative;'
-	protos_only_controls_div.appendChild(protos_only_lbl);
-	protos_only_controls_div.appendChild(protos_only_btn);
+	let mcdf_option = create_option('mcdf', 'distance to max cdf');
+	mcdf_option.selected = 'selected';
+	let lex_option  = create_option('lex','lexicographic');
+
+	ft_default_sort_select.appendChild(mcdf_option);
+	ft_default_sort_select.appendChild(lex_option);
+
+	let ft_default_sort_div = document.createElement('div')
+	ft_default_sort_div.style = 'position:relative; display:flex; flex-direction:row';
+	ft_default_sort_div.appendChild(ft_default_sort_lbl);
+	ft_default_sort_div.appendChild(ft_default_sort_select);
 
 	let full_table_component = get_component("full_table");
 	if (full_table_component) {
-		full_table_component.appendChild(ft_position_section_label);
-		full_table_component.appendChild(ft_position_filters_div);
-		full_table_component.appendChild(ft_stats_section_lbl);
-		full_table_component.appendChild(stats_radio_div);
+		full_table_component.appendChild(ft_controls_div);
 		full_table_component.appendChild(ft_filter_input);
-		// full_table_component.appendChild(ft_add_table_symbols_btn);
 		full_table_component.appendChild(full_table_div);
-		full_table_component.appendChild(protos_only_controls_div);
-		// full_table_component.appendChild(ft_toggle_table_btn);
+		full_table_component.appendChild(ft_default_sort_div);
 	}
 
 	// -------
@@ -2980,6 +3077,13 @@ function check_gp_filter(symbol) {
 	}
 }
 
+function remove_element_from_list(el, lst) {
+	let to_remove = global.selected_symbols.indexOf(el)
+	if (to_remove > -1) {
+	  lst.splice(to_remove, 1);
+	}
+}
+
 const KEY_S      = 83
 const KEY_E      = 69
 const KEY_N      = 78
@@ -3042,7 +3146,16 @@ function process_event_queue()
 				}
 			} else {
 				if (e.raw.getModifierState("Shift")) {
-					symbol.selected = !symbol.selected
+					symbol.selected = !symbol.selected;
+					if (symbol.selected) {
+						global.selected_symbols.push(global.chart_symbols.indexOf(symbol));
+						symbol.ui_col.style.fontWeight = 'bold';
+						if (symbol.ft_ui_col) { symbol.ft_ui_col.style.fontWeight = 'bold'; }
+					} else {
+						remove_element_from_list(global.chart_symbols.indexOf(symbol), global.selected_symbols);
+						symbol.ui_col.style.fontWeight = 'initial';
+						if (symbol.ft_ui_col) { symbol.ft_ui_col.style.fontWeight = 'initial'; }
+					}
 				} else {
 					remove_symbol_from_chart(symbol)
 				}
@@ -3051,7 +3164,7 @@ function process_event_queue()
 			add_table_symbols()
 		} else if (e.event_type == EVENT.CREATE_GROUP) {
 			create_group()
-		} else if (e.event_type == EVENT.TOGGLE_GROUP) {process_even
+		} else if (e.event_type == EVENT.TOGGLE_GROUP) {
 			let group = e.context
 			if (!group.on_chart) {
 				if (e.raw.getModifierState("Control")) {
@@ -3066,7 +3179,7 @@ function process_event_queue()
 					add_group_to_chart(group)
 				}
 			} else {
-				if (e.raw.getModifierState("Control")) {process_even
+				if (e.raw.getModifierState("Control")) {
 					remove_group_from_chart(group)
 					let groups_exist = false;
 					for (let i=0; i<global.groups.length; i++) {
@@ -3274,7 +3387,7 @@ function process_event_queue()
 								resize_target = new ResizeTarget(node, closest_side[CLOSEST_SIDE_SIDE], closest_side[CLOSEST_SIDE_DIST], x, y)
 							}
 						}
-					}process_even
+					}
 				}
 
 				global.resize_target = resize_target
@@ -3393,14 +3506,14 @@ function process_event_queue()
 				create_and_fill_full_table_cluster(-1);
 			}
 
-		} else if (e.event_type == EVENT.FULL_TABLE_PROTOS_ONLY) {
+		} else if (e.event_type == EVENT.FULL_TABLE_PROTOS_ONLY || e.event_type == EVENT.FULL_TABLE_SELECTED_ONLY) {
 			create_and_fill_full_table_cluster(-1);
 		} else if (e.event_type == EVENT.FILTER_FT_BY_POS) {
 			create_and_fill_full_table_cluster(-1);
 		} else if (e.event_type == EVENT.SWITCH_FT_STAT_TYPE) {
-			console.log('here2');
-			console.log(get_ft_stat_type());
 			create_and_fill_full_table_cluster(-1);
+		} else if (e.event_type == EVENT.CHANGE_FT_DEFAULT_SORT) {
+			create_and_fill_full_table_cluster(-1)
 		}
 	}
 	global.events.length = 0
@@ -3886,9 +3999,13 @@ function update_ts()
 			}
 
 			if (global.ui.draw_groups_envelope_btn.checked || document.getElementById('protos_only_checkbox').checked) {
-				if (symbol.proto == false && symbol != global.focused_symbol) {
+				if (symbol.proto == false && symbol != global.focused_symbol && !symbol.selected) {
 					return;
 				}
+			}
+
+			if (document.getElementById('selected_only_checkbox').checked) {
+				if (!symbol.selected) { return; }
 			}
 
 			if (!check_ft_pos_filters(symbol)) { return; }
@@ -3956,6 +4073,12 @@ function update_ts()
 				curve_color 		= symbol.group.color;
 				curve_focused_color = symbol.group.color;
 				symbol_color 		= symbol.group.color;
+			}
+
+			if (global.selected_symbols.length > 0) {
+				if (curve_color !== "#FFFFFF44") {
+					curve_color += '44'
+				}
 			}
 
 			lc_ctx.strokeStyle = curve_color
@@ -4196,10 +4319,14 @@ function update_ts()
 
 				let symbol = global.chart_symbols[i]
 
+				if (symbol.selected) {
+					continue;
+				}
+
 				if(global.focused_symbol == null || global.chart_symbols[i] != global.focused_symbol) {
 					if (symbol.filter == 0) {
 						if (check_position_filters(symbol) && check_gp_filter(symbol)) {
-							draw_timeseries(symbol, false)
+							draw_timeseries(symbol)
 						} else {
 							remove_symbol_from_chart(symbol)
 						}
@@ -4207,21 +4334,9 @@ function update_ts()
 				}
 			}
 
-			for (let i=0; i<global.chart_groups.length; i++) {
-
-				let group = global.chart_groups[i]
-				let members = group.members
-
-				for (let j=0; j<members.length; j++) {
-
-					let member = members[j]
-
-					if(global.focused_symbol == null || member != global.focused_symbol) {
-						draw_timeseries(member, false, group.color)
-					}
-
-				}
-
+			for (let i=0; i<global.selected_symbols.length; i++) {
+				let symbol = global.chart_symbols[global.selected_symbols[i]];
+				draw_timeseries(symbol);
 			}
 
 
@@ -4308,10 +4423,6 @@ function update_ts()
 			return Math.max(b,Math.min(c,a));
 		}
 
-		let pt = inverse_map(lc_local_mouse_pos[0],lc_local_mouse_pos[1]);
-		pt[0] = clamp(pt[0],x_min,x_max);
-		pt[1] = clamp(pt[1],y_min,y_max);
-
 		if (global.focused_symbol != null) {
 			draw_timeseries(global.focused_symbol, true);
 
@@ -4341,6 +4452,10 @@ function update_ts()
 		// auxiliar lines on mouse position to track date and value
 		// --------------
 		if (point_inside_rect(lc_local_mouse_pos, lc_rect)) {
+			let pt = inverse_map(lc_local_mouse_pos[0],lc_local_mouse_pos[1]);
+			pt[0] = clamp(pt[0],x_min,x_max);
+			pt[1] = clamp(pt[1],y_min,y_max);
+
 			let y_p0 = map(Math.floor(0.5+pt[0]),y_min)
 			let y_p1 = map(Math.floor(0.5+pt[0]),y_max)
 
@@ -4439,9 +4554,6 @@ function update_ts()
 		for (let i=0;i<global.chart_symbols.length;i++) {
 			let symbol = global.chart_symbols[i]
 
-			symbol.cdf_current_values = null
-			symbol.ranks_current_values = null
-
 			let values
 			if (global.aux_view == 'dcdf') {
 				values = symbol.cdf_matrix_row
@@ -4474,11 +4586,6 @@ function update_ts()
 				aux_y_min = Math.min(aux_y_min, value)
 				aux_y_max = Math.max(aux_y_max, value)
 			}
-			if (global.aux_view == 'dcdf') {
-				symbol.cdf_current_values = current_values
-			} else if (global.aux_view == 'rcdf') {
-				symbol.ranks_current_values = current_values
-			}
 
 		}
 
@@ -4494,9 +4601,9 @@ function update_ts()
 				for (let i=0; i<global.chart_symbols.length; i++) {
 
 					let symbol = global.chart_symbols[i]
-					if (symbol.ranks_current_values == null) { continue }
-					for (let j=0; j<symbol.ranks_current_values.length; j++) {
-						if (symbol.ranks_current_values[j] == 1.0) {
+					if (symbol.gt_ranks_dist == null) { continue }
+					for (let j=0; j<symbol.gt_ranks_dist.length; j++) {
+						if (symbol.gt_ranks_dist[j] == 1.0) {
 							last_rank = Math.max(last_rank, j)
 							break
 						}
@@ -4680,9 +4787,9 @@ function update_ts()
 					}
 					let current_values
 					if (global.aux_view == 'dcdf') {
-						current_values = symbol.cdf_current_values
+						current_values = symbol.cdf_matrix_row
 					} else if (global.aux_view == 'rcdf') {
-						current_values = symbol.ranks_current_values
+						current_values = symbol.gt_ranks_dist
 					}
 					if (current_values == null) {
 						return;
@@ -4802,9 +4909,9 @@ function update_ts()
 				function check_filters(symbol) {
 					let current_values
 					if (global.aux_view == 'dcdf') {
-						current_values = symbol.cdf_current_values
+						current_values = symbol.cdf_matrix_row
 					} else if (global.aux_view == 'rcdf') {
-						current_values = symbol.ranks_current_values
+						current_values = symbol.gt_ranks_dist
 					}
 					if (current_values == null) {
 						return;
@@ -4869,9 +4976,9 @@ function update_ts()
 				function draw_symbol_on_panel(symbol) {
 					let current_values
 					if (global.aux_view == 'dcdf') {
-						current_values = symbol.cdf_current_values
+						current_values = symbol.cdf_matrix_row
 					} else if (global.aux_view == 'rcdf') {
-						current_values = symbol.ranks_current_values
+						current_values = symbol.gt_ranks_dist
 					}
 					if (current_values == null) {
 						return;
@@ -4894,13 +5001,13 @@ function update_ts()
 						}
 					}
 
+					if (document.getElementById('selected_only_checkbox').checked) {
+						if (!symbol.selected) { return; }
+					}
+
 					if (!check_ft_pos_filters(symbol)) { return; }
 
 					let curve_color = "#FFFFFF44"
-
-					if (typeof color !== "undefined") {
-						curve_color = color
-					}
 
 					av_ctx.save()
 					if ((symbol == global.focused_symbol) || symbol.selected) {
@@ -4948,6 +5055,12 @@ function update_ts()
 
 					if (symbol.group) {
 						curve_color = symbol.group.color;
+					}
+
+					if (global.selected_symbols.length > 0 && (!symbol.selected && (symbol !== global.focused_symbol))) {
+						if (curve_color !== "#FFFFFF44") {
+							curve_color += '44'
+						}
 					}
 
 					av_ctx.strokeStyle = curve_color;
@@ -5112,11 +5225,20 @@ function update_ts()
 				for (let m=0;m<global.chart_symbols.length;m++) {
 
 					let symbol = global.chart_symbols[m]
+					if (symbol.selected) { continue; }
 					check_filters(symbol)
 					if (symbol.filter == 0) {
-						draw_symbol_on_panel(symbol, false)
+						draw_symbol_on_panel(symbol)
 					}
 
+				}
+
+				for (let m=0; m<global.selected_symbols.length; m++) {
+					let symbol = global.chart_symbols[global.selected_symbols[m]];
+					check_filters(symbol)
+					if (symbol.filter == 0) {
+						draw_symbol_on_panel(symbol);
+					}
 				}
 
 				if (global.ui.draw_groups_envelope_btn.checked) {
@@ -5428,9 +5550,13 @@ function update_ts()
 			}
 
 			if (document.getElementById('protos_only_checkbox').checked) {
-				if (symbol.proto == false && symbol != global.focused_symbol) {
+				if (!symbol.proto && symbol != global.focused_symbol) {
 					return;
 				}
+			}
+
+			if (document.getElementById('selected_only_checkbox').checked) {
+				if (!symbol.selected) { return; }
 			}
 
 			if (!check_ft_pos_filters(symbol)) { return; }
@@ -5440,6 +5566,8 @@ function update_ts()
 				if (symbol.selected == false) {
 					if (check_symbol_on_brush(symbol)) {
 						symbol.selected = true;
+						global.selected_symbols.push(idx);
+						if (symbol.ft_ui_col) { symbol.ft_ui_col.style.fontWeight = 'bold' }
 					}
 				}
 				// if (check_symbol_on_brush(symbol)) {
@@ -5492,11 +5620,14 @@ function update_ts()
 					} break;
 			}
 
-			p_ctx.save();
-			p_ctx.fillStyle = point_color;
-
 			if (symbol.group) {
-				p_ctx.fillStyle = symbol.group.color;
+				point_color = symbol.group.color;
+			}
+
+			if (global.selected_symbols.length > 0 && (!symbol.selected && (symbol !== global.focused_symbol))) {
+				if (point_color !== "#FFFFFF44") {
+					point_color += '44'
+				}
 			}
 
 			let x = symbol.projection_coords[0];
@@ -5505,6 +5636,8 @@ function update_ts()
 			let p = proj_rect_map(x, y);
 			update_closest_point(symbol, p[0], p[1]);
 
+			p_ctx.save();
+			p_ctx.fillStyle = point_color;
 			p_ctx.beginPath()
 			if ((symbol == global.focused_symbol) || symbol.selected) {
 				if (symbol.group) {
@@ -5553,7 +5686,15 @@ function update_ts()
 		for (let m=0;m<global.chart_symbols.length;m++) {
 
 			let symbol = global.chart_symbols[m]
+			if (symbol.selected) { continue; }
 			// check_filters(symbol)
+			draw_symbol_projection(symbol);
+
+		}
+
+		for (let m=0; m<global.selected_symbols.length; m++) {
+
+			let symbol = global.chart_symbols[global.selected_symbols[m]];
 			draw_symbol_projection(symbol);
 
 		}
@@ -5565,6 +5706,15 @@ function update_ts()
 
 			if (global.select_mode_selected) {
 				global.focused_symbol.selected = !global.focused_symbol.selected;
+				if (global.focused_symbol.selected) {
+					global.selected_symbols.push(global.chart_symbols.indexOf(global.focused_symbol));
+					global.focused_symbol.ui_col.style.fontWeight = 'bold';
+					if (global.focused_symbol.ft_ui_col) { global.focused_symbol.ft_ui_col.style.fontWeight = 'bold'; }
+				} else {
+					remove_element_from_list(global.chart_symbols.indexOf(global.focused_symbol), global.selected_symbols);
+					global.focused_symbol.ui_col.style.fontWeight = 'initial';
+					if (global.focused_symbol.ft_ui_col) { global.focused_symbol.ft_ui_col.style.fontWeight = 'initial'; }
+				}
 			}
 
 			let symbol = global.focused_symbol
