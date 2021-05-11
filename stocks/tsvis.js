@@ -123,6 +123,7 @@ var global = {
 	resize_mode_active: false,
 	symbols: [],
 	selected_symbols: [],
+	ref_symbol: undefined,
 	chart_symbols: [],
 	chart_colors: [],
 	groups: [],
@@ -475,14 +476,28 @@ function get_max_cdf() {
 }
 
 function prepare_group_envelope(group, panel_x_min, panel_x_max, panel_rank) {
-	let members = group.members;
+	let members;
+	let n_members;
+
+	if (group.members) {
+		members = group.members;
+		n_members = members.length;
+	} else {
+		members = group;
+		n_members = members.length;
+	}
 
 	let upper_bound = [];
 	let lower_bound = [];
 
-	let n_members = members.length;
+	let bound;
+	if (global.n_ranks !== undefined) {
+		bound = global.n_ranks;
+	} else {
+		bound = global.chart_symbols.length;
+	}
 
-	for (let l=0; l<global.n_ranks; l++) {
+	for (let l=0; l<bound; l++) {
 		let max_on_rank_l = 0.0;
 		let min_on_rank_l = 1.0;
 
@@ -503,11 +518,13 @@ function prepare_group_envelope(group, panel_x_min, panel_x_max, panel_rank) {
 		lower_bound.push(min_on_rank_l);
 	}
 
-	let envelope = [];
+	let envelope = {};
 	envelope.upper = upper_bound;
 	envelope.lower = lower_bound;
 
-	group.envelope = envelope;
+	if (group.members) {
+		group.envelope = envelope;
+	}
 
 	return envelope;
 }
@@ -3156,6 +3173,48 @@ function process_event_queue()
 						symbol.ui_col.style.fontWeight = 'initial';
 						if (symbol.ft_ui_col) { symbol.ft_ui_col.style.fontWeight = 'initial'; }
 					}
+				} else if (e.raw.getModifierState("Control")) {
+					if (global.ref_symbol !== undefined) {
+						if (global.ref_symbol !== symbol) {
+							// -------
+							// reset selection of current reference symbol
+							// -------
+							let prev_ref_sym = global.ref_symbol;
+							prev_ref_sym.selected = false;
+							remove_element_from_list(global.chart_symbols.indexOf(prev_ref_sym), global.selected_symbols);
+							if (prev_ref_sym.ft_ui_row) {
+								prev_ref_sym.ft_ui_row.style.outline = "";
+								prev_ref_sym.ft_ui_row.style.border = "1px solid black";
+							}
+
+							// -------
+							// update reference symbol to clicked one and show it on table
+							// -------
+							symbol.selected = true;
+							global.selected_symbols.push(global.chart_symbols.indexOf(symbol));
+							if (symbol.ft_ui_row) {
+								symbol.ft_ui_row.style.border = "";
+								symbol.ft_ui_row.style.outline = "3px solid white";
+							}
+							global.ref_symbol = symbol;
+						} else {
+							symbol.selected = false;
+							remove_element_from_list(global.chart_symbols.indexOf(symbol), global.selected_symbols);
+							if (symbol.ft_ui_row) {
+								symbol.ft_ui_row.style.outline = "";
+								symbol.ft_ui_row.style.border = "1px solid black";
+							}
+							global.ref_symbol = undefined;
+						}
+					} else {
+						symbol.selected = true;
+						global.selected_symbols.push(global.chart_symbols.indexOf(symbol));
+						if (symbol.ft_ui_row) {
+							symbol.ft_ui_row.style.border = "";
+							symbol.ft_ui_row.style.outline = "3px solid white";
+						}
+						global.ref_symbol = symbol;
+					}
 				} else {
 					remove_symbol_from_chart(symbol)
 				}
@@ -5148,8 +5207,6 @@ function update_ts()
 
 				function draw_group_envelope(group, panel_x_min, panel_x_max, panel_rank) {
 					let envelope = prepare_group_envelope(group, panel_x_min, panel_x_max, panel_rank);
-					// let n_protos = global.ui.n_protos_select.value
-					// find_group_proto(group, n_protos);
 
 					let upper_bound = envelope.upper;
 					let lower_bound = envelope.lower;
@@ -5222,7 +5279,12 @@ function update_ts()
 					}
 
 					av_ctx.closePath();
-					av_ctx.fillStyle = group.color + "88";
+					if (group.color) {
+						av_ctx.fillStyle = group.color + "88";
+					} else {
+						av_ctx.fillStyle = "#FFFFFF88";
+					}
+
 					av_ctx.fill();
 					av_ctx.restore();
 
@@ -5262,7 +5324,6 @@ function update_ts()
 				let panel_x_ticks = [];
 				if ((panel_x_max - panel_x_min) > panel_x_max_ticks) {
 					for(let l=0; l<panel_x_max_ticks; l++) {
-						// if (l==panel_x_max_ticks-1) { continue; }
 						let x_tick = panel_x_min+(l*((panel_x_max-panel_x_min)/(panel_x_max_ticks-1)))
 						panel_x_ticks.push(x_tick)
 					}
@@ -5328,7 +5389,14 @@ function update_ts()
 
 				if (global.focused_symbol != null) {
 
-					draw_symbol_on_panel(global.focused_symbol, true)
+					draw_symbol_on_panel(global.focused_symbol)
+
+					if (global.ref_symbol) {
+						// console.log("focused", global.focused_symbol, "reference", global.ref_symbol);
+						let ref_foc_group = [global.focused_symbol, global.ref_symbol];
+						let ref_foc_envelope = draw_group_envelope(ref_foc_group, offset_start, offset_end, i);
+						// console.log(ref_foc_envelope);
+					}
 
 				}
 			}
