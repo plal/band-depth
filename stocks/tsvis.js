@@ -405,6 +405,10 @@ function hex_lerp(a_hex, b_hex, lambda) {
 	return rgb_to_hex(rgb_lerp(hex_to_rgb(a_hex), hex_to_rgb(b_hex), lambda) )
 }
 
+let clamp = function(a,b,c) {
+	return Math.max(b,Math.min(c,a));
+}
+
 function interpolate_envelope_bounds(envelope, alpha) {
 	let upper = envelope.upper;
 	let lower = envelope.lower;
@@ -2723,8 +2727,10 @@ function get_stats_ranks()
 
 		}
 
-		symbol_i.lt_ranks_dist = lt_ranks_dist
-		symbol_i.gt_ranks_dist = gt_ranks_dist
+		symbol_i.lt_ranks_dist = lt_ranks_dist;
+		symbol_i.lt_ranks 	   = lt_ranks;
+		symbol_i.gt_ranks_dist = gt_ranks_dist;
+		symbol_i.gt_ranks  	   = gt_ranks;
 
 
 	}
@@ -3978,33 +3984,6 @@ function update_ts()
 		lc_ctx.rect(lc_rect[RECT.LEFT],lc_rect[RECT.TOP],lc_rect[RECT.WIDTH],lc_rect[RECT.HEIGHT])
 		lc_ctx.clip()
 
-		if (global.ui.normalize_btn.checked) {
-			//--------------
-			//vertical line to track norm date
-			//--------------
-			let x_norm = date_norm - date_start
-
-			lc_ctx.strokeStyle = "#FFFFFFFF";
-			lc_ctx.lineWidth   = 1;
-
-			let p0 = map(x_norm, y_min)
-			let p1 = map(x_norm, y_max)
-
-			lc_ctx.beginPath()
-			lc_ctx.moveTo(p0[0], p0[1])
-			lc_ctx.lineTo(p1[0], p1[1])
-			lc_ctx.stroke()
-
-			lc_ctx.save();
-			lc_ctx.font = "bold 12pt Courier"
-			lc_ctx.fillStyle = "#FFFFFFFF"
-			lc_ctx.translate(p1[0]+10, p1[1]+50);
-			lc_ctx.rotate(Math.PI/2);
-			lc_ctx.fillText(date_offset_to_string(date_start+x_norm), 0, 0);
-			lc_ctx.restore();
-
-		}
-
 		//--------------
 		// drawing and highlighting utils
 		//--------------
@@ -4156,12 +4135,19 @@ function update_ts()
 
 			lc_ctx.beginPath()
 			let p_prev = null
+			let symbol_rank_match = [];
 			for (let j=x_min;j<=x_max;j++) {
 				// let date_offset = date_start+j
 				let yi = ts_current_values[j-1]
 				let p = map(j,yi)
 				if (p_prev) {
 					update_closest_segment(symbol, p_prev[0], p_prev[1], p[0], p[1])
+				}
+				if (symbol === global.focused_symbol && global.focused_rank !== undefined) {
+					if (symbol.gt_ranks[j-1] === global.focused_rank) {
+						symbol_rank_match.push(j);
+					}
+					// console.log(symbol_rank_match, j);
 				}
 				p_prev = p
 				if (!first_point_drawn) {
@@ -4172,6 +4158,23 @@ function update_ts()
 				}
 			}
 			lc_ctx.stroke()
+
+			lc_ctx.save()
+			for (let j=0; j<symbol_rank_match.length; j++) {
+				let xj = symbol_rank_match[j]
+				let yj = ts_current_values[xj-1];
+				let p  = map(xj,yj)
+
+				lc_ctx.fillStyle = curve_focused_color;
+				lc_ctx.strokeStyle = "#FFFFFF";
+				lc_ctx.beginPath()
+				lc_ctx.arc(p[0], p[1], 5, 0, 2 * Math.PI)
+				lc_ctx.closePath()
+				lc_ctx.stroke()
+				lc_ctx.fill()
+
+			}
+			lc_ctx.restore()
 		}
 
 
@@ -4482,9 +4485,6 @@ function update_ts()
 		// --------------
 		// highlight on focused time series and show game date
 		// --------------
-		let clamp = function(a,b,c) {
-			return Math.max(b,Math.min(c,a));
-		}
 
 		if (global.focused_symbol != null) {
 			draw_timeseries(global.focused_symbol, true);
@@ -4894,13 +4894,20 @@ function update_ts()
 					return clicked_filter
 				}
 
-				if(point_inside_rect(av_local_mouse_pos, panel_rect)) {
-					if (global.key_break) {
-						let break_pt = panel_rect_inverse_map(av_local_mouse_pos[0], av_local_mouse_pos[1])
-						global.split_cdf.split_rank = Math.floor(break_pt[0])
-						global.key_break = false
+				if (global.key_break) {
+					if (point_inside_rect(av_local_mouse_pos, panel_rect)) {
+						let break_rank = window.prompt("Enter rank to break"); //panel_rect_inverse_map(av_local_mouse_pos[0], av_local_mouse_pos[1])
+						if (!isNaN(break_rank)) {
+							global.split_cdf.split_rank = parseInt(break_rank); //Math.floor(break_pt[0])
+						} else {
+							window.alert('Rank must be a number!');
+							return
+						}
 					}
+					global.key_break = false
+				}
 
+				if(point_inside_rect(av_local_mouse_pos, panel_rect)) {
 					if (global.split_cdf.panel_state == PANEL_STATE.START_RESIZE) {
 						global.split_cdf.panel_resize_index  = i
 						global.split_cdf.panel_resize_last_x = av_local_mouse_pos[0]
@@ -4940,8 +4947,6 @@ function update_ts()
 
 						}
 					}
-
-
 				}
 
 				for (let f=0; f<global.filter_list.length; f++) {
@@ -5188,7 +5193,7 @@ function update_ts()
 						}
 
 						let p = panel_rect_map(x, y)
-						p[0] = p[0] +x_axis_offset
+						p[0] = p[0] + x_axis_offset
 						if (p_prev) {
 							update_aux_closest_segment(symbol, p_prev[0], p_prev[1], p[0], p[1])
 						}
@@ -5320,7 +5325,7 @@ function update_ts()
 					}
 				}
 
-				let panel_x_max_ticks = 5;
+				let panel_x_max_ticks = 11;
 				let panel_x_ticks = [];
 				if ((panel_x_max - panel_x_min) > panel_x_max_ticks) {
 					for(let l=0; l<panel_x_max_ticks; l++) {
@@ -5387,15 +5392,37 @@ function update_ts()
 
 				}
 
+				global.focused_rank = undefined;
+				if (point_inside_rect(av_local_mouse_pos, panel_rect)) {
+					let pt = panel_rect_inverse_map(av_local_mouse_pos[0],av_local_mouse_pos[1]);
+					pt[0] = Math.round(pt[0]);
+					global.focused_rank = pt[0];
+
+					let y_p0 = panel_rect_map(pt[0],panel_y_min);
+					y_p0[0] = y_p0[0] + x_axis_offset;
+					let y_p1 = panel_rect_map(pt[0],panel_y_max)
+					y_p1[0] = y_p1[0] + x_axis_offset;
+
+					av_ctx.strokeStyle = "#999999";
+					av_ctx.lineWidth = '1';
+
+					av_ctx.beginPath();
+					av_ctx.moveTo(y_p0[0], y_p0[1]);
+					av_ctx.lineTo(y_p1[0], y_p1[1]);
+					av_ctx.stroke();
+
+					av_ctx.restore();
+
+					drawTextBG(av_ctx, pt[0]+1, y_p0[0]+5, y_p0[1]+7);
+				}
+
 				if (global.focused_symbol != null) {
 
 					draw_symbol_on_panel(global.focused_symbol)
 
 					if (global.ref_symbol) {
-						// console.log("focused", global.focused_symbol, "reference", global.ref_symbol);
 						let ref_foc_group = [global.focused_symbol, global.ref_symbol];
 						let ref_foc_envelope = draw_group_envelope(ref_foc_group, offset_start, offset_end, i);
-						// console.log(ref_foc_envelope);
 					}
 
 				}
