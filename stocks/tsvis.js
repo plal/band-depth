@@ -72,12 +72,19 @@ const POSITION_COLORS = {
 }
 
 const GROUP_COLORS = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928']
-// ['#8dd3c7','#ffffb3','#bebada','#fb8072','#80b1d3','#fdb462','#b3de69','#fccde5','#d9d9d9','#bc80bd','#ccebc5','#ffed6f']
-// ['#ff0000','#00ff00','#0000ff','#ffff00','#00ffff','#ff00ff','#ff8900','#aa00ff','#71bb40','#948055','#b12178','#434bab']
 
 const SEQUENTIAL_COLORS = ['#ffffb2','#fed976','#feb24c','#fd8d3c','#f03b20','#bd0026']
 
-const EVENT= {
+const LAYOUTS = {
+	DEFAULT_MAIN_LC: 0,
+	DEFAULT_MAIN_AV: 1,
+	DEFAULT_MAIN_P: 2,
+	FT_MAIN_LC: 3,
+	FT_MAIN_AV: 4,
+	FT_MAIN_P: 5
+}
+
+const EVENT = {
 	FILTER: "event_filter",
 	TOGGLE_SYMBOL: "event_toggle_symbol",
 	ADD_TABLE_SYMBOLS: "event_add_table_symbols",
@@ -110,7 +117,11 @@ const EVENT= {
 	FULL_TABLE_SELECTED_ONLY : "event_full_table_selected_only",
 	FILTER_FT_BY_POS: "event_filter_ft_by_pos",
 	SWITCH_FT_STAT_TYPE: "event_switch_ft_stat_type",
-	CHANGE_FT_DEFAULT_SORT: "event_change_ft_default_sort"
+	CHANGE_FT_DEFAULT_SORT: "event_change_ft_default_sort",
+	CHANGE_LC_AGG_SEP_SELECT: "event_change_lc_agg_sep_select",
+	LC_MAKE_MAIN: "event_lc_make_main",
+	AV_MAKE_MAIN: "event_av_make_main",
+	P_MAKE_MAIN: "event_p_make_main"
 }
 
 var global = {
@@ -766,7 +777,14 @@ function create_groups_from_response(groups_obj) {
 	}
 
 	create_and_fill_full_table_cluster(-1)
-	global.layout_index = 1;
+	if (global.layout_index == LAYOUTS.DEFAULT_MAIN_LC) {
+		global.layout_index = LAYOUTS.FT_MAIN_LC;
+	} else if (global.layout_index == LAYOUTS.DEFAULT_MAIN_AV) {
+		global.layout_index = LAYOUTS.FT_MAIN_AV;
+	} else if (global.layout_index == LAYOUTS.DEFAULT_MAIN_P) {
+		global.layout_index = LAYOUTS.FT_MAIN_P;
+	}
+
 }
 
 async function cluster_chart_data() {
@@ -1189,7 +1207,7 @@ function clear_chart() {
 						 filters: [[]] };
 
 	global.ui.draw_groups_envelope_btn.checked = false;
-	global.layout_index = 0;
+	global.layout_index = LAYOUTS.DEFAULT_MAIN_LC;
 }
 
 function hashcode(str) {
@@ -1551,6 +1569,14 @@ function create_and_fill_full_table_cluster(sort_index) {
 		col.style.color 	 = "#000000";
 		col.style.border	 = "1px solid black";
 
+		if (symbol.selected) {
+			col.style.fontWeight = 'bold';
+		}
+
+		if (symbol === global.ref_symbol) {
+			row.style.outline = '3px solid white';
+		}
+
 		for (let j=1; j<headers.length; j++) {
 			let stat_col = row.appendChild(document.createElement('td'));
 
@@ -1908,6 +1934,17 @@ function fill_ui_components()
 	create_curve_density_matrix_grid.appendChild(create_curve_density_matrix_btn)
 	create_curve_density_matrix_grid.appendChild(create_curve_density_matrix_resolution)
 
+	//----------
+	// button to reset all views
+	//----------
+	let clear_chart_btn = document.createElement('button')
+	global.ui.clear_chart_btn 	= clear_chart_btn
+	clear_chart_btn.id 			= "clear_chart_btn"
+	clear_chart_btn.textContent = 'clear chart'
+	clear_chart_btn.style 		= "position:relative; width:98%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+								   font-family:Courier; font-size:12pt; z-index:2;"
+	install_event_listener(clear_chart_btn, 'click', clear_chart_btn, EVENT.CLEAR_CHART)
+
 	let controls = get_component("controls");
 	if (controls) {
 		controls.appendChild(stats_section_lbl)
@@ -1924,6 +1961,7 @@ function fill_ui_components()
 		controls.appendChild(ed_draw_outliers_grid)
 		controls.appendChild(draw_curves_grid)
 		controls.appendChild(create_curve_density_matrix_grid)
+		controls.appendChild(clear_chart_btn)
 	}
 
 	//----------
@@ -2184,28 +2222,41 @@ function fill_ui_components()
 	chosen_stats_select.style 	  = 'background-color:#2f3233; position:relative; left:55; top:0.5%; width:125px; height:25px;\
 									 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 
-	//----------
-	// button to reset all views
-	//----------
-	let clear_chart_btn = document.createElement('button')
-	global.ui.clear_chart_btn 	= clear_chart_btn
-	clear_chart_btn.id 			= "clear_chart_btn"
-	clear_chart_btn.textContent = 'clear chart'
-	clear_chart_btn.style 		= "position:relative; left:calc( 100% - 270px ); top:0.5%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
-								   font-family:Courier; font-size:12pt; z-index:2;"
-	install_event_listener(clear_chart_btn, 'click', clear_chart_btn, EVENT.CLEAR_CHART)
+	let lc_agg_sep_select = document.createElement('select');
+	global.ui.lc_agg_sep_select = lc_agg_sep_select;
+	lc_agg_sep_select.style 	= 'position:relative; left:65; top:0%; background-color:#2f3233; \
+								   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
+	install_event_listener(lc_agg_sep_select, 'change', lc_agg_sep_select, EVENT.CHANGE_LC_AGG_SEP_SELECT)
+
+	let lc_agg_option = create_option('agg', 'aggregated');
+	let lc_sep_option = create_option('sep', 'separated');
+	lc_sep_option.selected = 'selected';
+
+	lc_agg_sep_select.appendChild(lc_sep_option);
+	lc_agg_sep_select.appendChild(lc_agg_option);
+
+
+	let lc_make_main_view_btn = document.createElement('button')
+	global.ui.lc_make_main_view_btn 	= lc_make_main_view_btn
+	lc_make_main_view_btn.id 			= "lc_make_main_view"
+	lc_make_main_view_btn.textContent 	= 'make main view'
+	lc_make_main_view_btn.style 		= "position:relative; left:calc( 100% - 430px ); top:0.5%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+								   		   font-family:Courier; font-size:12pt; z-index:2;"
+	install_event_listener(lc_make_main_view_btn, 'click', lc_make_main_view_btn, EVENT.LC_MAKE_MAIN)
+
 
 	let line_chart_controls_div = document.createElement('div');
 	line_chart_controls_div.appendChild(chosen_stats_select);
-	line_chart_controls_div.appendChild(clear_chart_btn);
+	line_chart_controls_div.appendChild(lc_agg_sep_select);
+	line_chart_controls_div.appendChild(lc_make_main_view_btn);
 
 	// -------
 	// div for lc_canvas
 	// -------
 	let line_chart_canvas_div = document.createElement('div');
 	global.ui.line_chart_canvas_div = line_chart_canvas_div;
-	line_chart_canvas_div.id = 'line_chart_canvas_div';
-	line_chart_canvas_div.style = 'height:calc( 100% - 29px );'
+	line_chart_canvas_div.id 		= 'line_chart_canvas_div';
+	line_chart_canvas_div.style 	= 'height:calc( 100% - 29px );'
 
 
 	let line_chart = get_component("line_chart");
@@ -2260,21 +2311,30 @@ function fill_ui_components()
 	//----------
 	// option to choose aggregated or separated distributions
 	//----------
-	let agg_sep_select = document.createElement('select');
-	global.ui.agg_sep_select = agg_sep_select;
-	agg_sep_select.style 	 = 'position:relative; left:25; top:0%; background-color:#2f3233; \
-								font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
+	let av_agg_sep_select = document.createElement('select');
+	global.ui.av_agg_sep_select = av_agg_sep_select;
+	av_agg_sep_select.style 	= 'position:relative; left:25; top:0%; background-color:#2f3233; \
+								   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 
-	let agg_option = create_option('agg', 'aggregated');
-	agg_option.selected = 'selected';
-	let sep_option = create_option('sep', 'separated');
+	let av_agg_option = create_option('agg', 'aggregated');
+	av_agg_option.selected = 'selected';
+	let av_sep_option = create_option('sep', 'separated');
 
-	agg_sep_select.appendChild(agg_option);
-	agg_sep_select.appendChild(sep_option);
+	av_agg_sep_select.appendChild(av_agg_option);
+	av_agg_sep_select.appendChild(av_sep_option);
+
+	let av_make_main_view_btn = document.createElement('button')
+	global.ui.av_make_main_view_btn 	= av_make_main_view_btn
+	av_make_main_view_btn.id 			= "av_make_main_view_btn"
+	av_make_main_view_btn.textContent 	= 'make main view'
+	av_make_main_view_btn.style 		= "position:relative; left:calc( 100% - 530px ); top:0.5%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+								   		   font-family:Courier; font-size:12pt; z-index:2;"
+	install_event_listener(av_make_main_view_btn, 'click', av_make_main_view_btn, EVENT.AV_MAKE_MAIN)
 
 	let aux_view_controls_topdiv = document.createElement('div')
 	aux_view_controls_topdiv.appendChild(rank_depth_select);
-	aux_view_controls_topdiv.appendChild(agg_sep_select);
+	aux_view_controls_topdiv.appendChild(av_agg_sep_select);
+	aux_view_controls_topdiv.appendChild(av_make_main_view_btn);
 
 	// -------
 	// div for ac_canvas
@@ -2419,15 +2479,24 @@ function fill_ui_components()
 	global.ui.cluster_btn 	= cluster_btn
 	cluster_btn.id 			= "cluster_btn"
 	cluster_btn.textContent = 'cluster'
-	cluster_btn.style 		= "position:relative; left:175; top:0%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+	cluster_btn.style 		= "position:relative; left:180; top:0%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
 							   font-family:Courier; font-size:12pt; z-index:2;"
 	install_event_listener(cluster_btn, 'click', cluster_btn, EVENT.CLUSTER)
 
-	let projection_controls_topdiv = document.createElement('div')
-	projection_controls_topdiv.style.setProperty('display','inline-block')
-	projection_controls_topdiv.appendChild(proj_colorby_select)
-	projection_controls_topdiv.appendChild(n_clusters_select)
-	projection_controls_topdiv.appendChild(cluster_btn)
+	let p_make_main_view_btn = document.createElement('button')
+	global.ui.p_make_main_view_btn 	 = p_make_main_view_btn
+	p_make_main_view_btn.id 		 = "p_make_main_view_btn"
+	p_make_main_view_btn.textContent = 'make main view'
+	p_make_main_view_btn.style 		 = "position:relative; left:calc( 100% - 400px ); top:0.5%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+								   		font-family:Courier; font-size:12pt; z-index:2;"
+	install_event_listener(p_make_main_view_btn, 'click', p_make_main_view_btn, EVENT.P_MAKE_MAIN)
+
+	let projection_controls_topdiv = document.createElement('div');
+	projection_controls_topdiv.style.setProperty('display','inline-block');
+	projection_controls_topdiv.appendChild(proj_colorby_select);
+	projection_controls_topdiv.appendChild(n_clusters_select);
+	projection_controls_topdiv.appendChild(cluster_btn);
+	projection_controls_topdiv.appendChild(p_make_main_view_btn);
 
 	// -------
 	// div for p_canvas
@@ -3117,6 +3186,10 @@ const KEY_COMMA  = 188
 const KEY_BCKSPC = 8
 const KEY_ESC	 = 27
 const KEY_R 	 = 82
+const KEY_0		 = 48
+const KEY_1		 = 49
+const KEY_2  	 = 50
+
 //--------------
 //processing events as they arrive
 //--------------
@@ -3271,7 +3344,14 @@ function process_event_queue()
 			}
 		} else if (e.event_type == EVENT.REMOVE_ACTIVE_GROUPS) {
 			reset_groups()
-			global.layout_index = 0;
+			if (global.layout_index == LAYOUTS.FT_MAIN_LC) {
+				global.layout_index = LAYOUTS.DEFAULT_MAIN_LC;
+			} else if (global.layout_index == LAYOUTS.FT_MAIN_AV) {
+				global.layout_index = LAYOUTS.DEFAULT_MAIN_AV;
+			} else if (global.layout_index == LAYOUTS.FT_MAIN_P) {
+				global.layout_index = LAYOUTS.DEFAULT_MAIN_P;
+			}
+
 		} else if (e.event_type == EVENT.CLEAR_CHART) {
 			clear_chart()
 		} else if (e.event_type == EVENT.UPDATE_START_DATE) {
@@ -3310,6 +3390,7 @@ function process_event_queue()
 				let node_index = undefined
 				let sum = 0
 				let index = -1
+
 				for (let child of parent.children) {
 					index += 1
 					sum += child.weight
@@ -3383,6 +3464,24 @@ function process_event_queue()
 					global.brush_mode_active = true
 				} else if (e.raw.keyCode == KEY_R) {
 					global.resize_mode_active = true
+				} else if (e.raw.keyCode == KEY_2) {
+					// if (e.raw.ctrlKey) {
+					// 	if (global.layout_index == 2) {
+					// 		global.layout_index = 1;
+					// 	} else {
+					// 		global.layout_index = 2;
+					// 	}
+					// }
+					global.layout_index = 2;
+				} else if (e.raw.keyCode == KEY_1) {
+					// if (e.raw.ctrlKey) {
+					// 	if (global.layout_index == 2) {
+					// 		global.layout_index = 1;
+					// 	} else {
+					// 		global.layout_index = 2;
+					// 	}
+					// }
+					global.layout_index = 1;
 				}
 			}
 		} else if (e.event_type == EVENT.MOUSEWHEEL) {
@@ -3553,16 +3652,6 @@ function process_event_queue()
 			if (global.ui.n_clusters_select.value !== 0) {
 				cluster_chart_data();
 			}
-		}
-		else if (e.event_type == EVENT.TOGGLE_TABLE) {
-			if (global.layout_index == 0) {
-				if (!global.full_table_filled) {
-					fill_full_table();
-				}
-				global.layout_index = 2;
-			} else if (global.layout_index == 2) {
-				global.layout_index = 0;
-			}
 		} else if (e.event_type == EVENT.SORT_TABLE_BY_COL) {
 			toggle_class(e.context, 'selected')
 			if (e.context.className == 'selected') {
@@ -3579,8 +3668,41 @@ function process_event_queue()
 			create_and_fill_full_table_cluster(-1);
 		} else if (e.event_type == EVENT.CHANGE_FT_DEFAULT_SORT) {
 			create_and_fill_full_table_cluster(-1)
+		} else if (e.event_type == EVENT.CHANGE_LC_AGG_SEP_SELECT) {
+			global.recompute_viewbox = true;
+		} else if (e.event_type == EVENT.LC_MAKE_MAIN) {
+			if (global.layout_index == LAYOUTS.DEFAULT_MAIN_AV || global.layout_index == LAYOUTS.DEFAULT_MAIN_P) {
+				global.layout_index = LAYOUTS.DEFAULT_MAIN_LC;
+			} else if (global.layout_index == LAYOUTS.FT_MAIN_AV || global.layout_index == LAYOUTS.FT_MAIN_P) {
+				global.layout_index = LAYOUTS.FT_MAIN_LC;
+			}
+		} else if (e.event_type == EVENT.AV_MAKE_MAIN) {
+			if (global.layout_index == LAYOUTS.DEFAULT_MAIN_LC || global.layout_index == LAYOUTS.DEFAULT_MAIN_P) {
+				global.layout_index = LAYOUTS.DEFAULT_MAIN_AV;
+			} else if (global.layout_index == LAYOUTS.FT_MAIN_LC || global.layout_index == LAYOUTS.FT_MAIN_P) {
+				global.layout_index = LAYOUTS.FT_MAIN_AV;
+			}
+
+		} else if (e.event_type == EVENT.P_MAKE_MAIN) {
+			if (global.layout_index == LAYOUTS.DEFAULT_MAIN_AV || global.layout_index == LAYOUTS.DEFAULT_MAIN_LC) {
+				global.layout_index = LAYOUTS.DEFAULT_MAIN_P;
+			} else if (global.layout_index == LAYOUTS.FT_MAIN_AV || global.layout_index == LAYOUTS.FT_MAIN_LC) {
+				global.layout_index = LAYOUTS.FT_MAIN_P;
+			}
+
 		}
 	}
+
+	// else if (e.event_type == EVENT.TOGGLE_TABLE) {
+	// 	if (global.layout_index == 0) {
+	// 		if (!global.full_table_filled) {
+	// 			fill_full_table();
+	// 		}
+	// 		global.layout_index = 2;
+	// 	} else if (global.layout_index == 2) {
+	// 		global.layout_index = 0;
+	// 	}
+	// }
 	global.events.length = 0
 }
 
@@ -3719,74 +3841,75 @@ function update_ts()
 			if (symbol.data == null) {
 				continue
 			}
-			let norm_value = undefined
-			// let k = date_end - date_start
-			if (global.ui.normalize_btn.checked) {
-				let offset = date_norm - date_start
-				for (let j=0;j<k;j++) {
-					// 0 1 2 3 4 5 * 7 8
-					norm_value = symbol.data[date_start + ((offset + j) % k)]
-					if (norm_value != undefined) {
-						break;
-					}
-				}
-				if (norm_value == undefined) {
-					// console.log("no price for symbol " + symbol.name + " on norm date")
-				}
-			}
+
+			// let norm_value = undefined
+			// if (global.ui.normalize_btn.checked) {
+			// 	let offset = date_norm - date_start
+			// 	for (let j=0;j<k;j++) {
+			// 		// 0 1 2 3 4 5 * 7 8
+			// 		norm_value = symbol.data[date_start + ((offset + j) % k)]
+			// 		if (norm_value != undefined) {
+			// 			break;
+			// 		}
+			// 	}
+			// 	if (norm_value == undefined) {
+			// 		// console.log("no price for symbol " + symbol.name + " on norm date")
+			// 	}
+			// }
+
 			let ts_current_values = []
-			let ts_current_values_diffs = []
+
 			for (let j=x_min;j<=x_max;j++) {
 				let value;
 				if (j in symbol.data) {
-					value = symbol.data[j][main_stat];
-				} else {
-					value = 0
-				}
-				let last_value = symbol.data[j-1]
-
-				if (value == undefined) {
-					value = 0
-				} else {
-					if(global.ui.normalize_btn.checked) {
-						value = value / norm_value
+					if (global.ui.lc_agg_sep_select.value === 'sep' || j === x_min) {
+						value = symbol.data[j][main_stat];
+					} else {
+						let agg_value = 0;
+						for (let k=x_min; k<=j; k++) {
+							if (k in symbol.data) {
+								let sep_value = symbol.data[k][main_stat];
+								agg_value += sep_value;
+							}
+						}
+						value = agg_value
 					}
-				}
 
-				if (last_value == undefined) {
-					last_value = last_valid_value
 				} else {
-					if(global.ui.normalize_btn.checked) {
-						last_value = last_value / norm_value
+					if (global.ui.lc_agg_sep_select.value === 'sep' || j === x_min) {
+						value = 0
+					} else {
+						value = ts_current_values[ts_current_values.length-1]
 					}
+
 				}
 
-				let diff
-				if (j>date_start) {
-					diff = value-last_value
-				} else {
-					diff = value
-				}
+				// let last_value = symbol.data[j-1]
+				// if (value == undefined) {
+				// 	value = 0
+				// } else {
+				// 	if(global.ui.normalize_btn.checked) {
+				// 		value = value / norm_value
+				// 	}
+				// }
+				//
+				// if (last_value == undefined) {
+				// 	last_value = last_valid_value
+				// } else {
+				// 	if(global.ui.normalize_btn.checked) {
+				// 		last_value = last_value / norm_value
+				// 	}
+				// }
 
 				ts_current_values.push(value)
-				ts_current_values_diffs.push(diff)
+
 				last_valid_value = value
 				y_min = Math.min(y_min, value)
 				y_max = Math.max(y_max, value)
 			}
-			symbol.ts_current_values = ts_current_values
-			symbol.ts_current_values_diffs = ts_current_values_diffs
-		}
 
-		// if (global.extremal_depth.fbplot.active) {
-		// 	y_max = Math.max.apply(y_max, global.extremal_depth.fbplot.outer_band.upper)
-		// 	y_min = Math.min.apply(y_min, global.extremal_depth.fbplot.outer_band.lower)
-		// }
-		//
-		// if (global.modified_band_depth.fbplot.active) {
-		// 	y_max = Math.max.apply(y_max, global.modified_band_depth.fbplot.outer_band.upper)
-		// 	y_min = Math.min.apply(y_min, global.modified_band_depth.fbplot.outer_band.lower)
-		// }
+			symbol.ts_current_values = ts_current_values
+		}
 
 		if (global.extremal_depth.fbplot.active || global.modified_band_depth.fbplot.active) {
 			let max_outer_bands = Math.max(Math.max.apply(null, global.extremal_depth.fbplot.outer_band.upper),
@@ -3887,10 +4010,9 @@ function update_ts()
 
 		if (global.drag.active) {
 			let local_dragstart_pos = get_local_position(global.drag.startpos, lc_canvas)
+
 			if (point_inside_rect(local_dragstart_pos, lc_rect)) {
-
 				local_dragstart_pos = inverse_map(local_dragstart_pos[0], local_dragstart_pos[1])
-
 				let local_currmouse_pos = inverse_map(lc_local_mouse_pos[0], lc_local_mouse_pos[1])
 
 				global.viewbox.x = global.drag.startvbox[0] - Math.floor(local_currmouse_pos[0] - local_dragstart_pos[0])
@@ -3970,9 +4092,9 @@ function update_ts()
 			lc_ctx.font = "bold 10pt Courier"
 			lc_ctx.fillStyle = "#FFFFFF"
 			if(i==(y_ticks.length-1)) {
-				lc_ctx.fillText(parseInt(y_ticks[i]), p0[0]-25, p0[1]+8);
+				lc_ctx.fillText(parseInt(y_ticks[i]), p0[0]-30, p0[1]+8);
 			} else {
-				lc_ctx.fillText(parseInt(y_ticks[i]), p0[0]-25, p0[1]+5);
+				lc_ctx.fillText(parseInt(y_ticks[i]), p0[0]-30, p0[1]+5);
 			}
 
 		}
@@ -4147,7 +4269,6 @@ function update_ts()
 					if (symbol.gt_ranks[j-1] === global.focused_rank) {
 						symbol_rank_match.push(j);
 					}
-					// console.log(symbol_rank_match, j);
 				}
 				p_prev = p
 				if (!first_point_drawn) {
@@ -4512,7 +4633,7 @@ function update_ts()
 		}
 
 		// --------------
-		// auxiliar lines on mouse position to track date and value
+		// auxiliar line on mouse position to track value
 		// --------------
 		if (point_inside_rect(lc_local_mouse_pos, lc_rect)) {
 			let pt = inverse_map(lc_local_mouse_pos[0],lc_local_mouse_pos[1]);
@@ -4629,7 +4750,7 @@ function update_ts()
 			}
 
 			let k = values.length
-			let current_values = []
+			let values_to_draw = []
 			for (let j=0;j<k;j++) {
 				let value = values[j]
 				if (value == undefined) {
@@ -4639,50 +4760,52 @@ function update_ts()
 				// if drawing separated values for pointwise depths cdfs
 				// dissipate them
 				//--------------
-				if(global.ui.agg_sep_select.value === 'sep') {
+				if(global.ui.av_agg_sep_select.value === 'sep') {
 					if (j>0) {
 						value = values[j] - values[j-1]
 					}
 				}
-				current_values.push(value)
+				values_to_draw.push(value)
 				last_valid_value = value
 				aux_y_min = Math.min(aux_y_min, value)
 				aux_y_max = Math.max(aux_y_max, value)
 			}
 
+			symbol.av_values = values_to_draw;
+
 		}
 
-		let aux_x_min = 0
-		let aux_x_max
+		let aux_x_min = 0;
+		let aux_x_max;
 		if (global.aux_view == 'dcdf') {
-			aux_x_max = global.chart_symbols[0].cdf_matrix_row.length - 1
+			aux_x_max = global.chart_symbols[0].cdf_matrix_row.length - 1;
 		} else if (global.aux_view == 'rcdf') {
 
-			if (global.ui.agg_sep_select.value === 'agg') {
-				let last_rank = 0
+			if (global.ui.av_agg_sep_select.value === 'agg') {
+				let last_rank = 0;
 
 				for (let i=0; i<global.chart_symbols.length; i++) {
 
-					let symbol = global.chart_symbols[i]
-					if (symbol.gt_ranks_dist == null) { continue }
+					let symbol = global.chart_symbols[i];
+					if (symbol.gt_ranks_dist == null) { continue; }
 					for (let j=0; j<symbol.gt_ranks_dist.length; j++) {
 						if (symbol.gt_ranks_dist[j] == 1.0) {
-							last_rank = Math.max(last_rank, j)
-							break
+							last_rank = Math.max(last_rank, j);
+							break;
 						}
 					}
 
 				}
 
-				aux_x_max = last_rank + 1
+				aux_x_max = last_rank + 1;
 
-			} else if (global.ui.agg_sep_select.value === 'sep') {
-				aux_x_max = global.chart_symbols.length -1
+			} else if (global.ui.av_agg_sep_select.value === 'sep') {
+				aux_x_max = global.chart_symbols.length - 1;
 			}
 		}
 
-		let min_distance_threshold = 5 * 5
-		let closest_distance = 100000
+		let min_distance_threshold = 5 * 5;
+		let closest_distance = 100000;
 
 		function update_aux_closest_segment(symbol, p0x, p0y, p1x, p1y) {
 			// a --> p0 to mouse
@@ -4692,90 +4815,90 @@ function update_ts()
 			// |a|^2 - (|a|*cos(theta))^2 = h^2
 			// |a|^2 - (a.b/|b|)^2 = h^2
 
-			let ax = av_local_mouse_pos[0] - p0x
-			let ay = av_local_mouse_pos[1] - p0y
+			let ax = av_local_mouse_pos[0] - p0x;
+			let ay = av_local_mouse_pos[1] - p0y;
 
-			let bx = p1x - p0x
-			let by = p1y - p0y
+			let bx = p1x - p0x;
+			let by = p1y - p0y;
 
-			let a_len_sq = (ax*ax)+(ay*ay)
-			let b_len_sq = (bx*bx)+(by*by)
-			let a_dot_b  = (ax*bx)+(ay*by)
+			let a_len_sq = (ax*ax)+(ay*ay);
+			let b_len_sq = (bx*bx)+(by*by);
+			let a_dot_b  = (ax*bx)+(ay*by);
 
-			if (a_dot_b < 0) { return }
+			if (a_dot_b < 0) { return; }
 
-			let a_shadow_b_len_sq = (a_dot_b*a_dot_b)/b_len_sq
+			let a_shadow_b_len_sq = (a_dot_b*a_dot_b)/b_len_sq;
 			if (a_shadow_b_len_sq > b_len_sq) {
-				return
+				return;
 			}
 
-			let h_sq = a_len_sq - a_shadow_b_len_sq
+			let h_sq = a_len_sq - a_shadow_b_len_sq;
 
-			let dist = h_sq
+			let dist = h_sq;
 			if (dist <= min_distance_threshold && dist < closest_distance) {
-				aux_view_closest_symbol = symbol
+				aux_view_closest_symbol = symbol;
 			}
 		}
 
 		function update_closest_point(symbol, rank, px, py) {
-			let dx = av_local_mouse_pos[0] - px
-			let dy = av_local_mouse_pos[1] - py
-			let dist = dx * dx + dy * dy
+			let dx = av_local_mouse_pos[0] - px;
+			let dy = av_local_mouse_pos[1] - py;
+			let dist = dx * dx + dy * dy;
 			if (dist <= min_distance_threshold && dist < closest_distance) {
-				aux_view_closest_symbol = symbol
+				aux_view_closest_symbol = symbol;
 			}
 		}
 
-		let n_ranks = aux_x_max
+		let n_ranks = aux_x_max;
 		global.n_ranks = n_ranks;
 
 		function rotate(arr, a, b) {
-			let x = arr[b-1]
+			let x = arr[b-1];
 			for (let i=b-1; i>a; i--) {
-				arr[i] = arr[i-1]
+				arr[i] = arr[i-1];
 			}
-			arr[a] = x
+			arr[a] = x;
 		}
 
 		//performing split on given rank
 		if (global.split_cdf.split_rank) {
-			let breaks  = global.split_cdf.breaks
-			let weights = global.split_cdf.ww
+			let breaks  = global.split_cdf.breaks;
+			let weights = global.split_cdf.ww;
 
-			let split_rank = global.split_cdf.split_rank
-			global.split_cdf.split_rank = null
+			let split_rank = global.split_cdf.split_rank;
+			global.split_cdf.split_rank = null;
 
 			if (split_rank < n_ranks) {
-				let split_rank_idx = -breaks.length-1
+				let split_rank_idx = -breaks.length-1;
 				for (let i=0; i<breaks.length; i++) {
 					if (breaks[i] == split_rank) {
-						split_rank_idx = i
-						break
+						split_rank_idx = i;
+						break;
 					} else if (breaks[i] > split_rank) {
-						split_rank_idx = -i-1
-						break
+						split_rank_idx = -i-1;
+						break;
 					}
 				}
 				if (split_rank_idx < 0) { //negative number means split_rank doesnt exist yet, it'll be added
-					split_rank_idx  = -split_rank_idx-1
-					let curr_weight = weights[split_rank_idx-1]
+					split_rank_idx  = -split_rank_idx-1;
+					let curr_weight = weights[split_rank_idx-1];
 
-					let left  		= breaks[split_rank_idx-1]
-					let right 		= (split_rank_idx == breaks.length) ? n_ranks : breaks[split_rank_idx]
+					let left  		= breaks[split_rank_idx-1];
+					let right 		= (split_rank_idx == breaks.length) ? n_ranks : breaks[split_rank_idx];
 
-					let curr_bins   = right - left
-					let left_bins   = split_rank - left
-					let right_bins  = right - split_rank
+					let curr_bins   = right - left;
+					let left_bins   = split_rank - left;
+					let right_bins  = right - split_rank;
 
-					weights[split_rank_idx-1] = curr_weight * (left_bins / curr_bins)
-					weights.push(curr_weight * (right_bins / curr_bins))
-					rotate(weights, split_rank_idx, weights.length)
+					weights[split_rank_idx-1] = curr_weight * (left_bins / curr_bins);
+					weights.push(curr_weight * (right_bins / curr_bins));
+					rotate(weights, split_rank_idx, weights.length);
 
-					breaks.push(split_rank)
-					rotate(breaks, split_rank_idx, breaks.length)
+					breaks.push(split_rank);
+					rotate(breaks, split_rank_idx, breaks.length);
 
-					global.split_cdf.filters.push([])
-					global.split_cdf.realign.push(true)
+					global.split_cdf.filters.push([]);
+					global.split_cdf.realign.push(true);
 				}
 
 			}
@@ -4783,77 +4906,76 @@ function update_ts()
 		}
 
 		if (global.split_cdf.panel_state == PANEL_STATE.RESIZING) {
-			let dx = av_local_mouse_pos[0] - global.split_cdf.panel_resize_last_x
-			global.split_cdf.panel_resize_last_x = av_local_mouse_pos[0]
+			let dx = av_local_mouse_pos[0] - global.split_cdf.panel_resize_last_x;
+			global.split_cdf.panel_resize_last_x = av_local_mouse_pos[0];
 
-			let panel_idx 		   = global.split_cdf.panel_resize_index
-			let panel_resize_width = global.split_cdf.ww[panel_idx] * av_rect[RECT.WIDTH]
-			let panel_resize_side  = global.split_cdf.panel_resize_side
+			let panel_idx 		   = global.split_cdf.panel_resize_index;
+			let panel_resize_side  = global.split_cdf.panel_resize_side;
 
-			let delta = dx / panel_resize_width
+			let delta = dx / av_rect[RECT.WIDTH];
 			if (panel_resize_side == PANEL_RESIZE_SIDE.LEFT) {
 				if (delta > 0) {
-					global.split_cdf.ww[panel_idx] -= delta
-					global.split_cdf.ww[panel_idx-1] += delta
+					global.split_cdf.ww[panel_idx] -= delta;
+					global.split_cdf.ww[panel_idx-1] += delta;
 				} else {
-					global.split_cdf.ww[panel_idx] -= delta
-					global.split_cdf.ww[panel_idx-1] += delta
+					global.split_cdf.ww[panel_idx] -= delta;
+					global.split_cdf.ww[panel_idx-1] += delta;
 				}
 			} else {
 				if (delta > 0) {
-					global.split_cdf.ww[panel_idx] += delta
-					global.split_cdf.ww[panel_idx+1] -= delta
+					global.split_cdf.ww[panel_idx] += delta;
+					global.split_cdf.ww[panel_idx+1] -= delta;
 				} else {
-					global.split_cdf.ww[panel_idx] += delta
-					global.split_cdf.ww[panel_idx+1] -= delta
+					global.split_cdf.ww[panel_idx] += delta;
+					global.split_cdf.ww[panel_idx+1] -= delta;
 				}
 			}
 		}
 
-
+		global.focused_rank = undefined;
 		if (global.split_cdf.ww.length > 0) {
-			let sorted_wws 	  = global.split_cdf.ww
-			let sorted_breaks = global.split_cdf.breaks
+			let sorted_wws 	  = global.split_cdf.ww;
+			let sorted_breaks = global.split_cdf.breaks;
 
-			let offset = av_rect[RECT.LEFT]
+			let offset = av_rect[RECT.LEFT];
 			for (let i=0; i<sorted_wws.length; i++) {
-				av_ctx.fillStyle = "#555555"
+				av_ctx.fillStyle = "#555555";
 
-				let panel_rect = null
-				let panel_width = av_rect[RECT.WIDTH]*sorted_wws[i]
+				let panel_rect = null;
+				let panel_width = av_rect[RECT.WIDTH]*sorted_wws[i];
 				panel_rect = [ offset,
 							   av_rect[RECT.TOP]+5,
 							   panel_width,
-							   av_rect[RECT.HEIGHT]-10 ]
+							   av_rect[RECT.HEIGHT]-10 ];
 
-				offset += panel_width
-				av_ctx.beginPath()
+				offset += panel_width;
+				av_ctx.beginPath();
 				av_ctx.rect(panel_rect[RECT.LEFT], panel_rect[RECT.TOP],
-						 panel_rect[RECT.WIDTH], panel_rect[RECT.HEIGHT])
-				av_ctx.fill()
+						 	panel_rect[RECT.WIDTH], panel_rect[RECT.HEIGHT]);
+				av_ctx.fill();
 
 				let step = parseInt(global.ui.step_select.value);
 				let offset_start = sorted_breaks[i] + step - 1;
-				let offset_end = (i==sorted_wws.length-1) ? n_ranks : sorted_breaks[i+1]
+				let offset_end = (i==sorted_wws.length-1) ? n_ranks : sorted_breaks[i+1];
 
-				let panel_x_min = offset_start
-				let panel_x_max = offset_end
-				let panel_y_min = 0
-				let panel_y_max = 0
+				let panel_x_min = offset_start;
+				let panel_x_max = offset_end;
+				let panel_y_min = 0;
+				let panel_y_max = 0;
 
 				for (let j=0; j<n_ranks; j++) {
 
-					let symbol = global.chart_symbols[j]
+					let symbol = global.chart_symbols[j];
 					if (symbol === undefined) { continue; }
 					if (symbol.filter != 0) {
-						continue
+						continue;
 					}
-					let current_values
-					if (global.aux_view == 'dcdf') {
-						current_values = symbol.cdf_matrix_row
-					} else if (global.aux_view == 'rcdf') {
-						current_values = symbol.gt_ranks_dist
-					}
+					let current_values = symbol.av_values;
+					// if (global.aux_view == 'dcdf') {
+					// 	current_values = symbol.cdf_matrix_row
+					// } else if (global.aux_view == 'rcdf') {
+					// 	current_values = symbol.gt_ranks_dist
+					// }
 					if (current_values == null) {
 						return;
 					}
@@ -4908,7 +5030,7 @@ function update_ts()
 				}
 
 				if(point_inside_rect(av_local_mouse_pos, panel_rect)) {
-					if (global.split_cdf.panel_state == PANEL_STATE.START_RESIZE) {
+					if (global.split_cdf.panel_state == PANEL_STATE.START_RESIZE && global.split_cdf.breaks.length > 1) {
 						global.split_cdf.panel_resize_index  = i
 						global.split_cdf.panel_resize_last_x = av_local_mouse_pos[0]
 
@@ -4975,12 +5097,7 @@ function update_ts()
 				}
 
 				function check_filters(symbol) {
-					let current_values
-					if (global.aux_view == 'dcdf') {
-						current_values = symbol.cdf_matrix_row
-					} else if (global.aux_view == 'rcdf') {
-						current_values = symbol.gt_ranks_dist
-					}
+					let current_values = symbol.av_values;
 					if (current_values == null) {
 						return;
 					}
@@ -5042,12 +5159,12 @@ function update_ts()
 				}
 
 				function draw_symbol_on_panel(symbol) {
-					let current_values
-					if (global.aux_view == 'dcdf') {
-						current_values = symbol.cdf_matrix_row
-					} else if (global.aux_view == 'rcdf') {
-						current_values = symbol.gt_ranks_dist
-					}
+					let current_values = symbol.av_values;
+					// if (global.aux_view == 'dcdf') {
+					// 	current_values = symbol.cdf_matrix_row
+					// } else if (global.aux_view == 'rcdf') {
+					// 	current_values = symbol.gt_ranks_dist
+					// }
 					if (current_values == null) {
 						return;
 					}
@@ -5375,24 +5492,30 @@ function update_ts()
 					av_ctx.save()
 					av_ctx.font = "bold 10pt Courier"
 					av_ctx.fillStyle = "#FFFFFF"
+
+					let tick_text
+					if (panel_y_ticks[l] === 1.0) {
+						tick_text = "1.";
+					} else {
+						tick_text = '.' + panel_y_ticks[l].toFixed(2).toString().split('.')[1];
+					}
 					if (i==0) {
 						if(l==(panel_y_ticks.length-1)) {
-							av_ctx.fillText(parseInt(panel_y_ticks[l]*82), p0[0]-10, p0[1]+8);
+							av_ctx.fillText(tick_text, p0[0]-12, p0[1]+8);
 						} else {
-							av_ctx.fillText(parseInt(panel_y_ticks[l]*82), p0[0]-10, p0[1]);
+							av_ctx.fillText(tick_text, p0[0]-12, p0[1]);
 						}
 					} else {
 						if(l==(panel_y_ticks.length-1)) {
-							av_ctx.fillText(parseInt(panel_y_ticks[l]*82), p0[0]+10, p0[1]+8);
+							av_ctx.fillText(tick_text, p0[0]+10, p0[1]+8);
 						} else {
-							av_ctx.fillText(parseInt(panel_y_ticks[l]*82), p0[0]+10, p0[1]);
+							av_ctx.fillText(tick_text, p0[0]+10, p0[1]);
 						}
 					}
 					av_ctx.restore()
 
 				}
 
-				global.focused_rank = undefined;
 				if (point_inside_rect(av_local_mouse_pos, panel_rect)) {
 					let pt = panel_rect_inverse_map(av_local_mouse_pos[0],av_local_mouse_pos[1]);
 					pt[0] = Math.round(pt[0]);
@@ -5564,13 +5687,10 @@ function update_ts()
 		}
 
 		if (global.proj_drag.active) {
-
 			let proj_local_dragstart_pos = get_local_position(global.proj_drag.startpos, p_canvas)
 
 			if (point_inside_rect(proj_local_dragstart_pos, proj_rect)) {
-
 				proj_local_dragstart_pos = proj_rect_inverse_map(proj_local_dragstart_pos[0], proj_local_dragstart_pos[1])
-
 				let local_currmouse_pos = proj_rect_inverse_map(p_local_mouse_pos[0], p_local_mouse_pos[1])
 
 				global.proj_viewbox.x = global.proj_drag.startprojvbox[0] - (local_currmouse_pos[0] - proj_local_dragstart_pos[0])
@@ -5887,7 +6007,65 @@ function set_ui_components()
 
 	{
 		// -------
-		// layout w/ full table (for clusters); groups table
+		// default layout w/ aux view as main view
+		// -------
+		let c_0     = new Node('root', 1, NODE_ORIENTATION_HORIZONTAL)
+		let c_l     = new Node('l', 1, NODE_ORIENTATION_VERTICAL)
+		let c_l_t   = new Node('controls')
+		let c_l_b   = new Node('table')
+		let c_r     = new Node('r', 5, NODE_ORIENTATION_VERTICAL)
+		let c_r_t   = new Node('aux_view')
+		let c_r_b   = new Node('rb', 1, NODE_ORIENTATION_HORIZONTAL)
+		let c_r_b_l = new Node('line_chart')
+		let c_r_b_r = new Node('projection')
+
+		c_0.add_child(c_l)
+		c_0.add_child(c_r)
+
+		c_l.add_child(c_l_t)
+		c_l.add_child(c_l_b)
+
+		c_r.add_child(c_r_t)
+		c_r.add_child(c_r_b)
+
+		c_r_b.add_child(c_r_b_l)
+		c_r_b.add_child(c_r_b_r)
+
+		global.layout_modes.push(c_0)
+	}
+
+	{
+		// -------
+		// default layout w/ projection as main view
+		// -------
+		let c_0     = new Node('root', 1, NODE_ORIENTATION_HORIZONTAL)
+		let c_l     = new Node('l', 1, NODE_ORIENTATION_VERTICAL)
+		let c_l_t   = new Node('controls')
+		let c_l_b   = new Node('table')
+		let c_r     = new Node('r', 5, NODE_ORIENTATION_VERTICAL)
+		let c_r_t   = new Node('projection')
+		let c_r_b   = new Node('rb', 1, NODE_ORIENTATION_HORIZONTAL)
+		let c_r_b_l = new Node('line_chart')
+		let c_r_b_r = new Node('aux_view')
+
+		c_0.add_child(c_l)
+		c_0.add_child(c_r)
+
+		c_l.add_child(c_l_t)
+		c_l.add_child(c_l_b)
+
+		c_r.add_child(c_r_t)
+		c_r.add_child(c_r_b)
+
+		c_r_b.add_child(c_r_b_l)
+		c_r_b.add_child(c_r_b_r)
+
+		global.layout_modes.push(c_0)
+	}
+
+	{
+		// -------
+		// layout w/ full table (for clusters); groups table; main: lc
 		// -------
 		let c_0     = new Node('root', 1, NODE_ORIENTATION_HORIZONTAL)
 		let c_l     = new Node('l', 1, NODE_ORIENTATION_VERTICAL)
@@ -5916,23 +6094,23 @@ function set_ui_components()
 
 	{
 		// -------
-		// default layout w/ full table
+		// layout w/ full table (for clusters); groups table; main: av
 		// -------
 		let c_0     = new Node('root', 1, NODE_ORIENTATION_HORIZONTAL)
-		// let c_l     = new Node('l', 1, NODE_ORIENTATION_VERTICAL)
-		// let c_l_t   = new Node('controls')
-		let c_l     = new Node('full_table')
-		let c_r     = new Node('r', 3, NODE_ORIENTATION_VERTICAL)
-		let c_r_t   = new Node('line_chart')
+		let c_l     = new Node('l', 1, NODE_ORIENTATION_VERTICAL)
+		let c_l_t   = new Node('full_table', 9)
+		let c_l_b   = new Node('groups_table')
+		let c_r     = new Node('r', 1, NODE_ORIENTATION_VERTICAL)
+		let c_r_t   = new Node('aux_view')
 		let c_r_b   = new Node('rb', 1, NODE_ORIENTATION_HORIZONTAL)
-		let c_r_b_l = new Node('aux_view')
+		let c_r_b_l = new Node('line_chart')
 		let c_r_b_r = new Node('projection')
 
 		c_0.add_child(c_l)
 		c_0.add_child(c_r)
 
-		// c_l.add_child(c_l_t)
-		// c_l.add_child(c_l_b)
+		c_l.add_child(c_l_t)
+		c_l.add_child(c_l_b)
 
 		c_r.add_child(c_r_t)
 		c_r.add_child(c_r_b)
@@ -5943,7 +6121,60 @@ function set_ui_components()
 		global.layout_modes.push(c_0)
 	}
 
-	global.layout_index = 0;
+	{
+		// -------
+		// layout w/ full table (for clusters); groups table; main: p
+		// -------
+		let c_0     = new Node('root', 1, NODE_ORIENTATION_HORIZONTAL)
+		let c_l     = new Node('l', 1, NODE_ORIENTATION_VERTICAL)
+		let c_l_t   = new Node('full_table', 9)
+		let c_l_b   = new Node('groups_table')
+		let c_r     = new Node('r', 1, NODE_ORIENTATION_VERTICAL)
+		let c_r_t   = new Node('projection')
+		let c_r_b   = new Node('rb', 1, NODE_ORIENTATION_HORIZONTAL)
+		let c_r_b_l = new Node('line_chart')
+		let c_r_b_r = new Node('aux_view')
+
+		c_0.add_child(c_l)
+		c_0.add_child(c_r)
+
+		c_l.add_child(c_l_t)
+		c_l.add_child(c_l_b)
+
+		c_r.add_child(c_r_t)
+		c_r.add_child(c_r_b)
+
+		c_r_b.add_child(c_r_b_l)
+		c_r_b.add_child(c_r_b_r)
+
+		global.layout_modes.push(c_0)
+	}
+
+	{
+		// -------
+		// layout w/ full table (for clusters); groups table; no projection
+		// -------
+		let c_0     = new Node('root', 1, NODE_ORIENTATION_HORIZONTAL)
+		let c_l     = new Node('l', 1, NODE_ORIENTATION_VERTICAL)
+		let c_l_t   = new Node('full_table', 9)
+		let c_l_b   = new Node('groups_table')
+		let c_r     = new Node('r', 1, NODE_ORIENTATION_VERTICAL)
+		let c_r_t   = new Node('line_chart')
+		let c_r_b   = new Node('aux_view')
+
+		c_0.add_child(c_l)
+		c_0.add_child(c_r)
+
+		c_l.add_child(c_l_t)
+		c_l.add_child(c_l_b)
+
+		c_r.add_child(c_r_t)
+		c_r.add_child(c_r_b)
+
+		global.layout_modes.push(c_0)
+	}
+
+	global.layout_index = LAYOUTS.DEFAULT_MAIN_LC;
 
 	//target color: #6b6f71 (with margins to see each component)
 	let controls = document.createElement('div');
@@ -6012,6 +6243,24 @@ function update_ui()
 		} else {
 			component.style.visibility="hidden"
 		}
+	}
+
+	if (global.layout_index == LAYOUTS.DEFAULT_MAIN_LC || global.layout_index == LAYOUTS.FT_MAIN_LC) {
+		global.ui.lc_make_main_view_btn.style.visibility="hidden";
+	} else {
+		global.ui.lc_make_main_view_btn.style.visibility="visible";
+	}
+
+	if (global.layout_index == LAYOUTS.DEFAULT_MAIN_AV || global.layout_index == LAYOUTS.FT_MAIN_AV) {
+		global.ui.av_make_main_view_btn.style.visibility="hidden";
+	} else {
+		global.ui.av_make_main_view_btn.style.visibility="visible";
+	}
+
+	if (global.layout_index == LAYOUTS.DEFAULT_MAIN_P || global.layout_index == LAYOUTS.FT_MAIN_P) {
+		global.ui.p_make_main_view_btn.style.visibility="hidden";
+	} else {
+		global.ui.p_make_main_view_btn.style.visibility="visible";
 	}
 
 	// if (global.layout_index == 1) {
