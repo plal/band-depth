@@ -121,7 +121,8 @@ const EVENT = {
 	CHANGE_LC_AGG_SEP_SELECT: "event_change_lc_agg_sep_select",
 	LC_MAKE_MAIN: "event_lc_make_main",
 	AV_MAKE_MAIN: "event_av_make_main",
-	P_MAKE_MAIN: "event_p_make_main"
+	P_MAKE_MAIN: "event_p_make_main",
+	UPDATE_RANK_RANGE: "event_update_rank_range"
 }
 
 var global = {
@@ -1778,7 +1779,6 @@ function fill_ui_components()
 	global.min_gp_sld 	 = min_gp_sld;
 
 	let min_gp_val = document.createElement('output');
-	global.min_gp_val = min_gp_val;
 	min_gp_val.style.left = '50px';
 
 	min_gp_sld.addEventListener("input", () => {
@@ -1972,7 +1972,7 @@ function fill_ui_components()
 	st_filter_input.setAttribute("type","text")
 	st_filter_input.id    	   = 'st_filter_input'
 	st_filter_input.style 	   = 'position:relative; width:98%; margin-left:3px; margin-bottom:3px; margin-top:3px\
-	 						  overflow:auto; border-radius:2px; background-color:#FFFFFF;font-family:Courier; font-size:14pt;'
+	 						  	  overflow:auto; border-radius:2px; background-color:#FFFFFF;font-family:Courier; font-size:14pt;'
 
 	global.ui.st_filter_input = st_filter_input
 	install_event_listener(st_filter_input, 'change', st_filter_input, EVENT.FILTER)
@@ -2022,7 +2022,7 @@ function fill_ui_components()
 		col.style 			 = "cursor: pointer"
 		col.style.fontFamily = 'Courier'
 		col.style.fontSize 	 = '14pt'
-		col.style.color 	 = "#6b6f71"
+		col.style.color 	 = "#000000"
 
 		symbol.ui_row = row
 		symbol.ui_col = col
@@ -2348,7 +2348,7 @@ function fill_ui_components()
 	// checkbox to draw group envelopes
 	//----------
 	let draw_groups_envelope_btn = create_checkbox();
-	draw_groups_envelope_btn.style = 'position:relative; left:20; top:calc ( 100% - 29px ); vertical-align:middle;'
+	draw_groups_envelope_btn.style = 'position:relative; left:15; top:calc ( 100% - 29px ); vertical-align:middle;'
 	global.ui.draw_groups_envelope_btn = draw_groups_envelope_btn;
 
 	let draw_groups_envelope_lbl = create_checkbox_label(draw_groups_envelope_btn, 'envelopes');
@@ -2383,7 +2383,7 @@ function fill_ui_components()
 	//----------
 	let step_select = document.createElement('select');
 	global.ui.step_select = step_select;
-	step_select.style 	  = 'position:relative; left:40; top:calc ( 100% - 29px ); width:140px; background-color:#2f3233; \
+	step_select.style 	  = 'position:relative; left:30; top:calc ( 100% - 29px ); width:140px; background-color:#2f3233; \
 							 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 
 	let step_default_option = create_option(1,'default(1)');
@@ -2398,11 +2398,21 @@ function fill_ui_components()
 	step_select.appendChild(step_5_option);
 	step_select.appendChild(step_10_option);
 
+	let av_rank_range_input = document.createElement('input')
+	av_rank_range_input.setAttribute("type","text")
+	av_rank_range_input.id    	   = 'av_rank_range_input'
+	av_rank_range_input.style 	   = 'position:relative; left:40; width:100px;\
+	 						  	  	  overflow:auto; border-radius:2px; background-color:#FFFFFF;font-family:Courier; font-size:14pt;'
+
+	global.ui.av_rank_range_input = av_rank_range_input
+	install_event_listener(av_rank_range_input, 'change', av_rank_range_input, EVENT.UPDATE_RANK_RANGE)
+
 	let aux_view_controls_botdiv = document.createElement('div')
 	aux_view_controls_botdiv.appendChild(draw_groups_envelope_lbl);
 	aux_view_controls_botdiv.appendChild(draw_groups_envelope_btn);
 	aux_view_controls_botdiv.appendChild(n_protos_select);
 	aux_view_controls_botdiv.appendChild(step_select);
+	aux_view_controls_botdiv.appendChild(av_rank_range_input);
 
 	let aux_view = get_component('aux_view');
 	if (aux_view) {
@@ -2434,7 +2444,7 @@ function fill_ui_components()
 	//----------
 	let proj_colorby_select = document.createElement('select')
 	global.ui.proj_colorby_select = proj_colorby_select
-	proj_colorby_select.style 	  = 'position:absolute; left:15; top:0%; width:145px; background-color:#2f3233; \
+	proj_colorby_select.style 	  = 'position:absolute; left:15; width:145px; background-color:#2f3233; \
 									 font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 	install_event_listener(proj_colorby_select, 'change', proj_colorby_select, EVENT.CHANGE_COLORBY)
 
@@ -2457,7 +2467,7 @@ function fill_ui_components()
 	let n_clusters_select = document.createElement('select')
 
 	global.ui.n_clusters_select = n_clusters_select
-	n_clusters_select.style 	= 'position:relative; left:175; top:0%; width:130px; background-color:#2f3233; \
+	n_clusters_select.style 	= 'position:relative; left:175; width:130px; background-color:#2f3233; \
 								   font-family:Courier; font-size:13pt; color: #FFFFFF;z-index:2;'
 
 	let df_option = create_option(0, 'n_clusters');
@@ -2479,7 +2489,7 @@ function fill_ui_components()
 	global.ui.cluster_btn 	= cluster_btn
 	cluster_btn.id 			= "cluster_btn"
 	cluster_btn.textContent = 'cluster'
-	cluster_btn.style 		= "position:relative; left:180; top:0%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+	cluster_btn.style 		= "position:relative; left:180; margin:2px; border-radius:13px; background-color:#AAAAAA;\
 							   font-family:Courier; font-size:12pt; z-index:2;"
 	install_event_listener(cluster_btn, 'click', cluster_btn, EVENT.CLUSTER)
 
@@ -2513,7 +2523,7 @@ function fill_ui_components()
 	global.ui.create_group_btn 	 = create_group_btn
 	create_group_btn.id 		 = "create_group_btn"
 	create_group_btn.textContent = 'create group'
-	create_group_btn.style 		 = "position:relative; left:15; top:0%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+	create_group_btn.style 		 = "position:relative; left:15; margin:2px; border-radius:13px; background-color:#AAAAAA;\
 									font-family:Courier; font-size:12pt; z-index:2;"
 	install_event_listener(create_group_btn, 'click', create_group_btn, EVENT.CREATE_GROUP)
 
@@ -2524,7 +2534,7 @@ function fill_ui_components()
 	global.ui.reset_groups_btn   = reset_groups_btn
 	reset_groups_btn.id 	   	 = "reset_groups_btn"
 	reset_groups_btn.textContent = 'reset groups'
-	reset_groups_btn.style 		 = "position:relative; left:20; top:0%; margin:2px; border-radius:13px; background-color:#AAAAAA;\
+	reset_groups_btn.style 		 = "position:relative; left:20; margin:2px; border-radius:13px; background-color:#AAAAAA;\
 									font-family:Courier; font-size:12pt; z-index:2;"
 	install_event_listener(reset_groups_btn, 'click', reset_groups_btn, EVENT.REMOVE_ACTIVE_GROUPS)
 
@@ -3464,25 +3474,26 @@ function process_event_queue()
 					global.brush_mode_active = true
 				} else if (e.raw.keyCode == KEY_R) {
 					global.resize_mode_active = true
-				} else if (e.raw.keyCode == KEY_2) {
-					// if (e.raw.ctrlKey) {
-					// 	if (global.layout_index == 2) {
-					// 		global.layout_index = 1;
-					// 	} else {
-					// 		global.layout_index = 2;
-					// 	}
-					// }
-					global.layout_index = 2;
-				} else if (e.raw.keyCode == KEY_1) {
-					// if (e.raw.ctrlKey) {
-					// 	if (global.layout_index == 2) {
-					// 		global.layout_index = 1;
-					// 	} else {
-					// 		global.layout_index = 2;
-					// 	}
-					// }
-					global.layout_index = 1;
 				}
+				// else if (e.raw.keyCode == KEY_2) {
+				// 	// if (e.raw.ctrlKey) {
+				// 	// 	if (global.layout_index == 2) {
+				// 	// 		global.layout_index = 1;
+				// 	// 	} else {
+				// 	// 		global.layout_index = 2;
+				// 	// 	}
+				// 	// }
+				// 	global.layout_index = 2;
+				// } else if (e.raw.keyCode == KEY_1) {
+				// 	// if (e.raw.ctrlKey) {
+				// 	// 	if (global.layout_index == 2) {
+				// 	// 		global.layout_index = 1;
+				// 	// 	} else {
+				// 	// 		global.layout_index = 2;
+				// 	// 	}
+				// 	// }
+				// 	global.layout_index = 1;
+				// }
 			}
 		} else if (e.event_type == EVENT.MOUSEWHEEL) {
 			if (e.raw.deltaY > 0) {
@@ -3690,6 +3701,18 @@ function process_event_queue()
 				global.layout_index = LAYOUTS.FT_MAIN_P;
 			}
 
+		} else if (e.event_type == EVENT.UPDATE_RANK_RANGE) {
+			let rank_range_input = e.context;
+			let rank_range = rank_range_input.value;
+			let rank_range_values = rank_range.split("-");
+
+			if (rank_range_values.length == 2) {
+				global.rank_range_min = parseInt(rank_range_values[0])-1;
+				global.rank_range_max = parseInt(rank_range_values[1]);
+			} else {
+				global.rank_range_min = undefined;
+				global.rank_range_max = undefined;
+			}
 		}
 	}
 
@@ -4728,6 +4751,53 @@ function update_ts()
 		av_ctx.strokeStyle = "#FFFFFF";
 		av_ctx.lineWidth   = 2;
 
+		function get_last_rank() {
+			let last_rank = 0;
+
+			for (let i=0; i<global.chart_symbols.length; i++) {
+
+				let symbol = global.chart_symbols[i];
+				if (symbol.gt_ranks_dist == null) { continue; }
+				for (let j=0; j<symbol.gt_ranks_dist.length; j++) {
+					if (symbol.gt_ranks_dist[j] == 1.0) {
+						last_rank = Math.max(last_rank, j);
+						break;
+					}
+				}
+
+			}
+
+			return last_rank;
+		}
+
+		let aux_x_min = 0;
+		let aux_x_max;
+
+		if (global.aux_view == 'dcdf') {
+			aux_x_max = global.chart_symbols[0].cdf_matrix_row.length - 1;
+		} else if (global.aux_view == 'rcdf') {
+			if (global.rank_range_min !== undefined && global.rank_range_max !== undefined) {
+				if (!isNaN(global.rank_range_min)) {
+					aux_x_min = global.rank_range_min;
+				}
+
+				if (isNaN(global.rank_range_max)) {
+					let last_rank = get_last_rank();
+					aux_x_max = last_rank + 1;
+				} else {
+					aux_x_max = global.rank_range_max;
+				}
+			} else {
+				if (global.ui.av_agg_sep_select.value === 'agg') {
+					let last_rank = get_last_rank();
+					aux_x_max = last_rank + 1;
+				} else if (global.ui.av_agg_sep_select.value === 'sep') {
+					aux_x_max = global.chart_symbols.length - 1;
+				}
+			}
+
+		}
+
 		//--------------
 		// find y range
 		//--------------
@@ -4751,6 +4821,9 @@ function update_ts()
 
 			let k = values.length
 			let values_to_draw = []
+			for (let j=0; j<k; j++) {
+
+			}
 			for (let j=0;j<k;j++) {
 				let value = values[j]
 				if (value == undefined) {
@@ -4773,35 +4846,6 @@ function update_ts()
 
 			symbol.av_values = values_to_draw;
 
-		}
-
-		let aux_x_min = 0;
-		let aux_x_max;
-		if (global.aux_view == 'dcdf') {
-			aux_x_max = global.chart_symbols[0].cdf_matrix_row.length - 1;
-		} else if (global.aux_view == 'rcdf') {
-
-			if (global.ui.av_agg_sep_select.value === 'agg') {
-				let last_rank = 0;
-
-				for (let i=0; i<global.chart_symbols.length; i++) {
-
-					let symbol = global.chart_symbols[i];
-					if (symbol.gt_ranks_dist == null) { continue; }
-					for (let j=0; j<symbol.gt_ranks_dist.length; j++) {
-						if (symbol.gt_ranks_dist[j] == 1.0) {
-							last_rank = Math.max(last_rank, j);
-							break;
-						}
-					}
-
-				}
-
-				aux_x_max = last_rank + 1;
-
-			} else if (global.ui.av_agg_sep_select.value === 'sep') {
-				aux_x_max = global.chart_symbols.length - 1;
-			}
 		}
 
 		let min_distance_threshold = 5 * 5;
@@ -4955,36 +4999,36 @@ function update_ts()
 				av_ctx.fill();
 
 				let step = parseInt(global.ui.step_select.value);
-				let offset_start = sorted_breaks[i] + step - 1;
-				let offset_end = (i==sorted_wws.length-1) ? n_ranks : sorted_breaks[i+1];
+				let offset_start = (i==0) ? aux_x_min + step - 1 : sorted_breaks[i] + step - 1;
+				let offset_end   = (i==sorted_wws.length-1) ? n_ranks : sorted_breaks[i+1];
 
 				let panel_x_min = offset_start;
 				let panel_x_max = offset_end;
-				let panel_y_min = 0;
-				let panel_y_max = 0;
+				let panel_y_min = 1.0;
+				let panel_y_max = 0.0;
 
-				for (let j=0; j<n_ranks; j++) {
+				for (let j=0; j<global.chart_symbols.length; j++) {
 
 					let symbol = global.chart_symbols[j];
+
 					if (symbol === undefined) { continue; }
+
 					if (symbol.filter != 0) {
 						continue;
 					}
+
 					let current_values = symbol.av_values;
-					// if (global.aux_view == 'dcdf') {
-					// 	current_values = symbol.cdf_matrix_row
-					// } else if (global.aux_view == 'rcdf') {
-					// 	current_values = symbol.gt_ranks_dist
-					// }
 					if (current_values == null) {
 						return;
 					}
 
 					for (let k=panel_x_min; k<panel_x_max; k++) {
 						if (i==0) {
-							panel_y_max = Math.max(panel_y_max, current_values[k])
+							panel_y_max = Math.max(panel_y_max, current_values[k]);
+							panel_y_min = Math.min(panel_y_min, current_values[k]);
 						} else {
 							panel_y_max = Math.max(panel_y_max, current_values[k]-current_values[panel_x_min-1])
+							panel_y_min = Math.min(panel_y_min, current_values[k]-current_values[panel_x_min-1])
 						}
 					}
 				}
@@ -6262,14 +6306,6 @@ function update_ui()
 	} else {
 		global.ui.p_make_main_view_btn.style.visibility="visible";
 	}
-
-	// if (global.layout_index == 1) {
-	// 	global.ui.draw_aux_view_type_grid.style.visibility="hidden"
-	// } else {
-	// 	global.ui.draw_aux_view_type_grid.style.visibility="visible"
-	// }
-
-	// setTimeout(update, MSEC_PER_FRAME)
 }
 
 function update()
