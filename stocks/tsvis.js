@@ -122,7 +122,8 @@ const EVENT = {
 	LC_MAKE_MAIN: "event_lc_make_main",
 	AV_MAKE_MAIN: "event_av_make_main",
 	P_MAKE_MAIN: "event_p_make_main",
-	UPDATE_RANK_RANGE: "event_update_rank_range"
+	UPDATE_RANK_RANGE: "event_update_rank_range",
+	UPDATE_SELECTED_RANKS: "event_update_selected_ranks"
 }
 
 var global = {
@@ -135,6 +136,7 @@ var global = {
 	resize_mode_active: false,
 	symbols: [],
 	selected_symbols: [],
+	selected_ranks: [],
 	ref_symbol: undefined,
 	chart_symbols: [],
 	chart_colors: [],
@@ -1970,9 +1972,10 @@ function fill_ui_components()
 
 	let st_filter_input = document.createElement('input')
 	st_filter_input.setAttribute("type","text")
-	st_filter_input.id    	   = 'st_filter_input'
-	st_filter_input.style 	   = 'position:relative; width:98%; margin-left:3px; margin-bottom:3px; margin-top:3px\
-	 						  	  overflow:auto; border-radius:2px; background-color:#FFFFFF;font-family:Courier; font-size:14pt;'
+	st_filter_input.placeholder = 'search player'
+	st_filter_input.id    	    = 'st_filter_input'
+	st_filter_input.style 	    = 'position:relative; width:98%; margin-left:3px; margin-bottom:3px; margin-top:3px\
+	 						  	   overflow:auto; border-radius:2px; background-color:#FFFFFF;font-family:Courier; font-size:14pt;'
 
 	global.ui.st_filter_input = st_filter_input
 	install_event_listener(st_filter_input, 'change', st_filter_input, EVENT.FILTER)
@@ -2150,9 +2153,10 @@ function fill_ui_components()
 
 	let ft_filter_input = document.createElement('input')
 	ft_filter_input.setAttribute("type","text")
-	ft_filter_input.id    = 'ft_filter_input'
-	ft_filter_input.style = 'position:relative; width:98%;\
-	 						 overflow:auto; border-radius:2px; background-color:#FFFFFF;font-family:Courier; font-size:14pt;'
+	ft_filter_input.placeholder = 'search player'
+	ft_filter_input.id    		= 'ft_filter_input'
+	ft_filter_input.style 		= 'position:relative; width:98%;\
+	 						 	   overflow:auto; border-radius:2px; background-color:#FFFFFF;font-family:Courier; font-size:14pt;'
 
 	global.ui.ft_filter_input = ft_filter_input
 	install_event_listener(ft_filter_input, 'change', ft_filter_input, EVENT.FILTER)
@@ -2398,14 +2402,25 @@ function fill_ui_components()
 	step_select.appendChild(step_5_option);
 	step_select.appendChild(step_10_option);
 
-	let av_rank_range_input = document.createElement('input')
-	av_rank_range_input.setAttribute("type","text")
-	av_rank_range_input.id    	   = 'av_rank_range_input'
-	av_rank_range_input.style 	   = 'position:relative; left:40; width:100px;\
-	 						  	  	  overflow:auto; border-radius:2px; background-color:#FFFFFF;font-family:Courier; font-size:14pt;'
+	let av_rank_range_input = document.createElement('input');
+	av_rank_range_input.setAttribute("type","text");
+	av_rank_range_input.placeholder	= 'rank range';
+	av_rank_range_input.id    	    = 'av_rank_range_input';
+	av_rank_range_input.style 	    = 'position:relative; left:40; width:120px;\
+	 						  	  	   overflow:auto; border-radius:2px; background-color:#FFFFFF;font-family:Courier; font-size:14pt;';
 
-	global.ui.av_rank_range_input = av_rank_range_input
-	install_event_listener(av_rank_range_input, 'change', av_rank_range_input, EVENT.UPDATE_RANK_RANGE)
+	global.ui.av_rank_range_input = av_rank_range_input;
+	install_event_listener(av_rank_range_input, 'change', av_rank_range_input, EVENT.UPDATE_RANK_RANGE);
+
+	let av_selected_ranks_input = document.createElement('input');
+	av_selected_ranks_input.setAttribute("type","text");
+	av_selected_ranks_input.placeholder = 'selected ranks';
+	av_selected_ranks_input.id    	    = 'av_selected_ranks_input';
+	av_selected_ranks_input.style 	    = 'position:relative; left:50; width:160px;\
+	 						  	  	  	   overflow:auto; border-radius:2px; background-color:#FFFFFF;font-family:Courier; font-size:14pt;';
+
+	global.ui.av_selected_ranks_input = av_selected_ranks_input;
+	install_event_listener(av_selected_ranks_input, 'change', av_selected_ranks_input, EVENT.UPDATE_SELECTED_RANKS);
 
 	let aux_view_controls_botdiv = document.createElement('div')
 	aux_view_controls_botdiv.appendChild(draw_groups_envelope_lbl);
@@ -2413,6 +2428,7 @@ function fill_ui_components()
 	aux_view_controls_botdiv.appendChild(n_protos_select);
 	aux_view_controls_botdiv.appendChild(step_select);
 	aux_view_controls_botdiv.appendChild(av_rank_range_input);
+	aux_view_controls_botdiv.appendChild(av_selected_ranks_input);
 
 	let aux_view = get_component('aux_view');
 	if (aux_view) {
@@ -3702,8 +3718,8 @@ function process_event_queue()
 			}
 
 		} else if (e.event_type == EVENT.UPDATE_RANK_RANGE) {
-			let rank_range_input = e.context;
-			let rank_range = rank_range_input.value;
+			let rank_range_input  = e.context;
+			let rank_range 		  = rank_range_input.value;
 			let rank_range_values = rank_range.split("-");
 
 			if (rank_range_values.length == 2) {
@@ -3713,6 +3729,31 @@ function process_event_queue()
 				global.rank_range_min = undefined;
 				global.rank_range_max = undefined;
 			}
+		} else if (e.event_type == EVENT.UPDATE_SELECTED_RANKS) {
+			let selected_ranks_input = e.context;
+			let selected_ranks_str	 = selected_ranks_input.value;
+
+			if (selected_ranks_str.includes("-")) {
+				// -------
+				// user typed a range so include elements inside range
+				// to selected ranks
+				// -------
+				let boundaries = selected_ranks_str.split("-").map(x => parseInt(x));
+				let min_rank   = boundaries[0]-1;
+				let max_rank   = boundaries[1];
+				for (let i=min_rank; i<max_rank; i++) {
+					global.selected_ranks.push(i);
+				}
+			} else if (selected_ranks_str.includes(';')) {
+				// -------
+				// user typed a list so make it the list of
+				// selected ranks
+				// -------
+				global.selected_ranks = selected_ranks_str.split(";").map(x => parseInt(x)-1);
+			} else {
+				global.selected_ranks = [];
+			}
+			// console.log(global.selected_ranks);
 		}
 	}
 
@@ -4288,8 +4329,8 @@ function update_ts()
 				if (p_prev) {
 					update_closest_segment(symbol, p_prev[0], p_prev[1], p[0], p[1])
 				}
-				if (symbol === global.focused_symbol && global.focused_rank !== undefined) {
-					if (symbol.gt_ranks[j-1] === global.focused_rank) {
+				if ((symbol === global.focused_symbol || symbol.selected) && (global.focused_rank !== undefined || global.selected_ranks.length > 0)) {
+					if ((symbol.gt_ranks[j-1] === global.focused_rank) || (global.selected_ranks.includes(symbol.gt_ranks[j-1]))) {
 						symbol_rank_match.push(j);
 					}
 				}
