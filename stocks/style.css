@@ -69,6 +69,15 @@ html,body,#root{
   cursor: pointer; /* Cursor on hover */
 }
 
+.slider::-moz-slider-thumb {
+  -webkit-appearance: none; /* Override default look */
+  appearance: none;
+  width: 20px; /* Set a specific slider handle width */
+  height: 20px; /* Slider handle height */
+  background: #FFFFFF; /* Green background */
+  cursor: pointer; /* Cursor on hover */
+}
+
 .slider::-moz-range-thumb {
   width: 20px; /* Set a specific slider handle width */
   height: 20px; /* Slider handle height */

@@ -1,17 +1,7 @@
-
-
-//
-// h(A:0.5,B:0.5,v(C,D):0.3)
-//
-
-//
-// { type:'node', orientation:'v', name:'x', weight:1, children: [] }
-//
-
 const MSEC_PER_FRAME = 64;
 
-const NODE_ORIENTATION_HORIZONTAL=0
-const NODE_ORIENTATION_VERTICAL=1
+const NODE_ORIENTATION_HORIZONTAL = 0
+const NODE_ORIENTATION_VERTICAL   = 1
 
 const SIDE_LEFT   = 0
 const SIDE_TOP    = 1
