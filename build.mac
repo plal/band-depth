@@ -1,4 +1,158 @@
 #!/bin/bash
-clang -g -ggdb -std=c11 -o band-depth band-depth.c
-clang -S -ggdb -std=c11 band-depth.c
-./band-depth
+
+AR=ar
+CC=clang
+CXX=clang++
+CXX_FLAGS="-std=c++14 -stdlib=libc++ -g -ggdb"
+
+find `pwd` | grep -e "[.]c$" > .ctags-files
+find `pwd` | grep -e "[.]h$" >> .ctags-files
+ctags -L .ctags-files
+
+cat <<EOF | grep -v "^#" > .tmp_commands
+# $CXX $CXX_FLAGS -c c-files/tdigest_glue.cpp
+# $CXX $CXX_FLAGS -c c-files/libs/TDigest.cpp
+# $AR rcs libtdigest_glue.a tdigest_glue.o TDigest.o
+$CC  -g -ggdb -c c-files/band-depth.c
+$CC  -o band-depth band-depth.o -L. -ltdigest_glue -lm -lstdc++ 
+EOF
+
+# gcc -o band-depth -Wl,-Bstatic libtdigest_glue.a band-depth.o -lm -lstdc++ 
+
+while read cmd; do 
+	echo "CMD: $cmd"
+	$cmd
+done < .tmp_commands
+
+
+
+# clang++ -std=c++14 -stdlib=libc++ -g -ggdb -c c-files/tdigest_glue.cpp
+# clang++ -std=c++14 -stdlib=libc++ -g -ggdb -c c-files/libs/TDigest.cpp
+# ar rcs libtdigest_glue.a tdigest_glue.o TDigest.o
+
+# clang -g -ggdb -o band-depth c-files/band-depth.c -lc++ libtdigest_glue.a
+
+# # gcc band-depth.c -o band-depth
+#
+# c-files/libs/TDigest.cpp -o band-depth
+# clang++ -std=c++14
+# clang++
+#
+#
+# ################
+# # polycover
+# ################
+# POLYCOVER_SRC_DIR="../src/polycover"
+# POLYCOVER_FLAGS=""
+# # POLYCOVER_LD_FLAGS=""
+# POLYCOVER_OBJ=""
+# if [ ! -z "$POLYCOVER_SUPPORT" ]; then
+#
+# 	echo "polycover..."
+#
+# 	POLYCOVER_LIBNAME="filter_polycover"
+#
+# 	OPTIONS="${OPTIONS} -DPOLYCOVER"
+# 	# needs to dynamic link with stdc++
+# 	# LIBS="${LIBS} -l${POLYCOVER_LIBNAME} -lstdc++ "
+# 	LIBS="${LIBS} lib${POLYCOVER_LIBNAME}.a -lstdc++ "
+#
+# 	# complie library
+# 	pushd .
+# 	cd $BUILD
+#
+# 	# has to obtain the functions from filterpolycover
+# 	CORES=1
+#
+# 	cat <(cat <<EOF
+# algorithm_area.cc
+# algorithm_boundary.cc
+# algorithm_cells.cc
+# algorithm_geometry.cc
+# algorithm_labeled_tree.cc
+# algorithm_maps.cc
+# algorithm_mipmap.cc
+# algorithm_polycover.cc
+# algorithm_tessellation.cc
+# algorithm_tokenizer.cc
+# library_glue.cc
+# tiletree_mmap.cc
+# tiletree_nodeinfo.cc
+# tiletree_slab_allocator.cc
+# tiletree_tiletree.cc
+# EOF
+# ) > tmp_src_cxx
+#
+# 	cat <(cat <<EOF
+# glu_dict.c
+# glu_geom.c
+# glu_memalloc.c
+# glu_mesh.c
+# glu_normal.c
+# glu_priorityq.c
+# # glu_priorityq-heap.c
+# glu_render.c
+# glu_sweep.c
+# glu_tess.c
+# glu_tessellate.c
+# glu_tessmono.c
+# EOF
+# ) | grep -v "^#" > tmp_src_c
+#
+# 	if [ "${MODE}" = "release" ]; then
+# 		POLYCOVER_C_FLAGS="-I. -I${POLYCOVER_SRC_DIR} -std=gnu11 -fPIC -O2"
+# 		POLYCOVER_CXX_FLAGS="-I. -I${POLYCOVER_SRC_DIR} -std=c++11 -fPIC -O2"
+# 	else
+# 		POLYCOVER_C_FLAGS="-I. -I${POLYCOVER_SRC_DIR} -std=gnu11 -fPIC -g -ggdb"
+# 		POLYCOVER_CXX_FLAGS="-I. -I${POLYCOVER_SRC_DIR} -std=c++11 -fPIC -g -ggdb"
+# 	fi
+#
+# 	cat tmp_src_c \
+# 	| awk -v SRC="${POLYCOVER_SRC_DIR}" '{ printf "if [ ! -f polycover_%s.o ] || [ \"polycover_%s.o\" -ot \"%s/%s\" ]; then echo \"%s\"; fi;\n", $1, $1, SRC, $1, $1 }' \
+# 	| tee /tmp/y \
+# 	| awk '{ system($0) }' \
+# 	| awk -v "CC=${CC}" -v FLAGS="${POLYCOVER_C_FLAGS}" -v SRC="${POLYCOVER_SRC_DIR}" '{ printf "echo %s; %s %s -o polycover_%s.o -c %s/%s\n", $1, CC, FLAGS, $1, SRC, $1 }' \
+# 	| tee /tmp/polycover_c \
+# 	| xargs -P${CORES} -I{} bash -c '{}'
+#
+# 	cat tmp_src_cxx \
+# 	| awk -v SRC="${POLYCOVER_SRC_DIR}" '{ printf "if [ ! -f polycover_%s.o ] || [ \"polycover_%s.o\" -ot \"%s/%s\" ]; then echo \"%s\"; fi;\n", $1, $1, SRC, $1, $1 }' \
+# 	| tee /tmp/y \
+# 	| awk '{ system($0) }' \
+# 	| awk -v "CC=${CXX}" -v FLAGS="${POLYCOVER_CXX_FLAGS}" -v SRC="${POLYCOVER_SRC_DIR}" '{ printf "echo %s; %s %s -o polycover_%s.o -c %s/%s\n", $1, CC, FLAGS, $1, SRC, $1 }' \
+# 	| tee /tmp/polycover_cxx \
+# 	| xargs -P${CORES} -I{} bash -c '{}'
+#
+# 	POLYCOVER_OBJ=$( (cat tmp_src_c && cat tmp_src_cxx) | awk '{ printf "polycover_%s.o\n", $1 }' | paste -d' ' -s -)
+# 	# echo "POLYCOVER_OBJ=$POLYCOVER_OBJ"
+#
+# 	# as a shared library
+# 	# ${CXX} -shared -o lib${POLYCOVER_LIBNAME}.so $POLYCOVER_OBJ
+# 	# echo "copying lib${POLYCOVER_LIBNAME}.so to ${LOCAL}/bin"
+# 	# cp lib${POLYCOVER_LIBNAME}.so ${LOCAL}/bin/.
+#
+# 	# static library
+# 	# echo "ar rcs lib${POLYCOVER_LIBNAME}.a $POLYCOVER_OBJ"
+# 	ar rcs lib${POLYCOVER_LIBNAME}.a $POLYCOVER_OBJ
+#
+# 	popd
+#
+# fi
+#
+#
+#
+#
+#
+#
+# clang++ -std=c++14 -stdlib=libc++ -g -ggdb c-files/band-depth.cpp c-files/libs/TDigest.cpp -o band-depth
+#
+#
+#
+# clang++ -std=c++14 -stdlib=libc++ -g -ggdb c-files/band-depth.cpp c-files/libs/TDigest.cpp -o band-depth
+#
+# # ./band-depth inputs/taxis_v1.txt outputs/taxis_v1_s61
+# # gcc band-depth.c -o band-depth
+# # ./band-depth
+# # clang -g -ggdb -std=c11 -o band-depth band-depth.c
+# # clang -S -ggdb -std=c11 band-depth.c
+# # ./band-depth

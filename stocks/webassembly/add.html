@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<script type="module">
+
+async function init() {
+
+    	const { instance } = await WebAssembly.instantiateStreaming( fetch("./add.wasm") );
+
+	// initialize webassembly module
+	instance.exports.rans_init();
+
+	const js_array = [1, 2, 3, 4, 5];
+
+	const c_checkpoint = instance.exports.rans_mem_get_checkpoint();
+
+	const c_array_pointer = instance.exports.rans_malloc(js_array.length * 4);
+
+	console.log(instance.exports.rans_mem_get_checkpoint());
+
+	// Turn that sequence of 32-bit integers
+	// into a Uint32Array, starting at that address.
+	const c_array = new Uint32Array( instance.exports.memory.buffer, c_array_pointer, js_array.length );
+
+	// Copy the values from JS to C.
+	c_array.set(js_array);
+
+	console.log(c_array_pointer)
+
+	// Run the function, passing the starting address and length.
+	console.log(instance.exports.rans_sum(c_array_pointer, c_array.length));
+
+	instance.exports.rans_mem_set_checkpoint(c_checkpoint);
+
+	console.log(instance.exports.rans_mem_get_checkpoint());
+
+	console.log(instance.exports.rans_log(2));
+}
+
+init();
+</script>

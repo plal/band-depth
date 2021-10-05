@@ -1,15 +1,21 @@
 #!/bin/bash
-#clang -g -ggdb -std=c11 -o band-depth band-depth.c
-#clang -S -ggdb -std=c11 band-depth.c
-g++ c-files/band-depth.c c-files/libs/TDigest.cpp -o band-depth
 
-./band-depth inputs/taxis_v1.txt outputs/taxis_v1_s15_mon 15 0
-#./band-depth inputs/taxis_v1.txt outputs/taxis_v1_s15_tue 15 1
-#./band-depth inputs/taxis_v1.txt outputs/taxis_v1_s15_wed 15 2
-#./band-depth inputs/taxis_v1.txt outputs/taxis_v1_s15_thu 15 3
-#./band-depth inputs/taxis_v1.txt outputs/taxis_v1_s15_fri 15 4
-#./band-depth inputs/taxis_v1.txt outputs/taxis_v1_s15_sat 15 5
-#./band-depth inputs/taxis_v1.txt outputs/taxis_v1_s15_sun 15 6
-#./band-depth inputs/taxis_v1.txt outputs/taxis_v1
-#./band-depth inputs/taxis_v2.txt outputs/taxis_v2
-#./band-depth inputs/taxis_v3.txt outputs/taxis_v3
+find `pwd` | grep -e "[.]c$" > .ctags-files
+find `pwd` | grep -e "[.]h$" >> .ctags-files
+ctags -L .ctags-files
+
+cat <<EOF | grep -v "^#" > .tmp_commands
+g++ -g -ggdb -c c-files/tdigest_glue.cpp
+g++ -g -ggdb -c c-files/libs/TDigest.cpp
+ar rcs libtdigest_glue.a tdigest_glue.o TDigest.o
+gcc -g -ggdb -c c-files/band-depth.c
+gcc -o band-depth band-depth.o -L. -ltdigest_glue -lm -lstdc++
+./band-depth inputs/taxis_v1.txt outputs/taxis_v1_ed
+EOF
+
+# gcc -o band-depth -Wl,-Bstatic libtdigest_glue.a band-depth.o -lm -lstdc++
+
+while read cmd; do
+	echo "CMD: $cmd"
+	$cmd
+done < .tmp_commands
