@@ -5,7 +5,7 @@ import pandas as pd
 
 days   = range(1,32)
 months = [1,2,3,4,5,6,9,10,11,12]
-years  = [2015,2016,2017,2018,2019,2020]
+years  = [1995,1996]
 
 def format_number(number):
     if len(str(number)) == 1:
@@ -22,5 +22,5 @@ for year in years:
                     player["date"] = date
 
                 df = pd.DataFrame(data)
-                fname = "nba/nba_player_stats_"+date+'.csv'
+                fname = "nba_1995_1996/nba_player_stats_"+date+'.csv'
                 df.to_csv(fname,sep='|',index=False)
